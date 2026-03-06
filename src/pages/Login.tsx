@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { FlaskConical, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react"; // FlaskConical dihapus
 
 export default function Login() {
   const navigate = useNavigate();
@@ -128,12 +128,13 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
       <div className="w-full max-w-md animate-fade-in">
         {/* Header Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4">
-            <FlaskConical className="w-8 h-8 text-primary-foreground" />
+        <div className="text-center mb-8 flex flex-col items-center">
+          {/* Kotak Putih untuk Logo */}
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-sm border border-slate-100 mb-4">
+            <img src="/logo.png" alt="Logo Lab Algoritma" className="w-12 h-12 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            Laboratorium Algoritma
+            Laboratorium Algoritma Pemrograman
           </h1>
           <p className="text-muted-foreground mt-1">
             Sistem Manajemen Laboratorium
@@ -274,7 +275,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          © 2026 Laboratorium Algoritma.
+          © 2026 Laboratorium Algoritma Pemrograman.
         </p>
       </div>
     </div>

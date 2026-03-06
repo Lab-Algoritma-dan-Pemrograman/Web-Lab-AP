@@ -253,7 +253,7 @@ export default function Absensi() {
       }
       
       const today = new Date().toISOString().split('T')[0];
-      const { data: ex } = await supabase.from('attendance_logs').select('*').eq('custom_user_id', user?.id).gte('check_in_time', today + 'T00:00:00').maybeSingle();
+      const { data: ex } = await supabase.from('attendance_logs').select('*').eq('custom_user_id', user?.id).gte('check_in_time', `${today}T00:00:00`).lte('check_in_time', `${today}T23:59:59.999`).maybeSingle();
       
       if (ex) { 
           toast.warning("Anda sudah melakukan absensi hari ini!"); 

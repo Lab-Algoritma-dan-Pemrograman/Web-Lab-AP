@@ -3,127 +3,125 @@
 @tailwind utilities;
 
 /* Laboratory Management System Design System
-   Professional academic theme with navy/teal palette
+   Professional academic theme with Crimson/Slate palette
    All colors in HSL format
 */
 
 @layer base {
   :root {
-    /* Core Navy-Teal Academic Palette */
-    --background: 210 20% 98%;
-    --foreground: 220 30% 15%;
+    /* Core Light Theme Palette */
+    --background: 0 0% 98%;      /* Very light gray/white background */
+    --foreground: 0 0% 9%;       /* Near black text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 15%;
+    --card: 0 0% 100%;           /* Pure white cards */
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 15%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Primary: Deep Navy */
-    --primary: 220 60% 25%;
+    /* Primary: Tech Crimson (Menyatu dengan logo Anda) */
+    --primary: 347 77% 45%;      
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Soft Slate */
-    --secondary: 215 25% 92%;
-    --secondary-foreground: 220 30% 20%;
+    /* Secondary: Light Slate */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    /* Muted: Light Gray-Blue */
-    --muted: 215 20% 94%;
-    --muted-foreground: 220 15% 45%;
+    /* Muted: Soft Gray */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    /* Accent: Teal */
-    --accent: 175 60% 40%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent: Crimson Lighter */
+    --accent: 347 77% 95%;
+    --accent-foreground: 347 77% 40%;
 
     /* Success: Emerald */
-    --success: 160 60% 40%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
     /* Warning: Amber */
-    --warning: 40 90% 50%;
-    --warning-foreground: 40 90% 10%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
 
-    /* Destructive: Crimson */
-    --destructive: 0 70% 55%;
+    /* Destructive: Deep Red */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Info: Sky Blue */
-    --info: 200 80% 50%;
+    /* Info: Blue */
+    --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
 
-    --border: 215 25% 88%;
-    --input: 215 25% 88%;
-    --ring: 220 60% 45%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 347 77% 45%; /* Ring focus color is Crimson */
 
     --radius: 0.625rem;
 
-    /* Sidebar - Darker Navy */
-    --sidebar-background: 220 45% 18%;
-    --sidebar-foreground: 215 25% 90%;
-    --sidebar-primary: 175 60% 50%;
-    --sidebar-primary-foreground: 220 45% 10%;
-    --sidebar-accent: 220 40% 25%;
-    --sidebar-accent-foreground: 215 25% 95%;
-    --sidebar-border: 220 35% 25%;
-    --sidebar-ring: 175 60% 50%;
+    /* Sidebar - Hitam Pekat (Cocok dengan AppSidebar.tsx yang baru) */
+    --sidebar-background: 0 0% 0%; 
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 347 77% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 347 77% 50%;
 
-    /* Custom gradients and shadows */
-    --gradient-primary: linear-gradient(135deg, hsl(220 60% 25%), hsl(220 60% 35%));
-    --gradient-accent: linear-gradient(135deg, hsl(175 60% 35%), hsl(175 60% 50%));
-    --gradient-hero: linear-gradient(135deg, hsl(220 45% 18%), hsl(220 50% 28%));
-    
-    --shadow-sm: 0 1px 2px 0 hsl(220 30% 15% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(220 30% 15% / 0.08), 0 2px 4px -2px hsl(220 30% 15% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(220 30% 15% / 0.1), 0 4px 6px -4px hsl(220 30% 15% / 0.1);
-    --shadow-card: 0 2px 8px -2px hsl(220 30% 15% / 0.08);
+    /* Custom shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.08);
   }
 
   .dark {
-    --background: 220 30% 8%;
-    --foreground: 215 25% 95%;
+    /* Core Dark Theme Palette */
+    --background: 0 0% 5%;       /* Sangat gelap, hampir hitam */
+    --foreground: 0 0% 95%;
 
-    --card: 220 30% 12%;
-    --card-foreground: 215 25% 95%;
+    --card: 0 0% 8%;           /* Kotak sedikit lebih terang dari background */
+    --card-foreground: 0 0% 95%;
 
-    --popover: 220 30% 12%;
-    --popover-foreground: 215 25% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 175 60% 50%;
-    --primary-foreground: 220 45% 10%;
+    /* Primary: Crimson yang sedikit lebih terang agar menyala di layar gelap */
+    --primary: 347 80% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 30% 18%;
-    --secondary-foreground: 215 25% 90%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 220 25% 20%;
-    --muted-foreground: 215 20% 60%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 175 55% 45%;
-    --accent-foreground: 220 45% 10%;
+    --accent: 347 50% 20%;
+    --accent-foreground: 347 80% 80%;
 
-    --success: 160 55% 45%;
-    --success-foreground: 160 60% 10%;
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
 
-    --warning: 40 85% 55%;
-    --warning-foreground: 40 90% 10%;
+    --warning: 38 90% 50%;
+    --warning-foreground: 0 0% 10%;
 
-    --destructive: 0 65% 50%;
+    --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
 
-    --info: 200 75% 55%;
-    --info-foreground: 200 80% 10%;
+    --info: 217 90% 50%;
+    --info-foreground: 0 0% 100%;
 
-    --border: 220 25% 22%;
-    --input: 220 25% 22%;
-    --ring: 175 60% 50%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 347 80% 55%;
 
-    --sidebar-background: 220 35% 10%;
-    --sidebar-foreground: 215 25% 90%;
-    --sidebar-primary: 175 60% 50%;
-    --sidebar-primary-foreground: 220 45% 10%;
-    --sidebar-accent: 220 30% 18%;
-    --sidebar-accent-foreground: 215 25% 95%;
-    --sidebar-border: 220 30% 18%;
-    --sidebar-ring: 175 60% 50%;
+    --sidebar-background: 0 0% 0%; /* Sidebar tetap hitam pekat */
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 347 80% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 347 80% 55%;
   }
 }
 
