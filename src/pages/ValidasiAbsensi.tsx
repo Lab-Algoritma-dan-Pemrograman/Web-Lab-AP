@@ -1,0 +1,224 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { CheckCircle, Loader2, History, Clock, MessageCircle, RotateCcw, XCircle } from "lucide-react";
+
+export default function ValidasiAbsensi() {
+  const [pendingLogs, setPendingLogs] = useState<any[]>([]);
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]); 
+  const [loading, setLoading] = useState(true);
+
+  // Helper WA Link
+  const getWaLink = (phone: string | null) => {
+    if (!phone) return null;
+    let clean = phone.replace(/\D/g, ''); if (clean.startsWith('0')) clean = '62' + clean.slice(1);
+    return `https://wa.me/${clean}`;
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    
+    // 1. Ambil PENDING (Menunggu Validasi Izin Awal)
+    const { data: pending } = await supabase
+      .from('attendance_logs')
+      .select('*, users:custom_user_id(full_name, role, phone_number)')
+      .eq('verification_status', 'pending') 
+      .eq('users.role', 'praktikan')
+      .neq('status', 'Hadir') // Abaikan yang sudah Hadir
+      .order('check_in_time', { ascending: false });
+
+    // 2. Ambil RIWAYAT (Izin sudah Approved/Rejected)
+    const { data: history } = await supabase
+      .from('attendance_logs')
+      .select('*, users:custom_user_id(full_name, role, phone_number), schedules:reschedule_schedule_id(*)')
+      .in('verification_status', ['approved', 'rejected']) 
+      .eq('users.role', 'praktikan')
+      .neq('status', 'Hadir') // Abaikan yang sudah Hadir
+      .order('check_in_time', { ascending: false })
+      .limit(20);
+
+    setPendingLogs(pending || []);
+    setHistoryLogs(history || []);
+    setLoading(false);
+  };
+
+  // --- EFEK UTAMA & SUPABASE REALTIME ---
+  useEffect(() => { 
+    fetchData(); 
+
+    // MENYALAKAN FITUR AUTO-REFRESH (REALTIME)
+    const channel = supabase
+      .channel('validasi_live_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Dengarkan insert, update, delete
+          schema: 'public',
+          table: 'attendance_logs',
+        },
+        (payload) => {
+          console.log('Live Update Validasi Diterima!', payload);
+          fetchData(); // Langsung refresh data tabel
+        }
+      )
+      .subscribe();
+
+    // Bersihkan channel saat pindah halaman
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // --- TAHAP 1: VALIDASI IZIN ---
+  const handleVerifyLicense = async (id: number, isApproved: boolean) => {
+    const newStatus = isApproved ? 'approved' : 'rejected';
+    
+    // Optimistic Update UI (Biar responsif kliknya)
+    const item = pendingLogs.find(l => l.id === id);
+    if(item) {
+        setPendingLogs(prev => prev.filter(l => l.id !== id));
+        setHistoryLogs(prev => [{...item, verification_status: newStatus, is_verified: isApproved}, ...prev]);
+    }
+
+    await supabase.from('attendance_logs').update({ verification_status: newStatus, is_verified: isApproved }).eq('id', id);
+    toast.success(isApproved ? "Izin Disetujui. Praktikan bisa pilih jadwal." : "Izin Ditolak.");
+  };
+
+  // --- TAHAP 2: VALIDASI JADWAL ---
+  const handleVerifyReschedule = async (id: number, isApproved: boolean) => {
+    const newStatus = isApproved ? 'approved' : 'rejected';
+
+    // Jika ditolak, set schedule_id ke null agar praktikan harus pilih ulang
+    const updateData: any = { reschedule_status: newStatus };
+    if (!isApproved) updateData.reschedule_schedule_id = null;
+
+    await supabase.from('attendance_logs').update(updateData).eq('id', id);
+    toast.success(isApproved ? "Jadwal Disetujui & Terkunci." : "Jadwal Ditolak.");
+  };
+
+  // --- RESET JADWAL (Unlock) ---
+  const handleResetReschedule = async (id: number) => {
+    if(!confirm("Buka kunci jadwal ini?")) return;
+    
+    await supabase.from('attendance_logs').update({ reschedule_status: null, reschedule_schedule_id: null }).eq('id', id);
+    toast.success("Jadwal di-reset.");
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <CheckCircle className="text-primary"/> Validasi Absensi
+          </h1>
+          {/* Indikator Realtime Live */}
+          <Badge variant="outline" className="text-sm bg-green-50 text-green-600 border-green-200 animate-pulse py-1">
+            <span className="w-2 h-2 rounded-full bg-green-500 mr-2 inline-block"></span> Live Update
+          </Badge>
+        </div>
+
+        {/* --- TABEL 1: PERMINTAAN IZIN BARU --- */}
+        <Card className="border-l-4 border-l-yellow-500 shadow-md">
+          <CardHeader><CardTitle className="flex items-center gap-2 text-yellow-700"><Clock className="w-5 h-5"/> Permintaan Izin ({pendingLogs.length})</CardTitle></CardHeader>
+          <CardContent>
+             {loading && pendingLogs.length === 0 ? <div className="flex justify-center p-4"><Loader2 className="animate-spin text-muted-foreground w-6 h-6"/></div> :
+              <Table>
+                <TableHeader>
+                  <TableRow><TableHead>Nama</TableHead><TableHead>Alasan</TableHead><TableHead>Kontak</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow>
+                </TableHeader>
+                <TableBody>
+                   {pendingLogs.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground italic">Tidak ada permintaan izin baru.</TableCell></TableRow> : 
+                     pendingLogs.map(log => (
+                        <TableRow key={log.id}>
+                            <TableCell>
+                              <div className="font-bold">{log.users?.full_name}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(log.check_in_time).toLocaleString('id-ID')}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="mr-2 mb-1 bg-yellow-50">{log.status}</Badge> 
+                              <span className="text-sm">{log.notes}</span>
+                            </TableCell>
+                            <TableCell>{log.users?.phone_number ? <a href={getWaLink(log.users.phone_number)||'#'} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="h-8 text-green-600 border-green-200 bg-green-50 hover:bg-green-100"><MessageCircle className="w-3 h-3 mr-2"/>Chat WA</Button></a> : <span className="text-xs text-muted-foreground">-</span>}</TableCell>
+                            <TableCell className="text-right">
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 mr-2" onClick={() => handleVerifyLicense(log.id, true)}>Setuju</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleVerifyLicense(log.id, false)}>Tolak</Button>
+                            </TableCell>
+                        </TableRow>
+                     ))
+                   }
+                </TableBody>
+              </Table>
+             }
+          </CardContent>
+        </Card>
+
+        {/* --- TABEL 2: STATUS JADWAL PENGGANTI --- */}
+        <Card className="border-l-4 border-l-blue-500 shadow-sm opacity-95">
+          <CardHeader><CardTitle className="flex items-center gap-2 text-blue-700"><History className="w-5 h-5"/> Status Jadwal Pengganti</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow><TableHead>Nama</TableHead><TableHead>Status Izin</TableHead><TableHead>Jadwal Dipilih</TableHead><TableHead className="text-right">Aksi Jadwal</TableHead></TableRow>
+              </TableHeader>
+              <TableBody>
+                {historyLogs.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground italic">Belum ada data riwayat.</TableCell></TableRow> :
+                  historyLogs.map((log) => (
+                      <TableRow key={log.id} className="bg-gray-50/50">
+                          <TableCell>
+                              <div className="font-medium">{log.users?.full_name}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(log.check_in_time).toLocaleDateString('id-ID')}</div>
+                          </TableCell>
+                          <TableCell>
+                              {log.verification_status === 'approved' ? <Badge className="bg-green-100 text-green-800 border-transparent">Izin OK</Badge> : <Badge className="bg-red-100 text-red-800 border-transparent">Ditolak</Badge>}
+                          </TableCell>
+                          
+                          {/* INFO JADWAL */}
+                          <TableCell>
+                              {log.verification_status === 'rejected' ? <span className="text-muted-foreground">-</span> : 
+                                !log.reschedule_schedule_id ? <span className="text-xs text-orange-600 italic">Belum pilih jadwal</span> :
+                                (
+                                  <div className="flex flex-col gap-1 items-start">
+                                      <span className="font-bold text-sm text-blue-700">
+                                          {log.schedules?.day_of_week}, {log.schedules?.start_time?.slice(0,5)}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">({log.schedules?.title})</span>
+                                      {log.reschedule_status === 'pending' && <Badge variant="outline" className="w-fit bg-yellow-50 text-yellow-700 border-yellow-200">Menunggu Acc</Badge>}
+                                      {log.reschedule_status === 'approved' && <Badge variant="outline" className="w-fit bg-green-50 text-green-700 border-green-200">Disetujui & Fix</Badge>}
+                                      {log.reschedule_status === 'rejected' && <Badge variant="outline" className="w-fit bg-red-50 text-red-700 border-red-200">Ditolak</Badge>}
+                                  </div>
+                                )
+                              }
+                          </TableCell>
+
+                          {/* AKSI JADWAL */}
+                          <TableCell className="text-right">
+                              {log.verification_status === 'approved' && log.reschedule_schedule_id && (
+                                  <>
+                                      {log.reschedule_status === 'pending' && (
+                                          <div className="flex justify-end gap-2">
+                                              <Button size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700" onClick={() => handleVerifyReschedule(log.id, true)}><CheckCircle className="w-4 h-4 mr-1"/> Acc</Button>
+                                              <Button size="sm" variant="destructive" className="h-8 px-3" onClick={() => handleVerifyReschedule(log.id, false)}><XCircle className="w-4 h-4 mr-1"/> Tolak</Button>
+                                          </div>
+                                      )}
+                                      {log.reschedule_status === 'approved' && (
+                                          <Button size="sm" variant="outline" className="h-8 px-3 text-gray-500" onClick={() => handleResetReschedule(log.id)}><RotateCcw className="w-4 h-4 mr-1"/> Buka Kunci</Button>
+                                      )}
+                                  </>
+                              )}
+                          </TableCell>
+                      </TableRow>
+                  ))
+                }
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}

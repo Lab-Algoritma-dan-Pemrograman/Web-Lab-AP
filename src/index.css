@@ -1,0 +1,189 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Laboratory Management System Design System
+   Professional academic theme with navy/teal palette
+   All colors in HSL format
+*/
+
+@layer base {
+  :root {
+    /* Core Navy-Teal Academic Palette */
+    --background: 210 20% 98%;
+    --foreground: 220 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 15%;
+
+    /* Primary: Deep Navy */
+    --primary: 220 60% 25%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Soft Slate */
+    --secondary: 215 25% 92%;
+    --secondary-foreground: 220 30% 20%;
+
+    /* Muted: Light Gray-Blue */
+    --muted: 215 20% 94%;
+    --muted-foreground: 220 15% 45%;
+
+    /* Accent: Teal */
+    --accent: 175 60% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Success: Emerald */
+    --success: 160 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning: Amber */
+    --warning: 40 90% 50%;
+    --warning-foreground: 40 90% 10%;
+
+    /* Destructive: Crimson */
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Info: Sky Blue */
+    --info: 200 80% 50%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 215 25% 88%;
+    --input: 215 25% 88%;
+    --ring: 220 60% 45%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar - Darker Navy */
+    --sidebar-background: 220 45% 18%;
+    --sidebar-foreground: 215 25% 90%;
+    --sidebar-primary: 175 60% 50%;
+    --sidebar-primary-foreground: 220 45% 10%;
+    --sidebar-accent: 220 40% 25%;
+    --sidebar-accent-foreground: 215 25% 95%;
+    --sidebar-border: 220 35% 25%;
+    --sidebar-ring: 175 60% 50%;
+
+    /* Custom gradients and shadows */
+    --gradient-primary: linear-gradient(135deg, hsl(220 60% 25%), hsl(220 60% 35%));
+    --gradient-accent: linear-gradient(135deg, hsl(175 60% 35%), hsl(175 60% 50%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 45% 18%), hsl(220 50% 28%));
+    
+    --shadow-sm: 0 1px 2px 0 hsl(220 30% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 30% 15% / 0.08), 0 2px 4px -2px hsl(220 30% 15% / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(220 30% 15% / 0.1), 0 4px 6px -4px hsl(220 30% 15% / 0.1);
+    --shadow-card: 0 2px 8px -2px hsl(220 30% 15% / 0.08);
+  }
+
+  .dark {
+    --background: 220 30% 8%;
+    --foreground: 215 25% 95%;
+
+    --card: 220 30% 12%;
+    --card-foreground: 215 25% 95%;
+
+    --popover: 220 30% 12%;
+    --popover-foreground: 215 25% 95%;
+
+    --primary: 175 60% 50%;
+    --primary-foreground: 220 45% 10%;
+
+    --secondary: 220 30% 18%;
+    --secondary-foreground: 215 25% 90%;
+
+    --muted: 220 25% 20%;
+    --muted-foreground: 215 20% 60%;
+
+    --accent: 175 55% 45%;
+    --accent-foreground: 220 45% 10%;
+
+    --success: 160 55% 45%;
+    --success-foreground: 160 60% 10%;
+
+    --warning: 40 85% 55%;
+    --warning-foreground: 40 90% 10%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --info: 200 75% 55%;
+    --info-foreground: 200 80% 10%;
+
+    --border: 220 25% 22%;
+    --input: 220 25% 22%;
+    --ring: 175 60% 50%;
+
+    --sidebar-background: 220 35% 10%;
+    --sidebar-foreground: 215 25% 90%;
+    --sidebar-primary: 175 60% 50%;
+    --sidebar-primary-foreground: 220 45% 10%;
+    --sidebar-accent: 220 30% 18%;
+    --sidebar-accent-foreground: 215 25% 95%;
+    --sidebar-border: 220 30% 18%;
+    --sidebar-ring: 175 60% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  /* Card variants */
+  .card-elevated {
+    @apply bg-card rounded-lg border shadow-[var(--shadow-card)] transition-shadow duration-200;
+  }
+  
+  .card-elevated:hover {
+    @apply shadow-[var(--shadow-md)];
+  }
+
+  /* Status badges */
+  .badge-success {
+    @apply bg-success/10 text-success border-success/20;
+  }
+  
+  .badge-warning {
+    @apply bg-warning/10 text-warning border-warning/20;
+  }
+  
+  .badge-destructive {
+    @apply bg-destructive/10 text-destructive border-destructive/20;
+  }
+  
+  .badge-info {
+    @apply bg-info/10 text-info border-info/20;
+  }
+
+  /* Form styles */
+  .form-label {
+    @apply text-sm font-medium text-foreground mb-1.5 block;
+  }
+
+  .form-input {
+    @apply w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200;
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    @apply border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center transition-all duration-200 cursor-pointer;
+  }
+  
+  .upload-zone:hover {
+    @apply border-primary/50 bg-primary/5;
+  }
+  
+  .upload-zone-active {
+    @apply border-primary bg-primary/10;
+  }
+}
