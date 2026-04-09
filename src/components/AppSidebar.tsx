@@ -105,7 +105,7 @@ export function AppSidebar() {
     { title: "Buat QR Absen", url: "/buat-qr", icon: QrCode, roles: ["asisten", "koordinator"] },
     { title: "Kritik & Saran", url: "/kritik-saran", icon: MessageSquare, roles: ["praktikan", "koordinator"] },
     { title: "Penunjang Praktikum", url: "/penunjang-praktikum", icon: BookOpen, roles: ["praktikan", "asisten","koordinator"] },
-    { title: "E-Learning", url: "/e-learning", icon: GraduationCap, roles: ["praktikan"] },
+    { title: "E-Learning", url: "/e-learning", icon: GraduationCap, roles: ["praktikan", "asisten", "koordinator"] },
 
     { title: "Jadwal Saya", url: "/jadwal-saya", icon: Calendar, roles: ["praktikan","asisten","koordinator"] }, 
     { title: "Manajemen User", url: "/manajemen-user", icon: Users, roles: ["koordinator", "asisten"] },

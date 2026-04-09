@@ -53,7 +53,7 @@ function AppRoutes() {
       
       {/* PRAKTIKAN */}
       <Route path="/upload-laporan" element={<ProtectedRoute allowedRoles={["praktikan"]}><UploadLaporan /></ProtectedRoute>} />
-      <Route path="/e-learning" element={<ProtectedRoute allowedRoles={["praktikan"]}><ELearning /></ProtectedRoute>} />
+      <Route path="/e-learning" element={<ProtectedRoute><ELearning /></ProtectedRoute>} />
       {/* <Route path="/jadwal" element={<ProtectedRoute><JadwalSaya /></ProtectedRoute>} /> */}
 
       {/* UMUM (Semua User Login) */}
