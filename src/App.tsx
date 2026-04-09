@@ -29,6 +29,7 @@ import JadwalSaya from "./pages/JadwalSaya";
 import JadwalJaga from "./pages/JadwalJaga";
 // Tahap Akhir
 import LaporanKeuangan from "./pages/LaporanKeuangan";
+import ELearning from "./pages/ELearning";
 
 import Pengaturan from "./pages/Pengaturan";
 
@@ -52,6 +53,7 @@ function AppRoutes() {
       
       {/* PRAKTIKAN */}
       <Route path="/upload-laporan" element={<ProtectedRoute allowedRoles={["praktikan"]}><UploadLaporan /></ProtectedRoute>} />
+      <Route path="/e-learning" element={<ProtectedRoute allowedRoles={["praktikan"]}><ELearning /></ProtectedRoute>} />
       {/* <Route path="/jadwal" element={<ProtectedRoute><JadwalSaya /></ProtectedRoute>} /> */}
 
       {/* UMUM (Semua User Login) */}

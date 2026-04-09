@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Home, BookOpen, PenTool, Calendar, Users, Settings, LogOut, 
   Box, FileText, User, CalendarCheck, CheckCircle, ClipboardCheck,
-  MessageSquare, QrCode, CalendarDays 
+  MessageSquare, QrCode, CalendarDays, GraduationCap 
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -105,6 +105,7 @@ export function AppSidebar() {
     { title: "Buat QR Absen", url: "/buat-qr", icon: QrCode, roles: ["asisten", "koordinator"] },
     { title: "Kritik & Saran", url: "/kritik-saran", icon: MessageSquare, roles: ["praktikan", "koordinator"] },
     { title: "Penunjang Praktikum", url: "/penunjang-praktikum", icon: BookOpen, roles: ["praktikan", "asisten","koordinator"] },
+    { title: "E-Learning", url: "/e-learning", icon: GraduationCap, roles: ["praktikan"] },
 
     { title: "Jadwal Saya", url: "/jadwal-saya", icon: Calendar, roles: ["praktikan","asisten","koordinator"] }, 
     { title: "Manajemen User", url: "/manajemen-user", icon: Users, roles: ["koordinator", "asisten"] },
