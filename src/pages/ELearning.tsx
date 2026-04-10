@@ -291,7 +291,7 @@ export default function ELearning() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                    <BookMarked className="h-3 w-3" />
+                    <BookOpen className="h-3 w-3" />
                     {completedLessons} / {totalLessons || "?"} materi diselesaikan
                   </p>
                 </>
