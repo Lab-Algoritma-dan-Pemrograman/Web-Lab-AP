@@ -302,49 +302,63 @@ export default function ELearning() {
           </Card>
 
           {/* Status Kurikulum */}
-          <Card className={`shadow-sm border-0 overflow-hidden relative ${isCompleted
-              ? "bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background"
-              : "bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-background"
-            }`}>
-            <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-1/2 translate-x-1/2 ${isCompleted ? "bg-green-100/50 dark:bg-green-900/20" : "bg-orange-100/50 dark:bg-orange-900/20"
-              }`} />
-            <CardHeader className="flex flex-row items-center justify-between pb-2 relative">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Status Kurikulum</CardTitle>
-              <div className={`p-2 rounded-lg ${isCompleted ? "bg-green-100 dark:bg-green-900/50" : "bg-orange-100 dark:bg-orange-900/50"
+          {(() => {
+            const levels = (progress?.completed_levels as string[] ?? []);
+            const hasCompletedLevel = levels.length > 0;
+            return (
+              <Card className={`shadow-sm border-0 overflow-hidden relative ${hasCompletedLevel
+                  ? "bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background"
+                  : "bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-background"
                 }`}>
-                {isCompleted
-                  ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  : <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                }
-              </div>
-            </CardHeader>
-            <CardContent className="relative">
-              {loadingProgress ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Memuat...</span>
-                </div>
-              ) : (
-                <>
-                  <Badge
-                    variant={isCompleted ? "default" : "secondary"}
-                    className={`text-sm px-3 py-1 ${isCompleted
-                        ? "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-800"
-                        : "bg-orange-100 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/50 dark:text-orange-300 border-orange-200 dark:border-orange-800"
-                      }`}
-                  >
-                    {isCompleted ? "✓ Selesai" : "Belum Selesai"}
-                  </Badge>
-                  <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                    {isCompleted
-                      ? <><Zap className="h-3 w-3 text-green-500" />Anda sudah dapat mengikuti praktikum.</>
-                      : <><TrendingUp className="h-3 w-3 text-orange-500" />Selesaikan semua materi untuk unlock absensi.</>
+                <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-1/2 translate-x-1/2 ${hasCompletedLevel ? "bg-green-100/50 dark:bg-green-900/20" : "bg-orange-100/50 dark:bg-orange-900/20"
+                  }`} />
+                <CardHeader className="flex flex-row items-center justify-between pb-2 relative">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Status Kurikulum</CardTitle>
+                  <div className={`p-2 rounded-lg ${hasCompletedLevel ? "bg-green-100 dark:bg-green-900/50" : "bg-orange-100 dark:bg-orange-900/50"
+                    }`}>
+                    {hasCompletedLevel
+                      ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      : <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                     }
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                </CardHeader>
+                <CardContent className="relative">
+                  {loadingProgress ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Memuat...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-end gap-1 mb-2">
+                        <span className={`text-2xl font-bold ${hasCompletedLevel ? "text-green-700 dark:text-green-400" : "text-orange-700 dark:text-orange-400"}`}>
+                          {levels.length}
+                        </span>
+                        <span className={`text-sm font-medium mb-0.5 ${hasCompletedLevel ? "text-green-500/70" : "text-orange-500/70"}`}>
+                          level selesai
+                        </span>
+                      </div>
+                      {hasCompletedLevel ? (
+                        <div className="flex flex-col gap-1">
+                          {levels.map((lvl, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400">
+                              <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{lvl}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3 text-orange-500" />
+                          Selesaikan level untuk unlock absensi.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Level Progress */}
           <Card className="shadow-sm border-0 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background overflow-hidden relative">
