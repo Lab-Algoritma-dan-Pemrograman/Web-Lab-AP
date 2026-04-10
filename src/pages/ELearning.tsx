@@ -25,6 +25,8 @@ interface ElearningProgress {
   total_lessons: number;
   completion_percentage: number;
   is_completed: boolean;
+  completed_levels: string[] | null;
+  current_level: string | null;
   last_accessed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -344,11 +346,11 @@ export default function ELearning() {
             </CardContent>
           </Card>
 
-          {/* Info Siswa */}
+          {/* Level Progress */}
           <Card className="shadow-sm border-0 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background overflow-hidden relative">
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-100/50 dark:bg-purple-900/20 rounded-full -translate-y-1/2 translate-x-1/2" />
             <CardHeader className="flex flex-row items-center justify-between pb-2 relative">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Informasi</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Level Saat Ini</CardTitle>
               <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-lg">
                 <Trophy className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
@@ -361,9 +363,18 @@ export default function ELearning() {
                 </div>
               ) : (
                 <>
-                  <div className="text-lg font-bold text-purple-700 dark:text-purple-400 truncate">
-                    {progress?.student_name || "Belum terdaftar"}
+                  <div className="text-base font-bold text-purple-700 dark:text-purple-400 truncate">
+                    {progress?.current_level || "Belum mulai"}
                   </div>
+                  {(progress?.completed_levels as string[] ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {(progress?.completed_levels as string[] ?? []).map((lvl, i) => (
+                        <Badge key={i} variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+                          <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />{lvl}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {progress?.last_accessed_at
