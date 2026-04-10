@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { 
-  GraduationCap, ExternalLink, Loader2, BookOpen, 
+import {
+  GraduationCap, ExternalLink, Loader2, BookOpen,
   Trophy, Clock, CheckCircle2, AlertCircle, RefreshCw,
   Sparkles, TrendingUp, Zap
 } from "lucide-react";
@@ -21,7 +21,7 @@ interface ElearningProgress {
   id: string;
   nim: string;
   student_name: string | null;
-  completed_lessons: number;
+  lessons_completed: number;
   total_lessons: number;
   completion_percentage: number;
   is_completed: boolean;
@@ -83,7 +83,7 @@ export default function ELearning() {
   // ===== Fetch Progress from Supabase =====
   const fetchProgress = useCallback(async (showToast = false) => {
     if (!userNim) return;
-    
+
     try {
       const { data, error } = await supabase
         .from("elearning_progress")
@@ -134,7 +134,7 @@ export default function ELearning() {
         },
         (payload) => {
           console.log("Realtime update received:", payload);
-          
+
           if (payload.eventType === "DELETE") {
             setProgress(null);
             toast.info("Data progress dihapus");
@@ -142,8 +142,8 @@ export default function ELearning() {
             const data = payload.new as ElearningProgress;
             setProgress(data);
             setLastSyncTime(new Date());
-            toast.success("Progress terupdate!", { 
-              description: `${data.completed_lessons}/${data.total_lessons} materi selesai`,
+            toast.success("Progress terupdate!", {
+              description: `${data.lessons_completed}/${data.total_lessons} materi selesai`,
               icon: <Sparkles className="h-4 w-4" />
             });
           }
@@ -198,7 +198,7 @@ export default function ELearning() {
   // ===== Computed Values =====
   const completionPercent = progress?.completion_percentage ?? 0;
   const isCompleted = progress?.is_completed || completionPercent >= 100;
-  const completedLessons = progress?.completed_lessons ?? 0;
+  const completedLessons = progress?.lessons_completed ?? 0;
   const totalLessons = progress?.total_lessons ?? 0;
 
   // Format relative time
@@ -215,7 +215,7 @@ export default function ELearning() {
   const formatLastAccessed = (dateStr: string | null | undefined) => {
     if (!dateStr) return "Belum pernah diakses";
     const date = new Date(dateStr);
-    return date.toLocaleDateString("id-ID", { 
+    return date.toLocaleDateString("id-ID", {
       day: "numeric", month: "long", year: "numeric",
       hour: "2-digit", minute: "2-digit"
     });
@@ -246,10 +246,10 @@ export default function ELearning() {
                 {lastSyncTime ? `Sync: ${formatRelativeTime(lastSyncTime)}` : "Belum tersinkron"}
               </span>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefresh} 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
               disabled={isRefreshing}
               className="gap-1.5 rounded-full"
             >
@@ -285,9 +285,9 @@ export default function ELearning() {
                     <span className="text-lg font-semibold text-blue-500/70 mb-0.5">%</span>
                   </div>
                   <div className="mt-3 w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-700 ease-out" 
-                      style={{ width: `${Math.min(completionPercent, 100)}%` }} 
+                    <div
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${Math.min(completionPercent, 100)}%` }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
@@ -300,21 +300,18 @@ export default function ELearning() {
           </Card>
 
           {/* Status Kurikulum */}
-          <Card className={`shadow-sm border-0 overflow-hidden relative ${
-            isCompleted 
-              ? "bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background" 
+          <Card className={`shadow-sm border-0 overflow-hidden relative ${isCompleted
+              ? "bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background"
               : "bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-background"
-          }`}>
-            <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-1/2 translate-x-1/2 ${
-              isCompleted ? "bg-green-100/50 dark:bg-green-900/20" : "bg-orange-100/50 dark:bg-orange-900/20"
-            }`} />
+            }`}>
+            <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-1/2 translate-x-1/2 ${isCompleted ? "bg-green-100/50 dark:bg-green-900/20" : "bg-orange-100/50 dark:bg-orange-900/20"
+              }`} />
             <CardHeader className="flex flex-row items-center justify-between pb-2 relative">
               <CardTitle className="text-sm font-medium text-muted-foreground">Status Kurikulum</CardTitle>
-              <div className={`p-2 rounded-lg ${
-                isCompleted ? "bg-green-100 dark:bg-green-900/50" : "bg-orange-100 dark:bg-orange-900/50"
-              }`}>
-                {isCompleted 
-                  ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" /> 
+              <div className={`p-2 rounded-lg ${isCompleted ? "bg-green-100 dark:bg-green-900/50" : "bg-orange-100 dark:bg-orange-900/50"
+                }`}>
+                {isCompleted
+                  ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                   : <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 }
               </div>
@@ -327,18 +324,17 @@ export default function ELearning() {
                 </div>
               ) : (
                 <>
-                  <Badge 
-                    variant={isCompleted ? "default" : "secondary"} 
-                    className={`text-sm px-3 py-1 ${
-                      isCompleted 
-                        ? "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-800" 
+                  <Badge
+                    variant={isCompleted ? "default" : "secondary"}
+                    className={`text-sm px-3 py-1 ${isCompleted
+                        ? "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-800"
                         : "bg-orange-100 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/50 dark:text-orange-300 border-orange-200 dark:border-orange-800"
-                    }`}
+                      }`}
                   >
                     {isCompleted ? "✓ Selesai" : "Belum Selesai"}
                   </Badge>
                   <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                    {isCompleted 
+                    {isCompleted
                       ? <><Zap className="h-3 w-3 text-green-500" />Anda sudah dapat mengikuti praktikum.</>
                       : <><TrendingUp className="h-3 w-3 text-orange-500" />Selesaikan semua materi untuk unlock absensi.</>
                     }
@@ -370,7 +366,7 @@ export default function ELearning() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {progress?.last_accessed_at 
+                    {progress?.last_accessed_at
                       ? `Terakhir: ${formatLastAccessed(progress.last_accessed_at)}`
                       : "Belum pernah mengakses"
                     }
@@ -404,10 +400,10 @@ export default function ELearning() {
                   )}
                 </div>
               </div>
-              <Button 
-                onClick={handleOpenELearning} 
-                disabled={isLoading} 
-                size="lg" 
+              <Button
+                onClick={handleOpenELearning}
+                disabled={isLoading}
+                size="lg"
                 className="min-w-[200px] bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/20 transition-all duration-300 hover:shadow-red-500/30"
               >
                 {isLoading ? (
