@@ -114,6 +114,54 @@ export type Database = {
           },
         ]
       }
+      elearning_progress: {
+        Row: {
+          id: string
+          nim: string
+          student_name: string | null
+          completed_lessons: number
+          total_lessons: number
+          completion_percentage: number
+          quiz_score: number | null
+          quiz_attempts: number
+          lesson_details: Json
+          is_completed: boolean
+          last_accessed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nim: string
+          student_name?: string | null
+          completed_lessons?: number
+          total_lessons?: number
+          completion_percentage?: number
+          quiz_score?: number | null
+          quiz_attempts?: number
+          lesson_details?: Json
+          is_completed?: boolean
+          last_accessed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nim?: string
+          student_name?: string | null
+          completed_lessons?: number
+          total_lessons?: number
+          completion_percentage?: number
+          quiz_score?: number | null
+          quiz_attempts?: number
+          lesson_details?: Json
+          is_completed?: boolean
+          last_accessed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           available_quantity: number
