@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (SECRETS - NEVER COMMIT)
+.env
+.env.*
+!.env.example
+
+# Sensitive data files
+*.csv
+*.xlsx
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

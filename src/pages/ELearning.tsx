@@ -12,8 +12,25 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const JWT_SECRET = import.meta.env.VITE_JWT_SECRET || "";
 const ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
+
+// ===== JWT via Server API (Secret never reaches the browser) =====
+
+async function requestJWT(payload: { nim: string; nama: string; kelas: string }): Promise<string> {
+  const res = await fetch("/api/generate-jwt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(err.error || `Server error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.token;
+}
 
 // ===== Types =====
 
@@ -30,44 +47,6 @@ interface ElearningProgress {
   last_accessed_at: string | null;
   created_at: string;
   updated_at: string;
-}
-
-// ===== JWT HELPER (Web Crypto API - No external library) =====
-
-function base64UrlEncode(data: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function textToBase64Url(text: string): string {
-  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function generateJWT(payload: Record<string, unknown>, secret: string): Promise<string> {
-  const header = { alg: "HS256", typ: "JWT" };
-  const now = Math.floor(Date.now() / 1000);
-  const fullPayload = { ...payload, iat: now, exp: now + 7200 };
-
-  const encodedHeader = textToBase64Url(JSON.stringify(header));
-  const encodedPayload = textToBase64Url(JSON.stringify(fullPayload));
-  const dataToSign = `${encodedHeader}.${encodedPayload}`;
-
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(dataToSign));
-  const encodedSignature = base64UrlEncode(new Uint8Array(signature));
-
-  return `${dataToSign}.${encodedSignature}`;
 }
 
 // ===== COMPONENT =====
@@ -175,14 +154,11 @@ export default function ELearning() {
 
     setIsLoading(true);
     try {
-      const token = await generateJWT(
-        {
-          nim: userNim,
-          nama: user.full_name,
-          kelas: "",
-        },
-        JWT_SECRET
-      );
+      const token = await requestJWT({
+        nim: userNim,
+        nama: user.full_name,
+        kelas: "",
+      });
 
       const url = `${ELEARNING_URL}?token=${token}`;
       window.open(url, "_blank");

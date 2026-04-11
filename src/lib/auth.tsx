@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 // 1. Definisikan bentuk User sesuai database kita
 export interface LabUser {
@@ -26,12 +27,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // 2. Saat website dibuka, cek apakah ada data login tersimpan?
-    const checkSession = () => {
+    const checkSession = async () => {
       try {
         const storedSession = localStorage.getItem("lab_session");
         if (storedSession) {
-          const parsedUser = JSON.parse(storedSession);
-          setUser(parsedUser);
+          const parsedUser = JSON.parse(storedSession) as LabUser;
+
+          // === SERVER-SIDE ROLE VERIFICATION ===
+          // Re-query database untuk memastikan role di localStorage
+          // belum dimanipulasi oleh user melalui DevTools.
+          const { data: dbUser, error } = await supabase
+            .from("users")
+            .select("id, username, full_name, role, nim, assistant_code")
+            .eq("id", parsedUser.id)
+            .maybeSingle();
+
+          if (error || !dbUser) {
+            // User tidak ditemukan di database → session tidak valid
+            console.warn("Session invalid: user not found in database");
+            localStorage.removeItem("lab_session");
+            setUser(null);
+          } else if (dbUser.role !== parsedUser.role) {
+            // Role di localStorage berbeda dengan database → ada manipulasi!
+            console.warn(
+              `Role mismatch! localStorage: ${parsedUser.role}, DB: ${dbUser.role}. Correcting...`
+            );
+            // Koreksi ke role yang benar dari database
+            const correctedUser: LabUser = {
+              id: dbUser.id,
+              username: dbUser.username,
+              full_name: dbUser.full_name,
+              role: dbUser.role,
+              nim: dbUser.nim || undefined,
+              assistant_code: dbUser.assistant_code || undefined,
+            };
+            localStorage.setItem("lab_session", JSON.stringify(correctedUser));
+            setUser(correctedUser);
+          } else {
+            // Role cocok → session valid
+            setUser(parsedUser);
+          }
         }
       } catch (error) {
         console.error("Gagal membaca sesi:", error);

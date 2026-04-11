@@ -11,7 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Clock, Plus, Trash2, CalendarCheck, Save, UploadCloud, Image as ImageIcon, Loader2, Sparkles, X, FileText, Pencil, UserCog } from "lucide-react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Badge } from "@/components/ui/badge";
 
 export default function KetersediaanAsisten() {
@@ -197,41 +196,34 @@ export default function KetersediaanAsisten() {
 
   const handleAnalyzeFile = async () => {
     if (!uploadFile) return toast.error("Pilih file terlebih dahulu!");
-    
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) return toast.error("Konfigurasi API Key Gemini belum diatur di .env");
 
     setAnalyzing(true);
     
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const filePart = await fileToGenerativePart(uploadFile);
+        // Read file as base64
+        const fileBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64Data = (reader.result as string).split(',')[1];
+                resolve(base64Data);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(uploadFile);
+        });
 
-        const prompt = `
-            Anda adalah sistem penjadwalan cerdas. 
-            Berikut adalah gambar/dokumen KRS atau Jadwal Kuliah seorang mahasiswa.
-            Tugas Anda:
-            1. Jam operasional asisten laboratorium adalah hari Senin sampai Sabtu, dari pukul 07:20 hingga 17:40.
-            2. Analisis jadwal tersebut dan carilah JAM KOSONG (waktu di mana mahasiswa tersebut TIDAK ADA jadwal kuliah) dalam rentang jam operasional tersebut.
-            3. Abaikan hari Minggu.
-            4. Jika ada rentang waktu kosong yang saling berurutan di hari yang sama, gabungkan rentang tersebut menjadi satu waktu. (Contoh: kosong jam 07:20-10:00 dan 10:00-12:00 digabung jadi 07:20-12:00).
-            
-            Format jam harus hh:mm (contoh: 07:20, 13:30, 17:40).
+        // Call server-side API (API key is on server, NOT in browser)
+        const res = await fetch("/api/analyze-schedule", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileBase64, mimeType: uploadFile.type }),
+        });
 
-            KEMBALIKAN HANYA ARRAY JSON VALID TANPA TEKS LAIN ATAU MARKDOWN BACKTICKS!
-            Contoh format output wajib:
-            [
-                {"day_of_week": "Senin", "start_time": "07:20", "end_time": "12:00"},
-                {"day_of_week": "Rabu", "start_time": "13:00", "end_time": "17:40"}
-            ]
-        `;
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({ error: "Server error" }));
+            throw new Error(errData.error || `Server error: ${res.status}`);
+        }
 
-        const result = await model.generateContent([prompt, filePart as any]);
-        const responseText = result.response.text();
-
-        let cleanJson = responseText.replace(/```json/gi, "").replace(/```/g, "").trim();
-        const detectedData = JSON.parse(cleanJson);
+        const { slots: detectedData } = await res.json();
         
         if (!Array.isArray(detectedData) || detectedData.length === 0) {
              toast.error("AI tidak menemukan jadwal kosong di dokumen ini.");
@@ -242,7 +234,7 @@ export default function KetersediaanAsisten() {
         }
     } catch (err: any) {
         console.error("AI Error:", err);
-        toast.error("Gagal menganalisis file. Pastikan dokumen terbaca dengan jelas.");
+        toast.error("Gagal menganalisis file. " + (err.message || "Pastikan dokumen terbaca dengan jelas."));
     } finally {
         setAnalyzing(false);
     }
