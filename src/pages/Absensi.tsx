@@ -21,8 +21,12 @@ export default function Absensi() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("scan");
 
-  // Semua Asisten, Koordinator, Sekretaris, K3 dianggap sebagai Staff di halaman ini
+  // Semua Asisten, Koordinator, Sekretaris, K3 dianggap sebagai Staff di halaman ini (Bisa input manual)
   const isStaff = ['asisten', 'koordinator', 'sekretaris', 'k3'].includes(user?.role || '');
+  const [isPJAbsenToday, setIsPJAbsenToday] = useState(false);
+  
+  // Hanya Koordinator atau PJ Absen yang bisa lihat tabel rekap semua user
+  const isStaffTableMode = user?.role === 'koordinator' || isPJAbsenToday;
   
   // State Khusus untuk Hak Akses EXPORT
   const [hasExportAccess, setHasExportAccess] = useState(false);
@@ -69,9 +73,29 @@ export default function Absensi() {
           if (data && data.length > 0) {
               setHasExportAccess(true);
           }
-      }
     };
     checkExportAccess();
+  }, [user]);
+
+  // --- CEK APAKAH PJ ABSEN ---
+  useEffect(() => {
+    const checkPJAbsen = async () => {
+        if (user?.role !== 'asisten') return;
+        const today = new Date().toLocaleDateString('en-CA'); 
+        const { data } = await supabase
+            .from('schedule_assignments')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('task_role', 'PJ Absen')
+            .eq('activity_date', today)
+            .eq('status', 'aktif')
+            .limit(1);
+
+        if (data && data.length > 0) {
+            setIsPJAbsenToday(true);
+        }
+    };
+    checkPJAbsen();
   }, [user]);
 
 
@@ -94,7 +118,7 @@ export default function Absensi() {
         check_in_time, 
         status, 
         notes, 
-        users:custom_user_id (full_name, username, major, class_code)
+        users:custom_user_id (full_name, username, major, class_code, shift)
       `)
       .gte('check_in_time', `${filterDate}T00:00:00`)
       .lte('check_in_time', `${filterDate}T23:59:59.999`)
@@ -163,6 +187,7 @@ export default function Absensi() {
       "NIM": log.users?.username || "-",
       "Jurusan": log.users?.major || "-",
       "Kelas": log.users?.class_code || "-",
+      "Shift": log.users?.shift || "-",
       "Waktu Absen": new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       "Status": log.status,
       "Keterangan": log.notes || "-"
@@ -312,7 +337,7 @@ export default function Absensi() {
       await supabase.from('attendance_logs').insert({ 
           custom_user_id: usr.id, 
           status: targetStatus, 
-          notes: targetNote || "Input Manual Asisten", 
+          notes: targetNote || "Input Manual Oleh Staff", 
           check_in_time: targetDateTime, 
           is_verified: true 
       });
@@ -320,13 +345,23 @@ export default function Absensi() {
     } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
   };
 
-  const deleteLog = async (id: number) => {
-    if(!confirm("Hapus data absen ini?")) return;
+  const deleteLog = async (id: number, logData: any) => {
+    if(!confirm("Hapus data absen ini? Pastikan Anda tidak salah hapus!")) return;
     setLoading(true);
     try {
+      // 1. Simpan riwayat penghapusan terlebih dahulu
+      await supabase.from('attendance_deletion_history').insert({
+          deleted_by: user?.id,
+          target_user_id: logData.users?.username, // simpan nim
+          snapshot_data: JSON.stringify(logData),
+          reason: "Dihapus manual oleh Asisten",
+          deleted_at: new Date().toISOString()
+      });
+
+      // 2. Hapus dari tabel utama
       const { error } = await supabase.from('attendance_logs').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Data berhasil dihapus"); 
+      toast.success("Data berhasil dihapus dan riwayat tersimpan"); 
     } catch (err: any) { 
       toast.error("Gagal menghapus: " + err.message);
     } finally {
@@ -334,7 +369,8 @@ export default function Absensi() {
     }
   };
 
-  const displayAttendance = isStaff ? allAttendanceData : allAttendanceData.filter(log => log.users?.username === user?.username);
+  const displayAttendance = isStaffTableMode ? allAttendanceData : allAttendanceData.filter(log => log.users?.username === user?.username);
+  const totalHadir = allAttendanceData.filter(log => log.status === 'Hadir').length;
 
   return (
     <DashboardLayout>
@@ -441,7 +477,12 @@ export default function Absensi() {
                       <Label>Status</Label>
                       <Select value={targetStatus} onValueChange={setTargetStatus}>
                         <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent><SelectItem value="Hadir">Hadir</SelectItem><SelectItem value="Izin">Izin</SelectItem><SelectItem value="Sakit">Sakit</SelectItem></SelectContent>
+                        <SelectContent>
+                            <SelectItem value="Hadir">Hadir</SelectItem>
+                            <SelectItem value="Izin">Izin</SelectItem>
+                            <SelectItem value="Sakit">Sakit</SelectItem>
+                            <SelectItem value="Alpha">Alpha</SelectItem>
+                        </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
@@ -469,6 +510,11 @@ export default function Absensi() {
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-1">
                             <CardDescription>Rekap absen praktikan.</CardDescription>
+                            {isStaffTableMode && (
+                                <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                                    Total Hadir: {totalHadir}
+                                </Badge>
+                            )}
                             <Badge variant="outline" className="text-[9px] bg-green-50 text-green-600 border-green-200 animate-pulse px-1.5 py-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1 inline-block"></span> Live
                             </Badge>
@@ -505,13 +551,13 @@ export default function Absensi() {
                         <TableHead className="text-xs">Mahasiswa</TableHead>
                         <TableHead className="text-xs">Info</TableHead>
                         <TableHead className="text-xs">Waktu & Status</TableHead>
-                        {isStaff && <TableHead className="text-xs text-right">Aksi</TableHead>}
+                        {isStaffTableMode && <TableHead className="text-xs text-right">Aksi</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {displayAttendance.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isStaff ? 4 : 3} className="h-40 text-center text-muted-foreground italic text-sm">
+                          <TableCell colSpan={isStaffTableMode ? 4 : 3} className="h-40 text-center text-muted-foreground italic text-sm">
                             Belum ada data absensi pada tanggal ini.
                           </TableCell>
                         </TableRow>
@@ -523,20 +569,20 @@ export default function Absensi() {
                               <div className="text-[11px] text-muted-foreground font-mono">{log.users?.username}</div>
                             </TableCell>
                             <TableCell>
-                              <div className="text-[11px] font-semibold">{log.users?.class_code}</div>
-                              <div className="text-[11px] text-muted-foreground truncate max-w-[100px]">{log.users?.major}</div>
+                              <div className="text-[11px] font-semibold">{log.users?.class_code} - {log.users?.major}</div>
+                              <div className="text-[11px] text-muted-foreground">Shift: {log.users?.shift || "-"}</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col items-start gap-1">
-                                  <Badge variant="outline" className={`text-[10px] ${log.status === 'Hadir' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                                  <Badge variant="outline" className={`text-[10px] ${log.status === 'Hadir' ? 'bg-green-50 text-green-700 border-green-200' : log.status === 'Alpha' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
                                     {log.status} • {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                                   </Badge>
                                   {log.status !== 'Hadir' && <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[120px]">{log.notes}</span>}
                               </div>
                             </TableCell>
-                            {isStaff && (
+                            {isStaffTableMode && (
                               <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteLog(log.id)}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteLog(log.id, log)}>
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
                               </TableCell>

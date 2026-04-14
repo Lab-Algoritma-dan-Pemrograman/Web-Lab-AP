@@ -53,12 +53,10 @@ function AppRoutes() {
       
       {/* PRAKTIKAN */}
       <Route path="/upload-laporan" element={<ProtectedRoute allowedRoles={["praktikan"]}><UploadLaporan /></ProtectedRoute>} />
-      <Route path="/e-learning" element={<ProtectedRoute><ELearning /></ProtectedRoute>} />
-      {/* <Route path="/jadwal" element={<ProtectedRoute><JadwalSaya /></ProtectedRoute>} /> */}
+      <Route path="/e-learning" element={<ProtectedRoute requiredMenuKey="/e-learning"><ELearning /></ProtectedRoute>} />
 
       {/* UMUM (Semua User Login) */}
       <Route path="/profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
-      {/* <Route path="/modul" element={<ProtectedRoute><Modul /></ProtectedRoute>} /> */}
       <Route path="/absensi" element={<ProtectedRoute><Absensi /></ProtectedRoute>} />
       
       {/* KRITIK SARAN: Diakses Praktikan (Kirim) & Koordinator (Baca) */}
@@ -66,18 +64,17 @@ function AppRoutes() {
 
       {/* ASISTEN & KOORDINATOR */}
       <Route path="/jadwal-saya" element={<ProtectedRoute allowedRoles={["asisten","praktikan","koordinator"]}><JadwalSaya /></ProtectedRoute>} />
-      <Route path="/penunjang-praktikum" element={<ProtectedRoute allowedRoles={["asisten","praktikan","koordinator"]}><PenunjangPraktikum /></ProtectedRoute>} />
+      <Route path="/penunjang-praktikum" element={<ProtectedRoute allowedRoles={["asisten","praktikan","koordinator"]} requiredMenuKey="/penunjang-praktikum"><PenunjangPraktikum /></ProtectedRoute>} />
 
-      <Route path="/manajemen-user" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]}><ManajemenUser /></ProtectedRoute>} />
-      <Route path="/validasi-absensi" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]}><ValidasiAbsensi /></ProtectedRoute>} />
-      <Route path="/jadwal-jaga" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]}><JadwalJaga /></ProtectedRoute>} />
-      <Route path="/inventaris" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]}><Inventaris /></ProtectedRoute>} />
-      <Route path="/buat-qr" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]}><BuatQR /></ProtectedRoute>} />
-      <Route path="/manajemen-jadwal" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]}><ManajemenJadwal /></ProtectedRoute>} />
-      <Route path="/manajemen-kelas" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]}><ManajemenKelas /></ProtectedRoute>} />
-      <Route path="/ketersediaan" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]}><KetersediaanAsisten /></ProtectedRoute>} />
-      <Route path="/laporan-keuangan" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]}><LaporanKeuangan /></ProtectedRoute>} />
-      {/* <Route path="/jadwal" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]}><ManajemenJadwalBaru /></ProtectedRoute>} /> */}
+      <Route path="/manajemen-user" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/manajemen-user"><ManajemenUser /></ProtectedRoute>} />
+      <Route path="/validasi-absensi" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/validasi-absensi"><ValidasiAbsensi /></ProtectedRoute>} />
+      <Route path="/jadwal-jaga" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/jadwal-jaga"><JadwalJaga /></ProtectedRoute>} />
+      <Route path="/inventaris" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/inventaris"><Inventaris /></ProtectedRoute>} />
+      <Route path="/buat-qr" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/buat-qr"><BuatQR /></ProtectedRoute>} />
+      <Route path="/manajemen-jadwal" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/manajemen-jadwal"><ManajemenJadwal /></ProtectedRoute>} />
+      <Route path="/manajemen-kelas" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]} requiredMenuKey="/manajemen-kelas"><ManajemenKelas /></ProtectedRoute>} />
+      <Route path="/ketersediaan" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]} requiredMenuKey="/ketersediaan"><KetersediaanAsisten /></ProtectedRoute>} />
+      <Route path="/laporan-keuangan" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/laporan-keuangan"><LaporanKeuangan /></ProtectedRoute>} />
       
       {/* KHUSUS KOORDINATOR (ADMINISTRASI) */}
       <Route path="/pengaturan" element={<ProtectedRoute allowedRoles={["koordinator"]}><Pengaturan /></ProtectedRoute>} />

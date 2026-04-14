@@ -9,12 +9,22 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react"; // FlaskConical dihapus
+import { Loader2, Megaphone, PartyPopper, Zap } from "lucide-react"; 
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [sysSettings, setSysSettings] = useState<any>(null);
+
+  // Fetch settings once for Marquee
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data } = await supabase.from('system_settings').select('*').maybeSingle();
+      if (data) setSysSettings(data);
+    };
+    fetchSettings();
+  }, []);
 
   // --- State untuk Login ---
   const [loginUsername, setLoginUsername] = useState("");
@@ -67,8 +77,13 @@ export default function Login() {
                setIsLoading(false);
                return;
             }
+            if (!data.shift || data.shift === '?') {
+               toast.error("Akun Belum Aktif", { description: "Mohon tunggu plotting shift dari Koordinator sebelum Anda bisa login." });
+               setIsLoading(false);
+               return;
+            }
             if (data.shift !== activeShift) {
-               toast.error("Akses Ditolak", { description: `Maaf, akun Anda terdaftar di Shift ${data.shift || "?"}. Saat ini hanya Shift ${activeShift} yang diizinkan masuk.` });
+               toast.error("Akses Ditolak", { description: `Maaf, akun Anda terdaftar di Shift ${data.shift}. Saat ini hanya Shift ${activeShift} yang diizinkan masuk.` });
                setIsLoading(false);
                return;
             }
@@ -166,6 +181,29 @@ export default function Login() {
             Sistem Manajemen Laboratorium
           </p>
         </div>
+
+        {/* MARQUEE PENGUMUMAN */}
+        {sysSettings && (
+            <div className="mb-6 overflow-hidden rounded-lg bg-white border border-primary/20 shadow-sm p-3 relative flex items-center">
+                <div className="flex-shrink-0 z-10 bg-white pr-2 flex items-center gap-2 text-primary font-bold">
+                    {sysSettings.is_recruitment_open ? <PartyPopper className="w-5 h-5 text-pink-500 animate-bounce" /> : <Megaphone className="w-5 h-5 animate-pulse" />}
+                    Info:
+                </div>
+                <div className="flex-1 overflow-hidden whitespace-nowrap relative">
+                    <div className="animate-marquee inline-block whitespace-nowrap text-sm font-medium text-slate-700">
+                        <div className="inline-flex items-center gap-2 mr-10 relative">
+                            <Zap className="w-4 h-4 text-yellow-500 fill-yellow-500 animate-pulse" />
+                            {sysSettings.is_recruitment_open && <span className="text-pink-600 font-bold">🔥 OPEN RECRUITMENT ASISTEN SEDANG DIBUKA! DAFTAR SEKARANG! 🔥</span>}
+                            {sysSettings.active_shift && sysSettings.active_shift !== 'all' && sysSettings.active_shift !== 'none' && (
+                                <span className="text-blue-600 font-bold">🔔 PERHATIAN: Akses Login Praktikum Saat Ini Hanya Dibuka Untuk SHIFT {sysSettings.active_shift}. 🔔</span>
+                            )}
+                            <span>{sysSettings.announcement || "Selamat datang di sistem informasi Laboratorium Algoritma Pemrograman."}</span>
+                        </div>
+                        {/* Duplicate for seamless loop if needed, but animate-marquee with single long text usually works with transform -100% */}
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Card Form */}
         <Card className="border-0 shadow-elevated">

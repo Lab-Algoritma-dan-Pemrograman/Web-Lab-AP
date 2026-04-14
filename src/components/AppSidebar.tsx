@@ -28,15 +28,17 @@ const RESTRICTED_MENUS = [
   "/validasi-absensi", 
   "/inventaris", 
   "/laporan-keuangan",
-  "/penunjang-praktikum"
+  "/penunjang-praktikum",
+  "/e-learning",
+  "/buat-qr",
+  "/ketersediaan"
 ];
 
 export function AppSidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, allowedPaths } = useAuth() as any;
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [allowedPaths, setAllowedPaths] = useState<string[]>([]);
   const [isPJAbsenToday, setIsPJAbsenToday] = useState(false);
 
   // --- FITUR INGAT POSISI SCROLL ---
@@ -55,23 +57,12 @@ export function AppSidebar() {
     sessionStorage.setItem("sidebarScrollPos", e.currentTarget.scrollTop.toString());
   };
 
-  // --- CEK HAK AKSES DIVISI & STATUS PJ ABSEN ---
+  // --- CEK STATUS PJ ABSEN ---
   useEffect(() => {
-    const fetchAccessAndSchedule = async () => {
+    const fetchPJStatus = async () => {
       if (user?.role !== 'asisten') return;
 
       try {
-        if (user.division) {
-            const { data: divData } = await supabase
-              .from('division_access')
-              .select('menu_key')
-              .eq('division', user.division);
-            
-            if (divData) {
-              setAllowedPaths(divData.map(d => d.menu_key));
-            }
-        }
-
         const today = new Date().toLocaleDateString('en-CA'); 
         const { data: pjData } = await supabase
             .from('schedule_assignments')
@@ -89,11 +80,11 @@ export function AppSidebar() {
         }
 
       } catch (err) {
-        console.error("Gagal load akses:", err);
+        console.error("Gagal load PJ status:", err);
       }
     };
 
-    fetchAccessAndSchedule();
+    fetchPJStatus();
   }, [user]);
 
   // Definisi Menu Lengkap

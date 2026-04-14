@@ -31,6 +31,7 @@ export default function ManajemenKelas() {
   const [filterDay, setFilterDay] = useState("all");
   const [filterMajor, setFilterMajor] = useState("all");
   const [hasEditAccess, setHasEditAccess] = useState(false);
+  const [distributionMode, setDistributionMode] = useState("selang-seling");
 
   // --- CEK HAK AKSES ---
   const checkAccess = async () => {
@@ -139,12 +140,30 @@ export default function ManajemenKelas() {
     setLoading(true);
     try {
         const assistantIds = assignedAssistants.map(a => a.assistant_id);
-        const updates = students.map((s, index) => ({
-            id: s.id, 
-            schedule_id: selectedGroup.id,
-            student_id: s.student_id,
-            assistant_id: assistantIds[index % assistantIds.length]
-        }));
+        let updates = [];
+
+        if (distributionMode === "selang-seling") {
+            updates = students.map((s, index) => ({
+                id: s.id, 
+                schedule_id: selectedGroup.id,
+                student_id: s.student_id,
+                assistant_id: assistantIds[index % assistantIds.length]
+            }));
+        } else {
+            // Berurutan (Kelompok)
+            const groupSize = Math.ceil(students.length / assistantIds.length);
+            updates = students.map((s, index) => {
+                const asstIndex = Math.floor(index / groupSize);
+                // Fallback to last assistant if index exceeds due to ceiling
+                const safeAsstIndex = Math.min(asstIndex, assistantIds.length - 1);
+                return {
+                    id: s.id, 
+                    schedule_id: selectedGroup.id,
+                    student_id: s.student_id,
+                    assistant_id: assistantIds[safeAsstIndex]
+                };
+            });
+        }
 
         const { error } = await supabase.from('group_members').upsert(updates);
         if (error) throw error;
@@ -305,11 +324,6 @@ export default function ManajemenKelas() {
                         <DownloadCloud className="w-4 h-4 mr-2"/> Export Semua Plotting
                     </Button>
                 )}
-                <Link to="/jadwal">
-                    <Button variant="default">
-                        <Calendar className="w-4 h-4 mr-2"/> Atur Jadwal/Kelas <ArrowRight className="w-4 h-4 ml-1"/>
-                    </Button>
-                </Link>
             </div>
         </div>
 
@@ -416,16 +430,27 @@ export default function ManajemenKelas() {
                                         </div>
                                         
                                         {hasEditAccess && (
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 items-center flex-wrap">
                                                 <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={handleResetPlotting} disabled={loading || students.length === 0}>
                                                     <RotateCcw className="w-3 h-3 mr-1"/> Reset
                                                 </Button>
                                                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSyncStudents} disabled={loading}>
                                                     <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin':''}`}/> Sync User
                                                 </Button>
-                                                <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700" onClick={handleDistributeStudents} disabled={loading || students.length === 0}>
-                                                    <Wand2 className="w-3 h-3 mr-1"/> Auto Bagi
-                                                </Button>
+                                                <div className="flex bg-gray-100 rounded border">
+                                                    <Select value={distributionMode} onValueChange={setDistributionMode}>
+                                                        <SelectTrigger className="h-8 text-xs border-none shadow-none focus:ring-0 bg-transparent w-[140px]">
+                                                            <SelectValue placeholder="Metode" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="selang-seling">Selang-seling</SelectItem>
+                                                            <SelectItem value="berurutan">Satu Kelompok Urt</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 rounded-l-none" onClick={handleDistributeStudents} disabled={loading || students.length === 0}>
+                                                        <Wand2 className="w-3 h-3 mr-1"/> Auto Bagi
+                                                    </Button>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

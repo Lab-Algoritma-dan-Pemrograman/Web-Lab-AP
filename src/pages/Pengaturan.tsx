@@ -52,7 +52,7 @@ export default function Pengaturan() {
                 </div>
                 
                 <div className="space-y-2">
-                   <Label>Pengumuman (Tampil di Beranda)</Label>
+                   <Label>Pengumuman (Tampil di Login & Beranda)</Label>
                    <Textarea rows={4} value={settings.announcement || ""} onChange={e => setSettings({...settings, announcement: e.target.value})} placeholder="Tulis pengumuman..." />
                 </div>
 

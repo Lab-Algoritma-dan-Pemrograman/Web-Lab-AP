@@ -6,10 +6,11 @@ import { Loader2 } from "lucide-react";
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: ("praktikan" | "asisten" | "koordinator")[];
+  requiredMenuKey?: string;
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+export default function ProtectedRoute({ children, allowedRoles, requiredMenuKey }: ProtectedRouteProps) {
+  const { user, role, allowedPaths, loading } = useAuth();
 
   if (loading) {
     return (
@@ -26,7 +27,12 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (allowedRoles && role && !allowedRoles.includes(role as any)) {
+    return <Navigate to="/beranda" replace />;
+  }
+
+  // Cek Hak Akses Divisi (Khusus Asisten)
+  if (role === "asisten" && requiredMenuKey && !allowedPaths.includes(requiredMenuKey)) {
     return <Navigate to="/beranda" replace />;
   }
 

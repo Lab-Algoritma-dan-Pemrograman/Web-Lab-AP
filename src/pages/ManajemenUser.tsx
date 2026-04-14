@@ -28,14 +28,16 @@ const MASTER_MENUS = [
   { key: "/absensi", label: "Absensi & Izin" },
   { key: "/jadwal-jaga", label: "Jadwal Jaga" },
   { key: "/validasi-absensi", label: "Validasi Absensi" },
+  { key: "/manajemen-jadwal", label: "Manajemen Jadwal" },
   { key: "/manajemen-kelas", label: "Manajemen Kelas" },
   { key: "/input-nilai", label: "Input Nilai" },
   { key: "/inventaris", label: "Inventaris Barang" },
   { key: "/manajemen-user", label: "Manajemen User" },
   { key: "/laporan-keuangan", label: "Laporan Keuangan" },
-  // { key: "/buat-qr", label: "Buat QR Code" },
+  { key: "/buat-qr", label: "Buat QR Code" },
   { key: "/penunjang-praktikum", label: "Penunjang Praktikum" },
   { key: "/ketersediaan", label: "Input Jadwal Free" },
+  { key: "/e-learning", label: "Modul E-Learning" },
 ];
 
 interface UserData {

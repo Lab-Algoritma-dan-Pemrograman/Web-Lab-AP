@@ -24,11 +24,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Server configuration error" });
   }
 
-  const { fileBase64, mimeType } = req.body || {};
+  const { fileBase64, mimeType, model } = req.body || {};
 
   if (!fileBase64 || !mimeType) {
     return res.status(400).json({ error: "fileBase64 and mimeType are required" });
   }
+
+  // Model Mapping (Translate friendly names to API identifiers)
+  // pastikan hanya ada 2 model, yakni gemini 3 flash dan 2.5 flash
+  let targetModel = "gemini-3-flash"; // Default
+  if (model === "gemini-3-flash") targetModel = "gemini-3-flash";
+  if (model === "gemini-2.5-flash") targetModel = "gemini-2.5-flash";
 
   const prompt = `
     Anda adalah sistem penjadwalan cerdas. 
@@ -50,8 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   `;
 
   try {
-    // Use Gemini API directly via REST
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // Use Gemini API directly via REST with dynamic model
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
     const geminiBody = {
       contents: [

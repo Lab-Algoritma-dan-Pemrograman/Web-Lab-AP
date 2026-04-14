@@ -14,6 +14,7 @@ export interface LabUser {
 interface AuthContextType {
   user: LabUser | null;
   role: string | null;
+  allowedPaths: string[];
   loading: boolean;
   login: (userData: LabUser) => void;
   logout: () => void;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LabUser | null>(null);
+  const [allowedPaths, setAllowedPaths] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,6 +68,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // Role cocok → session valid
             setUser(parsedUser);
+            if (dbUser.role === 'asisten' && parsedUser.division) {
+              const { data: divData } = await supabase
+                .from('division_access')
+                .select('menu_key')
+                .eq('division', parsedUser.division);
+              if (divData) {
+                setAllowedPaths(divData.map(d => d.menu_key));
+              }
+            }
           }
         }
       } catch (error) {
@@ -80,9 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 3. Fungsi Login (Dipanggil dari halaman Login)
-  const login = (userData: LabUser) => {
+  const login = async (userData: LabUser) => {
     localStorage.setItem("lab_session", JSON.stringify(userData));
     setUser(userData);
+    
+    if (userData.role === 'asisten' && (userData as any).division) {
+       const { data: divData } = await supabase
+         .from('division_access')
+         .select('menu_key')
+         .eq('division', (userData as any).division);
+       if (divData) setAllowedPaths(divData.map(d => d.menu_key));
+    }
   };
 
   // 4. Fungsi Logout
@@ -97,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{ 
         user, 
         role: user?.role || null, 
+        allowedPaths,
         loading, 
         login, 
         logout 

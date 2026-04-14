@@ -14,13 +14,14 @@ import { Clock, Plus, Trash2, CalendarCheck, Save, UploadCloud, Image as ImageIc
 import { Badge } from "@/components/ui/badge";
 
 export default function KetersediaanAsisten() {
-  const { user } = useAuth();
+  const { user, allowedPaths } = useAuth() as any; // Cast as any if allowedPaths is not strictly typed yet
   const [loading, setLoading] = useState(false);
   const [mySlots, setMySlots] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("manual");
 
-  // --- OPSI KOORDINATOR ---
+  // --- OPSI KOORDINATOR & AKSES ---
   const isCoordinator = user?.role === 'koordinator';
+  const hasEditAccess = isCoordinator || (allowedPaths && allowedPaths.includes('/ketersediaan'));
   const [assistantsList, setAssistantsList] = useState<any[]>([]);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
@@ -36,6 +37,8 @@ export default function KetersediaanAsisten() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [detectedSlots, setDetectedSlots] = useState<any[]>([]);
+  // Kami asumsikan penamaan model sesuai instruksi user
+  const [selectedAiModel, setSelectedAiModel] = useState("gemini-3-flash");
 
   // ==========================================
   // INITIAL LOAD
@@ -215,7 +218,7 @@ export default function KetersediaanAsisten() {
         const res = await fetch("/api/analyze-schedule", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fileBase64, mimeType: uploadFile.type }),
+            body: JSON.stringify({ fileBase64, mimeType: uploadFile.type, model: selectedAiModel }),
         });
 
         if (!res.ok) {
@@ -438,9 +441,25 @@ export default function KetersediaanAsisten() {
                                         </div>
 
                                         {(!detectedSlots || detectedSlots.length === 0) ? (
-                                            <Button onClick={handleAnalyzeFile} disabled={analyzing} className="w-full bg-blue-600 hover:bg-blue-700">
-                                                {analyzing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin"/> Sedang Membaca Dokumen...</> : <><Sparkles className="w-4 h-4 mr-2"/> Cari Jam Kosong</>}
-                                            </Button>
+                                            <div className="space-y-3">
+                                                {hasEditAccess && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Label className="text-xs w-[120px] text-muted-foreground">Pilih Model AI:</Label>
+                                                        <Select value={selectedAiModel} onValueChange={setSelectedAiModel}>
+                                                            <SelectTrigger className="h-8 text-xs bg-white">
+                                                                <SelectValue placeholder="Pilih Model" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="gemini-3-flash">Gemini 3 Flash (High)</SelectItem>
+                                                                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+                                                <Button onClick={handleAnalyzeFile} disabled={analyzing} className="w-full bg-blue-600 hover:bg-blue-700">
+                                                    {analyzing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin"/> Sedang Membaca Dokumen...</> : <><Sparkles className="w-4 h-4 mr-2"/> Cari Jam Kosong</>}
+                                                </Button>
+                                            </div>
                                         ) : (
                                             <div className="bg-white p-3 rounded border border-green-200 space-y-3 shadow-sm">
                                                 <p className="text-xs font-bold text-green-700">Berhasil Ditemukan ({detectedSlots.length} slot):</p>
