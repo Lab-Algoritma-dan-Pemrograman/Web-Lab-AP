@@ -9,6 +9,7 @@ export interface LabUser {
   role: "praktikan" | "asisten" | "koordinator";
   nim?: string;
   assistant_code?: string;
+  division?: string;
 }
 
 interface AuthContextType {
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // belum dimanipulasi oleh user melalui DevTools.
           const { data: dbUser, error } = await supabase
             .from("users")
-            .select("id, username, full_name, role, nim, assistant_code")
+            .select("id, username, full_name, role, nim, assistant_code, division")
             .eq("id", parsedUser.id)
             .maybeSingle();
 
@@ -62,17 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: dbUser.role,
               nim: dbUser.nim || undefined,
               assistant_code: dbUser.assistant_code || undefined,
+              division: dbUser.division || undefined,
             };
             localStorage.setItem("lab_session", JSON.stringify(correctedUser));
             setUser(correctedUser);
           } else {
             // Role cocok → session valid
-            setUser(parsedUser);
-            if (dbUser.role === 'asisten' && parsedUser.division) {
+            setUser({ 
+              ...parsedUser, 
+              division: dbUser.division || undefined 
+            });
+            if (dbUser.role === 'asisten' && dbUser.division) {
               const { data: divData } = await supabase
                 .from('division_access')
                 .select('menu_key')
-                .eq('division', parsedUser.division);
+                .eq('division', dbUser.division);
               if (divData) {
                 setAllowedPaths(divData.map(d => d.menu_key));
               }
@@ -100,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          .from('division_access')
          .select('menu_key')
          .eq('division', (userData as any).division);
-       if (divData) setAllowedPaths(divData.map(d => d.menu_key));
+       if (divData) setAllowedPaths(divData.map((d: any) => d.menu_key));
     }
   };
 
