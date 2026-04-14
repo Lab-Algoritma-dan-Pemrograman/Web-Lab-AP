@@ -212,7 +212,7 @@ export default function ELearning() {
               E-Learning Praktikum
             </h1>
             <p className="text-muted-foreground mt-1.5 text-sm">
-              Selesaikan materi pre-lab sebelum mengikuti sesi praktikum.
+              Selesaikan pembelajaran mandiri sebelum mengikuti praktikum.
             </p>
           </div>
 
@@ -283,8 +283,8 @@ export default function ELearning() {
             const hasCompletedLevel = levels.length > 0;
             return (
               <Card className={`shadow-sm border-0 overflow-hidden relative ${hasCompletedLevel
-                  ? "bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background"
-                  : "bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-background"
+                ? "bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background"
+                : "bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-background"
                 }`}>
                 <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-1/2 translate-x-1/2 ${hasCompletedLevel ? "bg-green-100/50 dark:bg-green-900/20" : "bg-orange-100/50 dark:bg-orange-900/20"
                   }`} />
@@ -390,8 +390,6 @@ export default function ELearning() {
                   <h3 className="font-semibold text-lg">Buka Platform E-Learning</h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     Akses materi, kerjakan quiz, dan pantau progress belajar Anda.
-                    <br />
-                    <span className="text-xs opacity-70">Login otomatis via SSO — tidak perlu login ulang.</span>
                   </p>
                   {progress?.last_accessed_at && (
                     <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
@@ -433,19 +431,15 @@ export default function ELearning() {
             <ul className="text-sm text-muted-foreground space-y-2.5">
               <li className="flex items-start gap-2">
                 <span className="text-red-500 mt-0.5">•</span>
-                <span>Materi pre-lab <strong>wajib</strong> diselesaikan sebelum sesi praktikum dimulai.</span>
+                <span>Pembelajaran <strong>mandiri</strong> wajib diselesaikan sebelum mengikuti praktikum</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-500 mt-0.5">•</span>
-                <span>Progress belajar otomatis tersinkronisasi ke sistem absensi secara <strong>real-time</strong>.</span>
+                <span>Selesaikan setiap level yang terbuka</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-500 mt-0.5">•</span>
-                <span>Anda harus menyelesaikan <strong>100% materi</strong> agar status kehadiran dapat divalidasi.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-purple-500 mt-0.5">•</span>
-                <span>Jika mengalami kendala, hubungi asisten atau koordinator lab.</span>
+                <span>Jika mengalami kendala, hubungi asisten atau koordinator asisten</span>
               </li>
             </ul>
           </CardContent>
