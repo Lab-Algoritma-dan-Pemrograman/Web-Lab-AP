@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle, Loader2, History, Clock, MessageCircle, RotateCcw, XCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 export default function ValidasiAbsensi() {
+  const { user } = useAuth();
   const [pendingLogs, setPendingLogs] = useState<any[]>([]);
   const [historyLogs, setHistoryLogs] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
@@ -74,8 +76,13 @@ export default function ValidasiAbsensi() {
     };
   }, []);
 
-  // --- TAHAP 1: VALIDASI IZIN ---
   const handleVerifyLicense = async (id: number, isApproved: boolean) => {
+    // SECURE CHECK
+    if (!['koordinator', 'asisten'].includes(user?.role || '')) {
+        toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk memvalidasi izin." });
+        return;
+    }
+
     const newStatus = isApproved ? 'approved' : 'rejected';
     
     // Optimistic Update UI (Biar responsif kliknya)
@@ -89,8 +96,13 @@ export default function ValidasiAbsensi() {
     toast.success(isApproved ? "Izin Disetujui. Praktikan bisa pilih jadwal." : "Izin Ditolak.");
   };
 
-  // --- TAHAP 2: VALIDASI JADWAL ---
   const handleVerifyReschedule = async (id: number, isApproved: boolean) => {
+    // SECURE CHECK
+    if (!['koordinator', 'asisten'].includes(user?.role || '')) {
+        toast.error("Akses Ditolak");
+        return;
+    }
+
     const newStatus = isApproved ? 'approved' : 'rejected';
 
     // Jika ditolak, set schedule_id ke null agar praktikan harus pilih ulang
@@ -101,10 +113,15 @@ export default function ValidasiAbsensi() {
     toast.success(isApproved ? "Jadwal Disetujui & Terkunci." : "Jadwal Ditolak.");
   };
 
-  // --- RESET JADWAL (Unlock) ---
   const handleResetReschedule = async (id: number) => {
     if(!confirm("Buka kunci jadwal ini?")) return;
     
+    // SECURE CHECK
+    if (!['koordinator', 'asisten'].includes(user?.role || '')) {
+        toast.error("Akses Ditolak");
+        return;
+    }
+
     await supabase.from('attendance_logs').update({ reschedule_status: null, reschedule_schedule_id: null }).eq('id', id);
     toast.success("Jadwal di-reset.");
   };

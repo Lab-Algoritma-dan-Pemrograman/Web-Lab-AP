@@ -195,8 +195,14 @@ export default function JadwalJaga() {
     setActivityName(item.activity_name || ""); setActivityDate(item.activity_date || ""); setIsDialogOpen(true);
   };
 
-  const handleSaveAssignment = async () => {
     if(!selectedScheduleId || !selectedAssistantId || !selectedRole || !activityDate || !activityName) return toast.error("Lengkapi semua data!");
+    
+    // SECURE CHECK: Re-verify access inside handler
+    if (!hasEditAccess) {
+        toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mengedit jadwal jaga." });
+        return;
+    }
+
     setLoading(true);
     try {
         const payload = {
@@ -215,8 +221,14 @@ export default function JadwalJaga() {
     } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
   };
 
-  const handleDelete = async (id: number) => {
     if(!confirm("Hapus petugas ini?")) return;
+    
+    // SECURE CHECK
+    if (!hasEditAccess) {
+        toast.error("Akses Ditolak", { description: "Hanya Koordinator atau Divisi berwenang yang dapat menghapus." });
+        return;
+    }
+
     await supabase.from('schedule_assignments').delete().eq('id', id); 
   };
 
@@ -272,9 +284,15 @@ export default function JadwalJaga() {
       toast.success("File Excel berhasil di-download!");
   };
 
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+
+      // SECURE CHECK
+      if (!hasEditAccess) {
+          toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mengimport jadwal." });
+          return;
+      }
+
       setLoading(true);
 
       const reader = new FileReader();
@@ -352,6 +370,12 @@ export default function JadwalJaga() {
   };
 
   const handleApproveSwap = async (assignmentId: number, substituteId: number, originalUserId: number) => {
+      // SECURE CHECK: Hanya Koordinator yang boleh approve swap secara resmi lewat UI admin
+      if (user?.role !== 'koordinator' && user?.role !== 'asisten') {
+          toast.error("Akses Ditolak");
+          return;
+      }
+
       if(!confirm("Setujui pertukaran jadwal ini?")) return;
       try {
           const { error } = await supabase

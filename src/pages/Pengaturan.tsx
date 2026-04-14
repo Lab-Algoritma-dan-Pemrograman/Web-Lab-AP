@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Save, Settings } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 export default function Pengaturan() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState<any>({});
   const [loading, setLoading] = useState(false);
 
@@ -23,6 +25,12 @@ export default function Pengaturan() {
   }, []);
 
   const handleSave = async () => {
+    // SECURE CHECK
+    if (user?.role !== 'koordinator') {
+        toast.error("Akses Ditolak", { description: "Hanya Koordinator yang punya kunci ke pengaturan sistem." });
+        return;
+    }
+
     setLoading(true);
     const { error } = await supabase.from('system_settings').update({
         semester_active: settings.semester_active,

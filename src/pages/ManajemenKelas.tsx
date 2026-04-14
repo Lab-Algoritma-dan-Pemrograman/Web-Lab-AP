@@ -107,6 +107,13 @@ export default function ManajemenKelas() {
   // --- 3. SYNC MAHASISWA OTOMATIS ---
   const handleSyncStudents = async () => {
     if(!selectedGroup) return;
+    
+    // SECURE CHECK
+    if (!hasEditAccess) {
+        toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mensinkronisasi mahasiswa." });
+        return;
+    }
+
     setLoading(true);
 
     try {
@@ -133,9 +140,14 @@ export default function ManajemenKelas() {
   };
 
   // --- 4. BAGI RATA (AUTO DISTRIBUTE) ---
-  const handleDistributeStudents = async () => {
     if (assignedAssistants.length === 0) return toast.error("Masukkan tim asisten dulu!");
     if (students.length === 0) return toast.error("Sync data mahasiswa dulu!");
+
+    // SECURE CHECK
+    if (!hasEditAccess) {
+        toast.error("Akses Ditolak", { description: "Hanya Koordinator atau divisi berwenang yang dapat membagi rata." });
+        return;
+    }
 
     setLoading(true);
     try {
@@ -174,8 +186,14 @@ export default function ManajemenKelas() {
   };
 
   // --- 5. RESET PLOTTING (UNDO SEMUA) ---
-  const handleResetPlotting = async () => {
     if(!confirm("Yakin ingin menghapus semua pembagian asisten? Data mahasiswa tidak akan hilang.")) return;
+    
+    // SECURE CHECK
+    if (!hasEditAccess) {
+        toast.error("Akses Ditolak");
+        return;
+    }
+
     setLoading(true);
     try {
         const { error } = await supabase.from('group_members').update({ assistant_id: null }).eq('schedule_id', selectedGroup.id);
@@ -187,6 +205,12 @@ export default function ManajemenKelas() {
 
   // --- 6. UPDATE MANUAL PER MAHASISWA ---
   const handleUpdateStudentAssistant = async (memberId: number, newAssistantId: string) => {
+    // SECURE CHECK
+    if (!hasEditAccess) {
+        toast.error("Akses Ditolak", { description: "Anda tidak berwenang mengubah pembimbing." });
+        return;
+    }
+
     setStudents(prev => prev.map(s => s.id === memberId ? {...s, assistant_id: newAssistantId} : s));
     const { error } = await supabase
         .from('group_members')
@@ -204,6 +228,13 @@ export default function ManajemenKelas() {
   // --- 7. TAMBAH TIM ASISTEN ---
   const handleAddAssistant = async () => {
     if (!selectedAssistantId) return;
+
+    // SECURE CHECK
+    if (!hasEditAccess) {
+        toast.error("Akses Ditolak");
+        return;
+    }
+
     await supabase.from('group_assistants').insert({ schedule_id: selectedGroup.id, assistant_id: selectedAssistantId });
     fetchGroupDetails(selectedGroup); setSelectedAssistantId("");
   };

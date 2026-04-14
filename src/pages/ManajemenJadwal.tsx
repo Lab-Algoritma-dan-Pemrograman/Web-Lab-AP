@@ -93,6 +93,12 @@ export default function ManajemenJadwal() {
     reader.onload = async (evt) => {
         setImporting(true);
         try {
+            // SECURE CHECK: Hanya Koordinator yang boleh import jadwal massal
+            if (user?.role !== 'koordinator') {
+                toast.error("Akses Ditolak", { description: "Hanya Koordinator yang dapat mengimport jadwal." });
+                setImporting(false);
+                return;
+            }
             const bstr = evt.target?.result;
             const wb = XLSX.read(bstr, { type: 'binary' });
             const wsname = wb.SheetNames[0];
@@ -164,6 +170,13 @@ export default function ManajemenJadwal() {
 
   const handleSave = async () => {
     if (!day || !startTime || !endTime || !title || !major || !classCode) return toast.error("Semua kolom wajib diisi!");
+    
+    // SECURE CHECK: Pastikan user berwenang (Bukan Praktikan)
+    if (!['koordinator', 'asisten'].includes(user?.role || '')) {
+        toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mengedit jadwal." });
+        return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -184,6 +197,13 @@ export default function ManajemenJadwal() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus jadwal ini?")) return;
+    
+    // SECURE CHECK: Hanya Koordinator yang boleh hapus
+    if (user?.role !== 'koordinator') {
+        toast.error("Akses Ditolak", { description: "Hanya Koordinator yang dapat menghapus jadwal." });
+        return;
+    }
+
     await supabase.from('schedules').delete().eq('id', id);
     fetchSchedules();
   };

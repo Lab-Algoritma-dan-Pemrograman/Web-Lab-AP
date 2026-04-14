@@ -188,8 +188,10 @@ export default function ManajemenUser() {
     if (selectedDivision && isAccessOpen) fetchDivisionAccess(selectedDivision);
   }, [selectedDivision, isAccessOpen]);
 
-  const handleSaveAccess = async () => {
-    if(!selectedDivision) return toast.error("Pilih divisi dulu!");
+    if (currentUser?.role !== 'koordinator') {
+      toast.error("Akses Ditolak", { description: "Hanya Koordinator yang bisa mengelola hak akses divisi." });
+      return;
+    }
     setLoadingAccess(true);
     try {
         // Hapus akses lama lalu insert baru
@@ -223,8 +225,12 @@ export default function ManajemenUser() {
     return matchesSearch && matchesRole && matchesShift;
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    // SECURE CHECK: Hanya Koordinator & Asisten yang boleh simpan data
+    if (!['koordinator', 'asisten'].includes(currentUser?.role || '')) {
+      toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk menyimpan data user." });
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: any = {
@@ -256,7 +262,12 @@ export default function ManajemenUser() {
     }
   };
 
-  const handleDelete = async (id: number, name: string) => {
+    // SECURE CHECK: Hanya Koordinator yang boleh hapus user
+    if (currentUser?.role !== 'koordinator') {
+      toast.error("Akses Ditolak", { description: "Hanya Koordinator yang dapat menghapus user." });
+      return;
+    }
+
     if (!confirm(`Hapus user "${name}"?`)) return;
     await supabase.from('users').delete().eq('id', id);
     toast.success("User dihapus.");
@@ -264,9 +275,15 @@ export default function ManajemenUser() {
   };
 
   // Import Excel
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // SECURE CHECK: Hanya Koordinator & Asisten yang boleh import
+    if (!['koordinator', 'asisten'].includes(currentUser?.role || '')) {
+      toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mengimport data." });
+      return;
+    }
+
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
     reader.onload = async (evt) => {
