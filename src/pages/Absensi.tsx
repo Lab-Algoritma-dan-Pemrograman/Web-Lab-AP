@@ -59,6 +59,9 @@ export default function Absensi() {
 
   // --- CEK HAK AKSES EXPORT ---
   useEffect(() => {
+    const checkExportAccess = async () => {
+      if (!user) return;
+
       // Koor, Sekretaris, K3 otomatis boleh export & full access
       if (['koordinator', 'sekretaris', 'k3'].includes(user.role)) {
         setHasExportAccess(true);
@@ -205,6 +208,7 @@ export default function Absensi() {
 
   // --- EFEK UTAMA & SUPABASE REALTIME ---
   useEffect(() => {
+    fetchMyLogs();
     fetchSchedules();
     fetchMyOwnSchedules();
     fetchAdminContact();
