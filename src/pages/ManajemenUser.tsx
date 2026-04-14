@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { 
   Plus, Pencil, Trash2, Search, UserCog, Loader2, Filter, 
-  GraduationCap, Briefcase, FileSpreadsheet, Eye, EyeOff, ShieldCheck, Lock, Save, Phone
+  GraduationCap, Briefcase, FileSpreadsheet, Eye, EyeOff, ShieldCheck, Lock, Save, Phone, UserCheck
 } from "lucide-react";
 
 // --- KONSTANTA MENU ---
@@ -49,6 +49,7 @@ interface UserData {
   assistant_code?: string;
   division?: string;
   class_code?: string;
+  shift?: string; // TAMBAHAN: Shift 1 atau 2
   is_active: boolean;
 }
 
@@ -62,6 +63,7 @@ const DEFAULT_FORM: UserData = {
   is_active: true,
   nim: "",
   class_code: "",
+  shift: "", // Default kosong
   assistant_code: "",
   division: ""
 };
@@ -93,6 +95,11 @@ export default function ManajemenUser() {
   const [isEdit, setIsEdit] = useState(false);
   const [formData, setFormData] = useState<UserData>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
+
+  // --- STATE BARU: GLOBAL SHIFT ---
+  const [globalActiveShift, setGlobalActiveShift] = useState<string>("all");
+  const [isUpdatingShift, setIsUpdatingShift] = useState(false);
+  const [shiftFilter, setShiftFilter] = useState<string>("all");
 
   // --- STATE BARU: HAK AKSES DIVISI ---
   const [isAccessOpen, setIsAccessOpen] = useState(false);
@@ -132,7 +139,40 @@ export default function ManajemenUser() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { 
+    fetchUsers(); 
+    fetchGlobalActiveShift();
+  }, []);
+
+  const fetchGlobalActiveShift = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('active_shift')
+        .maybeSingle();
+      if (data) setGlobalActiveShift(data.active_shift);
+    } catch (err) {
+      console.error("Error fetching global shift:", err);
+    }
+  };
+
+  const handleUpdateActiveShift = async (val: string) => {
+    setIsUpdatingShift(true);
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .update({ active_shift: val })
+        .eq('id', 1); // Mengasumsikan ID 1 sesuai data yang Anda berikan
+      
+      if (error) throw error;
+      setGlobalActiveShift(val);
+      toast.success(`Akses praktikan diatur ke: ${val === 'all' ? 'Semua Aktif' : val === 'none' ? 'Semua Tertutup' : 'Hanya Shift ' + val}`);
+    } catch (err: any) {
+      toast.error("Gagal update shift global: " + err.message);
+    } finally {
+      setIsUpdatingShift(false);
+    }
+  };
 
   // --- LOGIC HAK AKSES ---
   const fetchDivisionAccess = async (divName: string) => {
@@ -177,7 +217,8 @@ export default function ManajemenUser() {
       (u.division && u.division?.toLowerCase().includes(search.toLowerCase())) ||
       jurusan.toLowerCase().includes(search.toLowerCase());
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
-    return matchesSearch && matchesRole;
+    const matchesShift = shiftFilter === "all" || u.shift === shiftFilter;
+    return matchesSearch && matchesRole && matchesShift;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -191,6 +232,7 @@ export default function ManajemenUser() {
         phone_number: formData.phone_number, // Simpan No HP
         role: formData.role,
         is_active: formData.is_active,
+        shift: formData.role === 'praktikan' ? formData.shift : null, // Simpan Shift
         nim: formData.role === 'praktikan' ? formData.username : null,
         class_code: formData.role === 'praktikan' ? formData.class_code : null,
         division: (formData.role === 'asisten' || formData.role === 'koordinator') ? formData.division : null,
@@ -249,6 +291,7 @@ export default function ManajemenUser() {
                 role: 'praktikan',
                 nim: String(u),
                 class_code: row['kelas'],
+                shift: row['shift'] ? String(row['shift']) : null, // Ambil kolom Shift dari Excel
                 is_active: true
             };
         }).filter(Boolean);
@@ -285,8 +328,40 @@ export default function ManajemenUser() {
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <UserCog className="w-8 h-8 text-primary" /> Manajemen User
             </h1>
-            <p className="text-muted-foreground">Kelola akun dan hak akses divisi.</p>
+            <p className="text-muted-foreground">Kelola akun, shift, dan hak akses divisi.</p>
           </div>
+
+          {/* GLOBAL SHIFT CONTROL - KHUSUS KOORDINATOR */}
+          {currentUser?.role === 'koordinator' && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex flex-col sm:flex-row items-center gap-3">
+               <div className="flex items-center gap-2 text-primary font-semibold text-sm">
+                  <UserCheck className="w-4 h-4" />
+                  <span>Akses Praktikan:</span>
+               </div>
+               <div className="flex bg-white rounded-md border p-1 shadow-sm">
+                  {[
+                    { val: '1', label: 'S1' },
+                    { val: '2', label: 'S2' },
+                    { val: 'all', label: 'SEMUA' },
+                    { val: 'none', label: 'TUTUP' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      disabled={isUpdatingShift}
+                      onClick={() => handleUpdateActiveShift(opt.val)}
+                      className={`px-3 py-1 text-xs font-bold rounded transition-all ${
+                        globalActiveShift === opt.val 
+                        ? 'bg-primary text-white shadow-sm' 
+                        : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+               </div>
+               {isUpdatingShift && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+            </div>
+          )}
           
           <div className="flex gap-2">
             <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
@@ -327,6 +402,16 @@ export default function ManajemenUser() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="w-full sm:w-[150px]">
+                <Select value={shiftFilter} onValueChange={setShiftFilter}>
+                  <SelectTrigger><Filter className="w-4 h-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Shift" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Shift</SelectItem>
+                    <SelectItem value="1">Shift 1</SelectItem>
+                    <SelectItem value="2">Shift 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -337,15 +422,16 @@ export default function ManajemenUser() {
                     <TableRow>
                       <TableHead>Nama Lengkap</TableHead>
                       <TableHead>NIM / Username</TableHead>
-                      <TableHead>Kontak (No HP)</TableHead>
-                      <TableHead>Detail</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
+                       <TableHead>Kontak (No HP)</TableHead>
+                       <TableHead>Shift</TableHead>
+                       <TableHead>Detail</TableHead>
+                       <TableHead>Role</TableHead>
+                       <TableHead className="text-center">Status</TableHead>
+                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Data tidak ditemukan.</TableCell></TableRow> : 
+                    {filteredUsers.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Data tidak ditemukan.</TableCell></TableRow> : 
                       filteredUsers.map((u) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-medium">{u.full_name}</TableCell>
@@ -359,6 +445,15 @@ export default function ManajemenUser() {
                                 <span className="text-xs text-muted-foreground italic">-</span>
                             )}
                           </TableCell>
+                           <TableCell>
+                             {u.role === 'praktikan' ? (
+                               <Badge variant="outline" className={`font-bold ${u.shift === '1' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-purple-200 text-purple-700 bg-purple-50'}`}>
+                                 Shift {u.shift || "-"}
+                               </Badge>
+                             ) : (
+                               <span className="text-xs text-muted-foreground italic">-</span>
+                             )}
+                           </TableCell>
                           <TableCell className="text-sm">
                             {u.role === 'praktikan' ? (
                               <div className="flex flex-col gap-0.5">
@@ -414,7 +509,24 @@ export default function ManajemenUser() {
 
               <div className="space-y-2"><Label>Password</Label><div className="relative"><Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Masukkan password" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
               
-              {formData.role === 'praktikan' && <div className="space-y-2 p-3 bg-muted/50 rounded-md"><Label>Kelas</Label><Input value={formData.class_code || ""} onChange={(e) => setFormData({...formData, class_code: e.target.value})} placeholder="Contoh: IF-A-2024" /></div>}
+               {formData.role === 'praktikan' && (
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-md">
+                    <div className="space-y-2">
+                      <Label>Kelas</Label>
+                      <Input value={formData.class_code || ""} onChange={(e) => setFormData({...formData, class_code: e.target.value})} placeholder="Contoh: IF-A-2024" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Shift</Label>
+                      <Select value={formData.shift || ""} onValueChange={(val) => setFormData({...formData, shift: val})}>
+                        <SelectTrigger><SelectValue placeholder="Pilih Shift" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Shift 1</SelectItem>
+                          <SelectItem value="2">Shift 2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+               )}
               {(formData.role === 'asisten' || formData.role === 'koordinator') && <div className={`grid ${formData.role === 'asisten' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-3 bg-muted/50 rounded-md`}><div className="space-y-2"><Label>Divisi</Label><Input value={formData.division || ""} onChange={(e) => setFormData({...formData, division: e.target.value})} placeholder="Divisi" /></div>{formData.role === 'asisten' && <div className="space-y-2"><Label>Kode Asisten</Label><Input value={formData.assistant_code || ""} onChange={(e) => setFormData({...formData, assistant_code: e.target.value})} placeholder="SA" /></div>}</div>}
               
               <DialogFooter className="pt-4"><Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Batal</Button><Button type="submit" disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Simpan</Button></DialogFooter>

@@ -48,8 +48,34 @@ export default function Login() {
         toast.error("Gagal Masuk", { description: "Username/NIM tidak ditemukan." });
       } else if (data.password !== loginPassword) {
         toast.error("Gagal Masuk", { description: "Password salah." });
+      } else if (!data.is_active) {
+        // CEK STATUS AKTIF
+        toast.error("Gagal Masuk", { description: "Akun Anda sedang dinonaktifkan." });
       } else {
-        // 3. Login Sukses
+        // 3. CEK SHIFT AKTIF (Khusus Praktikan)
+        if (data.role === 'praktikan') {
+          const { data: settings } = await supabase
+            .from('system_settings')
+            .select('active_shift')
+            .maybeSingle();
+          
+          const activeShift = settings?.active_shift || 'all';
+          
+          if (activeShift !== 'all') {
+            if (activeShift === 'none') {
+               toast.error("Akses Ditutup", { description: "Maaf, akses login saat ini sedang ditutup untuk semua praktikan." });
+               setIsLoading(false);
+               return;
+            }
+            if (data.shift !== activeShift) {
+               toast.error("Akses Ditolak", { description: `Maaf, akun Anda terdaftar di Shift ${data.shift || "?"}. Saat ini hanya Shift ${activeShift} yang diizinkan masuk.` });
+               setIsLoading(false);
+               return;
+            }
+          }
+        }
+
+        // 4. Login Sukses
         login(data as any); 
         toast.success("Login Berhasil!", { description: `Selamat datang, ${data.full_name}` });
         
@@ -57,7 +83,7 @@ export default function Login() {
         if (data.role === 'koordinator' || data.role === 'asisten') {
             navigate("/beranda");
         } else {
-            navigate("/beranda"); // Atau bisa diarahkan ke halaman khusus praktikan/penyewa
+            navigate("/beranda"); 
         }
       }
     } catch (err: any) {
