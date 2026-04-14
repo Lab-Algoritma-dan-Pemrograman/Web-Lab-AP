@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { 
   Plus, Pencil, Trash2, Search, UserCog, Loader2, Filter, 
-  GraduationCap, Briefcase, FileSpreadsheet, Eye, EyeOff, ShieldCheck, Lock, Save, Phone, UserCheck
+  GraduationCap, Briefcase, FileSpreadsheet, Eye, EyeOff, ShieldCheck, Lock, Save, Phone, UserCheck, Download
 } from "lucide-react";
 
 // --- KONSTANTA MENU ---
@@ -310,6 +310,32 @@ export default function ManajemenUser() {
       finally { setLoading(false); if(fileInputRef.current) fileInputRef.current.value=""; }
     };
   };
+  
+  // Download Template User
+  const handleDownloadTemplateUser = () => {
+    const templateData = [
+      {
+        "NIM": "202414001",
+        "Nama": "Ahmad Praktikan",
+        "No HP": "081234567890",
+        "Kelas": "S1-A",
+        "Shift": "1"
+      },
+      {
+        "NIM": "202414002",
+        "Nama": "Budi Praktikan",
+        "No HP": "081298765432",
+        "Kelas": "S1-B",
+        "Shift": "2"
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template Praktikan");
+    XLSX.writeFile(wb, "Template_Import_Praktikan.xlsx");
+    toast.success("Template berhasil diunduh.");
+  };
 
   // Dialog Helpers
   const openAdd = () => { setFormData(DEFAULT_FORM); setIsEdit(false); setShowPassword(false); setIsOpen(true); };
@@ -376,9 +402,14 @@ export default function ManajemenUser() {
                     </Button>
                 )}
 
-                <Button variant="outline" className="border-green-600 text-green-700 hover:bg-green-50" onClick={() => fileInputRef.current?.click()}>
-                  <FileSpreadsheet className="w-4 h-4 mr-2" /> Import Excel
-                </Button>
+                <div className="flex gap-1">
+                  <Button variant="outline" className="border-green-600 text-green-700 hover:bg-green-50" onClick={() => fileInputRef.current?.click()}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Import Excel
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground" title="Download Template Excel" onClick={handleDownloadTemplateUser}>
+                      <Download className="w-4 h-4"/>
+                  </Button>
+                </div>
                 <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" /> Tambah Manual</Button>
               </>
             )}

@@ -26,10 +26,13 @@ export default function Absensi() {
   const [isPJAbsenToday, setIsPJAbsenToday] = useState(false);
 
   // Hanya Koordinator atau PJ Absen yang bisa lihat tabel rekap semua user
-  const isStaffTableMode = user?.role === 'koordinator' || isPJAbsenToday;
+  // PERBARUAN: Semua asisten + koor bisa lihat tabel rekap & total hadir
+  const isStaffTableMode = ['asisten', 'koordinator', 'sekretaris', 'k3'].includes(user?.role || '');
 
-  // State Khusus untuk Hak Akses EXPORT
+  // State Khusus untuk Hak Akses EXPORT & DELETE (FULL ACCESS)
   const [hasExportAccess, setHasExportAccess] = useState(false);
+  const [hasFullAccess, setHasFullAccess] = useState(false);
+  const [hasDeletePower, setHasDeletePower] = useState(false);
 
   // State Scanner (Khusus Praktikan)
   const [scanLocked, setScanLocked] = useState(false);
@@ -40,6 +43,7 @@ export default function Absensi() {
   const [targetStatus, setTargetStatus] = useState("Hadir");
   const [targetNote, setTargetNote] = useState("");
   const [allAttendanceData, setAllAttendanceData] = useState<any[]>([]);
+  const [deletionHistory, setDeletionHistory] = useState<any[]>([]);
   const [filterDate, setFilterDate] = useState(new Date().toLocaleDateString('en-CA'));
 
   // State Praktikan (Izin Pribadi)
@@ -55,28 +59,37 @@ export default function Absensi() {
 
   // --- CEK HAK AKSES EXPORT ---
   useEffect(() => {
-    const checkExportAccess = async () => {
-      if (!user) return;
-
-      // Koor, Sekretaris, K3 otomatis boleh export
+      // Koor, Sekretaris, K3 otomatis boleh export & full access
       if (['koordinator', 'sekretaris', 'k3'].includes(user.role)) {
         setHasExportAccess(true);
+        setHasFullAccess(true);
       }
-      // Jika asisten, cek apakah divisinya punya akses ke menu ini
+      // Jika asisten, cek apakah divisinya punya akses ke menu ini (Validasi/Sekre)
       else if (user.role === 'asisten' && user.division) {
         const { data } = await supabase
           .from('division_access')
-          .select('id')
+          .select('id, menu_key')
           .eq('division', user.division)
-          .eq('menu_key', '/absensi');
+          .in('menu_key', ['/absensi', '/validasi-absensi']);
 
         if (data && data.length > 0) {
-          setHasExportAccess(true);
+          const menus = data.map(d => d.menu_key);
+          if (menus.includes('/absensi')) setHasExportAccess(true);
+          if (menus.includes('/validasi-absensi')) setHasFullAccess(true);
         }
       }
     };
     checkExportAccess();
   }, [user]);
+
+  // --- LOGIKA HAK HAPUS ---
+  useEffect(() => {
+    // Siapa yang bisa hapus? 
+    // 1. Koordinator/Sekretaris/K3 (hasFullAccess)
+    // 2. PJ Absen Hari Ini
+    // 3. Asisten dengan hak akses Validasi Absensi (hasFullAccess)
+    setHasDeletePower(hasFullAccess || isPJAbsenToday);
+  }, [hasFullAccess, isPJAbsenToday]);
 
   // --- CEK APAKAH PJ ABSEN ---
   useEffect(() => {
@@ -133,6 +146,16 @@ export default function Absensi() {
     setAvailableSchedules(data || []);
   };
 
+  const fetchDeletionHistory = async () => {
+    if (!hasFullAccess) return;
+    const { data } = await supabase
+      .from('attendance_deletion_history')
+      .select('*, users:deleted_by(full_name)')
+      .order('deleted_at', { ascending: false })
+      .limit(50);
+    setDeletionHistory(data || []);
+  };
+
   const fetchMyOwnSchedules = async () => {
     if (isStaff || !user) return;
     const { data } = await supabase.from('group_members').select('schedules(*)').eq('student_id', user.id);
@@ -182,11 +205,11 @@ export default function Absensi() {
 
   // --- EFEK UTAMA & SUPABASE REALTIME ---
   useEffect(() => {
-    fetchMyLogs();
     fetchSchedules();
     fetchMyOwnSchedules();
     fetchAdminContact();
-  }, [user, isStaff]);
+    fetchDeletionHistory();
+  }, [user, isStaff, hasFullAccess]);
 
   useEffect(() => {
     fetchAttendanceData();
@@ -394,6 +417,7 @@ export default function Absensi() {
       const { error } = await supabase.from('attendance_logs').delete().eq('id', id);
       if (error) throw error;
       toast.success("Data berhasil dihapus dan riwayat tersimpan");
+      fetchDeletionHistory();
     } catch (err: any) {
       toast.error("Gagal menghapus: " + err.message);
     } finally {
@@ -571,6 +595,50 @@ export default function Absensi() {
                           <FileDown className="w-4 h-4 mr-2" /> Export Excel
                         </Button>
                       )}
+
+                      {/* TOMBOL RIWAYAT HAPUS HANYA UNTUK AKSES PENUH */}
+                      {hasFullAccess && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-9 border-red-200 text-red-600 hover:bg-red-50">
+                              <Trash2 className="w-4 h-4 mr-2" /> Riwayat Hapus
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2 text-red-600">
+                                <Trash2 className="w-5 h-5"/> Log Riwayat Penghapusan
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="overflow-y-auto flex-1 border rounded-md mt-4">
+                              <Table>
+                                <TableHeader className="bg-gray-50">
+                                  <TableRow>
+                                    <TableHead className="text-xs">Waktu</TableHead>
+                                    <TableHead className="text-xs">NIM Target</TableHead>
+                                    <TableHead className="text-xs">Dihapus Oleh</TableHead>
+                                    <TableHead className="text-xs">Keterangan</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {deletionHistory.length === 0 ? (
+                                    <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground">Tidak ada riwayat penghapusan.</TableCell></TableRow>
+                                  ) : (
+                                    deletionHistory.map(h => (
+                                      <TableRow key={h.id}>
+                                        <TableCell className="text-[11px] font-mono">{new Date(h.deleted_at).toLocaleString('id-ID')}</TableCell>
+                                        <TableCell className="text-xs font-bold">{h.target_user_id}</TableCell>
+                                        <TableCell className="text-xs">{(h.users as any)?.full_name || "-"}</TableCell>
+                                        <TableCell className="text-[10px] text-muted-foreground leading-tight">{h.reason}</TableCell>
+                                      </TableRow>
+                                    ))
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
                     </div>
                   )}
                 </div>
@@ -612,7 +680,7 @@ export default function Absensi() {
                                 {log.status !== 'Hadir' && <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[120px]">{log.notes}</span>}
                               </div>
                             </TableCell>
-                            {isStaffTableMode && (
+                            {hasDeletePower && (
                               <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteLog(log.id, log)}>
                                   <Trash2 className="w-3.5 h-3.5" />
