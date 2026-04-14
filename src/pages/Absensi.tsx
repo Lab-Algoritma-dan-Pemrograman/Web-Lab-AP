@@ -142,11 +142,42 @@ export default function Absensi() {
 
   const fetchAdminContact = async () => {
     if (isStaff) return;
-    const { data } = await supabase.from('users')
+    
+    // 1. Cari divisi yang memiliki hak akses ke halaman Validasi Absensi
+    const { data: accessData } = await supabase
+      .from('division_access')
+      .select('division')
+      .eq('menu_key', '/validasi-absensi');
+    
+    if (accessData && accessData.length > 0) {
+      const divisions = accessData.map(d => d.division);
+      
+      // 2. Cari Asisten di divisi tersebut yang memiliki nomor HP aktif
+      const { data: assistantData } = await supabase
+        .from('users')
+        .select('phone_number')
+        .in('division', divisions)
+        .eq('role', 'asisten')
+        .not('phone_number', 'is', null)
+        .limit(1);
+      
+      if (assistantData && assistantData.length > 0) {
+        setAdminPhone(assistantData[0].phone_number);
+        return;
+      }
+    }
+    
+    // 3. Fallback: Koordinator
+    const { data: coordData } = await supabase
+      .from('users')
       .select('phone_number')
-      .in('role', ['sekretaris', 'koordinator'])
-      .not('phone_number', 'is', null).limit(1);
-    if (data && data.length > 0) setAdminPhone(data[0].phone_number);
+      .eq('role', 'koordinator')
+      .not('phone_number', 'is', null)
+      .limit(1);
+    
+    if (coordData && coordData.length > 0) {
+      setAdminPhone(coordData[0].phone_number);
+    }
   };
 
   // --- EFEK UTAMA & SUPABASE REALTIME ---

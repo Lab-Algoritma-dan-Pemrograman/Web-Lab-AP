@@ -68,7 +68,7 @@ function AppRoutes() {
 
       <Route path="/manajemen-user" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/manajemen-user"><ManajemenUser /></ProtectedRoute>} />
       <Route path="/validasi-absensi" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/validasi-absensi"><ValidasiAbsensi /></ProtectedRoute>} />
-      <Route path="/jadwal-jaga" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/jadwal-jaga"><JadwalJaga /></ProtectedRoute>} />
+      <Route path="/jadwal-jaga" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]}><JadwalJaga /></ProtectedRoute>} />
       <Route path="/inventaris" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/inventaris"><Inventaris /></ProtectedRoute>} />
       <Route path="/buat-qr" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/buat-qr"><BuatQR /></ProtectedRoute>} />
       <Route path="/manajemen-jadwal" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/manajemen-jadwal"><ManajemenJadwal /></ProtectedRoute>} />
