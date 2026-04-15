@@ -90,7 +90,10 @@ export default function Login() {
         }
 
         // 4. Login Sukses
-        login(data as any); 
+        // Hapus field sensitif agar tidak tersimpan di localStorage browser
+        const { password: _, ...safeData } = data as any;
+        
+        login(safeData as any); 
         toast.success("Login Berhasil!", { description: `Selamat datang, ${data.full_name}` });
         
         // Redirect cerdas berdasarkan role
