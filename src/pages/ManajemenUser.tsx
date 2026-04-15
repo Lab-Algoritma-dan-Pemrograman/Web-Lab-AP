@@ -338,12 +338,14 @@ export default function ManajemenUser() {
                 username: String(u),
                 password: String(u),
                 full_name: row['nama'] || row['nama lengkap'],
-                phone_number: row['no hp'] || row['telepon'] || row['whatsapp'] ? String(row['no hp'] || row['telepon'] || row['whatsapp']) : null, // Ambil Nomor HP dari Excel jika ada
+                phone_number: row['no hp'] || row['telepon'] || row['whatsapp'] ? String(row['no hp'] || row['telepon'] || row['whatsapp']) : null,
                 role: 'praktikan',
                 nim: String(u),
                 class_code: row['kelas'],
-                shift: row['shift'] ? String(row['shift']) : null, // Ambil kolom Shift dari Excel
-                is_active: true
+                shift: row['shift'] ? String(row['shift']) : null,
+                is_active: true,
+                assistant_code: null,
+                division: null
             };
         }).filter(Boolean);
 
@@ -351,7 +353,9 @@ export default function ManajemenUser() {
         const unique = Array.from(new Map(formatted.map((item:any) => [item.username, item])).values());
         
         setLoading(true);
-        const { error } = await supabase.from('users').upsert(unique, { onConflict: 'username' });
+        // Menggunakan RPC agar password di-hash secara aman di database
+        const { error } = await supabase.rpc('register_users_batch', { p_users: unique });
+        
         if(error) throw error;
         toast.success(`Import berhasil: ${unique.length} data.`);
         fetchUsers();
