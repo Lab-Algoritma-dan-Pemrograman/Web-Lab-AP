@@ -244,8 +244,8 @@ export default function JadwalJaga() {
       const templateData = [{
           "Tanggal Kegiatan": "2026-03-20",
           "Nama Kegiatan": "Praktikum Modul 1",
-          "ID Kelas": 1,
-          "ID Asisten": 2,
+          "Kode Kelas": "S1-A",
+          "Nama Asisten": "Budi Asisten",
           "Tugas": "Operator"
       }];
       const ws = XLSX.utils.json_to_sheet(templateData);
@@ -307,22 +307,57 @@ export default function JadwalJaga() {
               const ws = wb.Sheets[wsname];
               const data = XLSX.utils.sheet_to_json(ws); // Ubah sheet jadi array JSON
               
-              const payload = data.map((row: any) => ({
-                  activity_date: row['Tanggal Kegiatan'] || row['tanggal_kegiatan'],
-                  activity_name: row['Nama Kegiatan'] || row['nama_kegiatan'],
-                  schedule_id: parseInt(row['ID Kelas'] || row['id_kelas']),
-                  user_id: parseInt(row['ID Asisten'] || row['id_asisten']),
-                  task_role: row['Tugas'] || row['tugas'],
-                  status: 'aktif'
-              })).filter((item: any) => item.activity_date && item.schedule_id && item.user_id);
+              const errors: string[] = [];
+              const payload = data.map((row: any, index: number) => {
+                  const assistantName = row['Nama Asisten'] || row['nama_asisten'];
+                  const classCode = row['Kode Kelas'] || row['kode_kelas'];
+                  const activityDate = row['Tanggal Kegiatan'] || row['tanggal_kegiatan'];
+                  
+                  if (!assistantName || !classCode || !activityDate) return null;
+
+                  // Cari Assistant ID berdasarkan Nama
+                  const assistant = assistants.find(a => a.full_name?.toLowerCase().trim() === String(assistantName).toLowerCase().trim());
+                  
+                  // Cari Schedule ID berdasarkan Kode Kelas
+                  const schedule = availableSchedules.find(s => s.class_code?.toLowerCase().trim() === String(classCode).toLowerCase().trim());
+
+                  if (!assistant) {
+                      errors.push(`Baris ${index + 2}: Asisten "${assistantName}" tidak ditemukan.`);
+                      return null;
+                  }
+                  if (!schedule) {
+                      errors.push(`Baris ${index + 2}: Kode Kelas "${classCode}" tidak ditemukan.`);
+                      return null;
+                  }
+
+                  return {
+                      activity_date: activityDate,
+                      activity_name: row['Nama Kegiatan'] || row['nama_kegiatan'],
+                      schedule_id: schedule.id,
+                      user_id: assistant.id,
+                      task_role: row['Tugas'] || row['tugas'],
+                      status: 'aktif'
+                  };
+              }).filter(Boolean);
+
+              if (errors.length > 0) {
+                  toast.error("Gagal Import", {
+                      description: (
+                          <div className="max-h-[150px] overflow-auto">
+                              {errors.slice(0, 3).map((err, i) => <div key={i}>{err}</div>)}
+                              {errors.length > 3 && <div>...dan {errors.length - 3} lainnya.</div>}
+                          </div>
+                      )
+                  });
+              }
 
               if (payload.length > 0) {
                   const { error } = await supabase.from('schedule_assignments').insert(payload);
                   if (error) throw error;
                   toast.success(`${payload.length} jadwal berhasil diimpor dari Excel!`);
                   setIsImportDialogOpen(false);
-              } else { 
-                  toast.error("Format Excel salah. Pastikan nama kolom sesuai template."); 
+              } else if (errors.length === 0) { 
+                  toast.error("Gagal", { description: "Format Excel salah atau data tidak lengkap." }); 
               }
           } catch (err: any) { 
               toast.error("Gagal mengimpor Excel: " + err.message); 
@@ -522,9 +557,9 @@ export default function JadwalJaga() {
                                         <p className="font-semibold mb-1">Cara Menggunakan Fitur Import Excel:</p>
                                         <ol className="list-decimal list-inside space-y-1 ml-1">
                                             <li>Download template Excel menggunakan tombol di bawah.</li>
-                                            <li>Buka file <code>.xlsx</code> tersebut menggunakan Excel/Google Sheets.</li>
                                             <li>Isi data tanpa mengubah nama kolom pada baris pertama.</li>
-                                            <li>Untuk kolom <strong>ID Kelas</strong> dan <strong>ID Asisten</strong>, sontek dari tabel referensi.</li>
+                                            <li>Masukkan <strong>Nama Asisten</strong> dan <strong>Kode Kelas</strong> sesuai dengan yang terdaftar di sistem.</li>
+                                            <li>Sistem akan otomatis mencocokkan Nama dan Kode tersebut ke database.</li>
                                         </ol>
                                         <Button size="sm" onClick={handleDownloadTemplateExcel} className="mt-3 bg-blue-600 hover:bg-blue-700"><FileDown className="w-4 h-4 mr-2"/> Download Template Excel</Button>
                                     </div>
