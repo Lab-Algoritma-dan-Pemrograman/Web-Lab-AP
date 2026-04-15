@@ -244,7 +244,8 @@ export default function JadwalJaga() {
       const templateData = [{
           "Tanggal Kegiatan": "2026-03-20",
           "Nama Kegiatan": "Praktikum Modul 1",
-          "Kode Kelas": "S1-A",
+          "Jurusan": "Teknik Elektro",
+          "Kelas": "A",
           "Nama Asisten": "Budi Asisten",
           "Tugas": "Operator"
       }];
@@ -307,26 +308,39 @@ export default function JadwalJaga() {
               const ws = wb.Sheets[wsname];
               const data = XLSX.utils.sheet_to_json(ws); // Ubah sheet jadi array JSON
               
+              const getDayNameIndo = (dateStr: string) => {
+                  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+                  const date = new Date(dateStr);
+                  return days[date.getDay()];
+              };
+
               const errors: string[] = [];
               const payload = data.map((row: any, index: number) => {
                   const assistantName = row['Nama Asisten'] || row['nama_asisten'];
-                  const classCode = row['Kode Kelas'] || row['kode_kelas'];
+                  const major = row['Jurusan'] || row['jurusan'];
+                  const classCode = row['Kelas'] || row['kelas'];
                   const activityDate = row['Tanggal Kegiatan'] || row['tanggal_kegiatan'];
                   
-                  if (!assistantName || !classCode || !activityDate) return null;
+                  if (!assistantName || !classCode || !major || !activityDate) return null;
 
-                  // Cari Assistant ID berdasarkan Nama
+                  const dayName = getDayNameIndo(activityDate);
+
+                  // 1. Cari Assistant ID berdasarkan Nama
                   const assistant = assistants.find(a => a.full_name?.toLowerCase().trim() === String(assistantName).toLowerCase().trim());
                   
-                  // Cari Schedule ID berdasarkan Kode Kelas
-                  const schedule = availableSchedules.find(s => s.class_code?.toLowerCase().trim() === String(classCode).toLowerCase().trim());
+                  // 2. Cari Schedule ID berdasarkan Jurusan + Kelas + Hari (Sesuai Tanggal)
+                  const schedule = availableSchedules.find(s => 
+                      s.major?.toLowerCase().trim() === String(major).toLowerCase().trim() &&
+                      s.class_code?.toLowerCase().trim() === String(classCode).toLowerCase().trim() &&
+                      s.day_of_week?.toLowerCase().trim() === dayName.toLowerCase()
+                  );
 
                   if (!assistant) {
                       errors.push(`Baris ${index + 2}: Asisten "${assistantName}" tidak ditemukan.`);
                       return null;
                   }
                   if (!schedule) {
-                      errors.push(`Baris ${index + 2}: Kode Kelas "${classCode}" tidak ditemukan.`);
+                      errors.push(`Baris ${index + 2}: Jadwal "${major} Kelas ${classCode}" tidak ditemukan di hari ${dayName}.`);
                       return null;
                   }
 
@@ -354,7 +368,7 @@ export default function JadwalJaga() {
               if (payload.length > 0) {
                   const { error } = await supabase.from('schedule_assignments').insert(payload);
                   if (error) throw error;
-                  toast.success(`${payload.length} jadwal berhasil diimpor dari Excel!`);
+                  toast.success(`${payload.length} jadwal berhasil diimpor dengan deteksi otomatis!`);
                   setIsImportDialogOpen(false);
               } else if (errors.length === 0) { 
                   toast.error("Gagal", { description: "Format Excel salah atau data tidak lengkap." }); 
@@ -557,9 +571,9 @@ export default function JadwalJaga() {
                                         <p className="font-semibold mb-1">Cara Menggunakan Fitur Import Excel:</p>
                                         <ol className="list-decimal list-inside space-y-1 ml-1">
                                             <li>Download template Excel menggunakan tombol di bawah.</li>
-                                            <li>Isi data tanpa mengubah nama kolom pada baris pertama.</li>
-                                            <li>Masukkan <strong>Nama Asisten</strong> dan <strong>Kode Kelas</strong> sesuai dengan yang terdaftar di sistem.</li>
-                                            <li>Sistem akan otomatis mencocokkan Nama dan Kode tersebut ke database.</li>
+                                            <li>Sistem baru: Gunakan kolom <strong>Jurusan</strong> dan <strong>Kelas</strong>.</li>
+                                            <li>Sistem akan otomatis mendeteksi Hari berdasarkan <strong>Tanggal Kegiatan</strong>.</li>
+                                            <li>Pastikan Nama Asisten sesuai dengan yang terdaftar.</li>
                                         </ol>
                                         <Button size="sm" onClick={handleDownloadTemplateExcel} className="mt-3 bg-blue-600 hover:bg-blue-700"><FileDown className="w-4 h-4 mr-2"/> Download Template Excel</Button>
                                     </div>
