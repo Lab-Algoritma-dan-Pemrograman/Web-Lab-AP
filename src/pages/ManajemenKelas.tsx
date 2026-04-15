@@ -140,6 +140,7 @@ export default function ManajemenKelas() {
   };
 
   // --- 4. BAGI RATA (AUTO DISTRIBUTE) ---
+  const handleDistributeStudents = async () => {
     if (assignedAssistants.length === 0) return toast.error("Masukkan tim asisten dulu!");
     if (students.length === 0) return toast.error("Sync data mahasiswa dulu!");
 
@@ -186,6 +187,7 @@ export default function ManajemenKelas() {
   };
 
   // --- 5. RESET PLOTTING (UNDO SEMUA) ---
+  const handleResetPlotting = async () => {
     if(!confirm("Yakin ingin menghapus semua pembagian asisten? Data mahasiswa tidak akan hilang.")) return;
     
     // SECURE CHECK

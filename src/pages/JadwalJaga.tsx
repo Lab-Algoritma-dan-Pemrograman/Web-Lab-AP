@@ -195,6 +195,7 @@ export default function JadwalJaga() {
     setActivityName(item.activity_name || ""); setActivityDate(item.activity_date || ""); setIsDialogOpen(true);
   };
 
+  const handleSaveAssignment = async () => {
     if(!selectedScheduleId || !selectedAssistantId || !selectedRole || !activityDate || !activityName) return toast.error("Lengkapi semua data!");
     
     // SECURE CHECK: Re-verify access inside handler
@@ -221,6 +222,7 @@ export default function JadwalJaga() {
     } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
   };
 
+  const handleDelete = async (id: number) => {
     if(!confirm("Hapus petugas ini?")) return;
     
     // SECURE CHECK
@@ -284,6 +286,7 @@ export default function JadwalJaga() {
       toast.success("File Excel berhasil di-download!");
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 

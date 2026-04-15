@@ -188,6 +188,7 @@ export default function ManajemenUser() {
     if (selectedDivision && isAccessOpen) fetchDivisionAccess(selectedDivision);
   }, [selectedDivision, isAccessOpen]);
 
+  const handleSaveAccess = async () => {
     if (currentUser?.role !== 'koordinator') {
       toast.error("Akses Ditolak", { description: "Hanya Koordinator yang bisa mengelola hak akses divisi." });
       return;
@@ -224,6 +225,9 @@ export default function ManajemenUser() {
     const matchesShift = shiftFilter === "all" || u.shift === shiftFilter;
     return matchesSearch && matchesRole && matchesShift;
   });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
     // SECURE CHECK: Hanya Koordinator & Asisten yang boleh simpan data
     if (!['koordinator', 'asisten'].includes(currentUser?.role || '')) {
@@ -288,6 +292,7 @@ export default function ManajemenUser() {
     }
   };
 
+  const handleDelete = async (id: number, name: string) => {
     // SECURE CHECK: Hanya Koordinator yang boleh hapus user
     if (currentUser?.role !== 'koordinator') {
       toast.error("Akses Ditolak", { description: "Hanya Koordinator yang dapat menghapus user." });
@@ -301,6 +306,7 @@ export default function ManajemenUser() {
   };
 
   // Import Excel
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
