@@ -248,9 +248,35 @@ export default function ManajemenUser() {
       };
 
       if (isEdit) {
-        await supabase.from('users').update(payload).eq('id', formData.id);
+        // Pisahkan password dari payload umum (karena update password pakai RPC)
+        const { password, ...payloadWithoutPassword } = payload;
+        const { error: updateError } = await supabase.from('users').update(payloadWithoutPassword).eq('id', formData.id);
+        if (updateError) throw updateError;
+
+        // Jika isian password tidak kosong, maka update password
+        if (password && password.length > 0) {
+            const { error: pwdError } = await supabase.rpc('update_password', {
+                p_user_id: formData.id,
+                p_new_password: password
+            });
+            if (pwdError) throw pwdError;
+        }
       } else {
-        await supabase.from('users').insert(payload);
+        // Tambah user baru pakai RPC agar di-hash
+        const { error: insertError } = await supabase.rpc('register_user', {
+            p_username: payload.username,
+            p_password: payload.password || "123456", // default
+            p_full_name: payload.full_name,
+            p_role: payload.role,
+            p_nim: payload.nim,
+            p_assistant_code: payload.assistant_code,
+            p_division: payload.division,
+            p_phone_number: payload.phone_number,
+            p_class_code: payload.class_code,
+            p_shift: payload.shift,
+            p_is_active: payload.is_active
+        });
+        if (insertError) throw insertError;
       }
       toast.success("Data berhasil disimpan!");
       setIsOpen(false);

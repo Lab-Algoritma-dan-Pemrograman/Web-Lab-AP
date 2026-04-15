@@ -34,27 +34,27 @@ export default function Profil() {
     setLoading(true);
 
     try {
-      const updates: any = {
-        full_name: fullName,
-      };
-
-      // Hanya update password jika diisi
-      if (password && password.length > 0) {
-        if (password.length < 3) throw new Error("Password minimal 3 karakter");
-        updates.password = password;
-      }
-
-      // 1. Update ke Supabase
+      // 1. Update Nama ke Supabase
       const { data, error } = await supabase
         .from('users')
-        .update(updates)
+        .update({ full_name: fullName })
         .eq('id', currentUser?.id)
         .select()
         .single();
 
       if (error) throw error;
 
-      // 2. Update Session di LocalStorage (biar nama di sidebar berubah)
+      // 2. Update Password (menggunakan fungsi RPC untuk hashing) jika diisi
+      if (password && password.length > 0) {
+        if (password.length < 3) throw new Error("Password minimal 3 karakter");
+        const { error: pwdError } = await supabase.rpc('update_password', {
+            p_user_id: currentUser?.id,
+            p_new_password: password
+        });
+        if (pwdError) throw pwdError;
+      }
+
+      // 3. Update Session di LocalStorage (biar nama di sidebar berubah)
       if (data) {
         // Gabungkan data lama dengan update baru
         const updatedUser = { ...currentUser!, ...data };

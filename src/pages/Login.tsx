@@ -44,20 +44,19 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // 1. Cari user berdasarkan username (bisa NIM, NIK, atau Username asisten)
+      // 1. Verifikasi kredensial menggunakan fungsi RPC (Aman dengan Hash)
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', loginUsername)
-        .maybeSingle(); 
+        .rpc('login_user', { 
+            p_username: loginUsername, 
+            p_password: loginPassword
+        })
+        .maybeSingle();
 
       if (error) throw error;
 
-      // 2. Validasi
+      // 2. Validasi (Jika data null artinya username salah atau password salah)
       if (!data) {
-        toast.error("Gagal Masuk", { description: "Username/NIM tidak ditemukan." });
-      } else if (data.password !== loginPassword) {
-        toast.error("Gagal Masuk", { description: "Password salah." });
+        toast.error("Gagal Masuk", { description: "Username tidak ditemukan atau password salah!" });
       } else if (!data.is_active) {
         // CEK STATUS AKTIF
         toast.error("Gagal Masuk", { description: "Akun Anda sedang dinonaktifkan." });
@@ -134,17 +133,15 @@ export default function Login() {
         return;
       }
 
-      // 2. Masukkan data baru
-      const { error } = await supabase.from('users').insert({
-        username: signupUsername, // NIM atau NIK
-        password: signupPassword,
-        full_name: signupName,
-        role: signupRole, // 'praktikan' atau 'penyewa'
-        
-        // Logic pengisian kolom tambahan
-        nim: signupRole === 'praktikan' ? signupUsername : null, // Jika praktikan, isi NIM
-        assistant_code: null, // Pendaftar umum tidak punya kode asisten
-        is_active: true // Default aktif
+      // 2. Masukkan data baru menggunakan RPC (otomatis melakukan hashing password)
+      const { error } = await supabase.rpc('register_user', {
+        p_username: signupUsername,
+        p_password: signupPassword,
+        p_full_name: signupName,
+        p_role: signupRole,
+        p_nim: signupRole === 'praktikan' ? signupUsername : null,
+        p_assistant_code: null,
+        p_is_active: true
       });
 
       if (error) throw error;
