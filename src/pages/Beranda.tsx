@@ -338,17 +338,21 @@ function KoordinatorDashboard() {
           // 3. Total Kritik & Saran
           const { count: fbCount } = await supabase.from('feedback').select('*', { count: 'exact', head: true });
 
-          // 4. Hitung Absensi PRAKTIKAN Menunggu Validasi
+          // 4. Hitung Absensi PRAKTIKAN Menunggu Validasi (Izin & Jadwal Pengganti)
           const { data: absenData } = await supabase
               .from('attendance_logs')
-              .select(`verification_status, users:custom_user_id(role)`)
-              .eq('users.role', 'praktikan'); 
+              .select(`verification_status, reschedule_status, status, users!inner(role)`)
+              .eq('users.role', 'praktikan')
+              .neq('status', 'Hadir'); 
           
           let pendingPraktikan = 0;
           if (absenData) {
               absenData.forEach((log: any) => {
-                  const status = log.verification_status?.toLowerCase() || 'pending';
-                  if (status.includes('pending') || status.includes('mencari_pengganti')) {
+                  const vStatus = log.verification_status?.toLowerCase() || '';
+                  const rStatus = log.reschedule_status?.toLowerCase() || '';
+                  
+                  // Hitung jika ada izin pending ATAU jadwal pengganti pending
+                  if (vStatus === 'pending' || rStatus === 'pending') {
                       pendingPraktikan++;
                   }
               });
