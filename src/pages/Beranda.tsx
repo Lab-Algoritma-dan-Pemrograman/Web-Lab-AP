@@ -71,7 +71,12 @@ function UserContactCard() {
                     <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-full"><Pencil className="h-3 w-3" /></Button>
                 </DialogTrigger>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Ubah Nomor WhatsApp</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle>Ubah Nomor WhatsApp</DialogTitle>
+                        <DialogDescription>
+                            Perbarui nomor WhatsApp Anda untuk mempermudah koordinasi dan validasi absensi.
+                        </DialogDescription>
+                    </DialogHeader>
                     <div className="py-4 space-y-4">
                         <div className="space-y-2">
                             <Label>Nomor HP (Format: 08xx / 62xx)</Label>

@@ -68,10 +68,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Verify internal secret to prevent public abuse
-  const appSecret = process.env.APP_INTERNAL_SECRET;
+  const appSecret = process.env.APP_INTERNAL_SECRET || process.env.VITE_APP_INTERNAL_SECRET;
   const clientSecret = req.headers["x-app-secret"];
 
   if (!appSecret || clientSecret !== appSecret) {
+    console.warn("Unauthorized JWT request: Secret mismatch or missing");
     return res.status(401).json({ error: "Unauthorized access" });
   }
 

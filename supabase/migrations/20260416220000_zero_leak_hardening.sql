@@ -83,7 +83,9 @@ RETURNS TABLE (
 BEGIN
     IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
-        SELECT al.*, u.full_name, u.role, u.username, u.major, u.class_code, u.shift, u.phone_number,
+        SELECT al.id, al.custom_user_id, al.check_in_time, al.status, al.notes, 
+               al.verification_status, al.is_verified, al.reschedule_status, al.reschedule_schedule_id,
+               u.full_name, u.role, u.username, u.major, u.class_code, u.shift, u.phone_number,
                s.title, s.day_of_week, s.start_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
@@ -91,7 +93,9 @@ BEGIN
         ORDER BY al.check_in_time DESC;
     ELSE
         RETURN QUERY 
-        SELECT al.*, u.full_name, u.role, u.username, u.major, u.class_code, u.shift, u.phone_number,
+        SELECT al.id, al.custom_user_id, al.check_in_time, al.status, al.notes, 
+               al.verification_status, al.is_verified, al.reschedule_status, al.reschedule_schedule_id,
+               u.full_name, u.role, u.username, u.major, u.class_code, u.shift, u.phone_number,
                s.title, s.day_of_week, s.start_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
@@ -142,7 +146,10 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     IF public.is_staff(p_viewer_id) THEN
-        RETURN QUERY SELECT f.id, f.title, f.amount, f.type, f.category, f.date, f.created_at FROM public.financial_records f ORDER BY f.date DESC;
+        RETURN QUERY 
+        SELECT fr.id, fr.title, fr.amount, fr.type, fr.category, fr.date, fr.created_at 
+        FROM public.financial_records fr 
+        ORDER BY fr.date DESC;
     ELSE
         RAISE EXCEPTION 'Unauthorized';
     END IF;
@@ -201,12 +208,17 @@ RETURNS TABLE (
 DECLARE
     v_user_nim TEXT;
 BEGIN
-    SELECT username INTO v_user_nim FROM public.users WHERE id = p_viewer_id;
+    SELECT u.username INTO v_user_nim FROM public.users u WHERE u.id = p_viewer_id;
     
     IF public.is_staff(p_viewer_id) THEN
-        RETURN QUERY SELECT ep.id, ep.nim, ep.lessons_completed, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.current_level FROM public.elearning_progress ep;
+        RETURN QUERY 
+        SELECT ep.id, ep.nim, ep.lessons_completed, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.current_level 
+        FROM public.elearning_progress ep;
     ELSE
-        RETURN QUERY SELECT ep.id, ep.nim, ep.lessons_completed, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.current_level FROM public.elearning_progress ep WHERE ep.nim = v_user_nim;
+        RETURN QUERY 
+        SELECT ep.id, ep.nim, ep.lessons_completed, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.current_level 
+        FROM public.elearning_progress ep 
+        WHERE ep.nim = v_user_nim;
     END IF;
 END; $$;
 
@@ -274,7 +286,7 @@ DECLARE
     v_phone TEXT;
     v_role TEXT;
 BEGIN
-    SELECT phone_number, role INTO v_phone, v_role FROM public.users WHERE id = p_viewer_id;
+    SELECT u.phone_number, u.role INTO v_phone, v_role FROM public.users u WHERE u.id = p_viewer_id;
 
     IF public.is_staff(p_viewer_id) THEN
         SELECT jsonb_build_object(
@@ -369,15 +381,15 @@ DECLARE
     v_division TEXT;
     v_has_access BOOLEAN;
 BEGIN
-    SELECT division INTO v_division FROM public.users WHERE id = p_viewer_id;
+    SELECT u.division INTO v_division FROM public.users u WHERE u.id = p_viewer_id;
     
-    IF EXISTS (SELECT 1 FROM public.users WHERE id = p_viewer_id AND role = 'koordinator') THEN
+    IF EXISTS (SELECT 1 FROM public.users u WHERE u.id = p_viewer_id AND u.role = 'koordinator') THEN
         RETURN TRUE;
     END IF;
 
     SELECT EXISTS (
-        SELECT 1 FROM public.division_access 
-        WHERE division = v_division AND menu_key = p_menu_key
+        SELECT 1 FROM public.division_access da
+        WHERE da.division = v_division AND da.menu_key = p_menu_key
     ) INTO v_has_access;
     
     RETURN v_has_access;
