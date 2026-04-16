@@ -7,6 +7,8 @@
 -- STEP 1: HELPER FUNCTIONS (RE-VERIFY)
 -- ==========================================
 
+DROP FUNCTION IF EXISTS public.is_admin(INTEGER);
+DROP FUNCTION IF EXISTS public.is_admin(BIGINT);
 -- Ensure is_admin and is_staff exist and are secure
 CREATE OR REPLACE FUNCTION public.is_admin(p_user_id BIGINT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -14,6 +16,8 @@ BEGIN
     RETURN EXISTS (SELECT 1 FROM public.users WHERE id = p_user_id AND role = 'koordinator' AND is_active = true);
 END; $$;
 
+DROP FUNCTION IF EXISTS public.is_staff(INTEGER);
+DROP FUNCTION IF EXISTS public.is_staff(BIGINT);
 CREATE OR REPLACE FUNCTION public.is_staff(p_user_id BIGINT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -82,6 +86,8 @@ CREATE POLICY "Public read access" ON public.inventory_items FOR SELECT TO anon 
 -- ==========================================
 
 -- 3.1: Fetch Attendance Logs Securely
+DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -130,6 +136,8 @@ BEGIN
 END; $$;
 
 -- 3.2: Fetch Feedback Securely
+DROP FUNCTION IF EXISTS public.get_feedback_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_feedback_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_feedback_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -158,6 +166,8 @@ BEGIN
 END; $$;
 
 -- 3.3: Fetch Financial Records (Staff Only)
+DROP FUNCTION IF EXISTS public.get_financial_records_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_financial_records_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_financial_records_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -180,6 +190,8 @@ BEGIN
 END; $$;
 
 -- 3.4: Fetch Group Members Securely
+DROP FUNCTION IF EXISTS public.get_group_members_secure(BIGINT, BIGINT);
+DROP FUNCTION IF EXISTS public.get_group_members_secure(BIGINT, UUID);
 CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id BIGINT, p_schedule_id UUID DEFAULT NULL)
 RETURNS TABLE (
     id BIGINT,
@@ -219,6 +231,8 @@ BEGIN
 END; $$;
 
 -- 3.5: E-Learning Progress Securely
+DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id UUID,
@@ -247,6 +261,8 @@ BEGIN
 END; $$;
 
 -- 3.6: Fetch External Links Securely
+DROP FUNCTION IF EXISTS public.get_external_links_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_external_links_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_external_links_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -264,6 +280,8 @@ BEGIN
 END; $$;
 
 -- 3.7: Fetch Group Assistants Securely
+DROP FUNCTION IF EXISTS public.get_group_assistants_secure(BIGINT, BIGINT);
+DROP FUNCTION IF EXISTS public.get_group_assistants_secure(BIGINT, UUID);
 CREATE OR REPLACE FUNCTION public.get_group_assistants_secure(p_viewer_id BIGINT, p_schedule_id UUID)
 RETURNS TABLE (
     id BIGINT,
@@ -283,6 +301,8 @@ BEGIN
 END; $$;
 
 -- 3.8: Fetch Assistant Availability Securely
+DROP FUNCTION IF EXISTS public.get_assistant_availability_secure(INTEGER, TEXT, TIME, TIME);
+DROP FUNCTION IF EXISTS public.get_assistant_availability_secure(BIGINT, TEXT, TIME, TIME);
 CREATE OR REPLACE FUNCTION public.get_assistant_availability_secure(p_viewer_id BIGINT, p_day TEXT, p_start TIME, p_end TIME)
 RETURNS TABLE (
     user_id BIGINT,
@@ -303,6 +323,8 @@ BEGIN
 END; $$;
 
 -- 3.9: Fetch Dashboard Stats Securely
+DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_dashboard_stats_secure(p_viewer_id BIGINT)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -339,6 +361,8 @@ BEGIN
 END; $$;
 
 -- 3.10: Fetch Users Securely (Staff Only)
+DROP FUNCTION IF EXISTS public.get_users_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_users_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_users_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -366,6 +390,8 @@ BEGIN
 END; $$;
 
 -- 3.11: Fetch Schedule Assignments Securely
+DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_schedule_assignments_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -399,6 +425,8 @@ BEGIN
 END; $$;
 
 -- 3.12: Check Menu Access Securely
+DROP FUNCTION IF EXISTS public.check_menu_access_secure(INTEGER, TEXT);
+DROP FUNCTION IF EXISTS public.check_menu_access_secure(BIGINT, TEXT);
 CREATE OR REPLACE FUNCTION public.check_menu_access_secure(p_viewer_id BIGINT, p_menu_key TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -420,6 +448,8 @@ BEGIN
 END; $$;
 
 -- 4.0: Fetch User Profile Securely
+DROP FUNCTION IF EXISTS public.get_user_profile(INTEGER);
+DROP FUNCTION IF EXISTS public.get_user_profile(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_user_profile(p_target_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -439,6 +469,8 @@ BEGIN
 END; $$;
 
 -- 4.1: Administrative Update User
+DROP FUNCTION IF EXISTS public.admin_update_user(INTEGER, INTEGER, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.admin_update_user(BIGINT, BIGINT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION public.admin_update_user(
     p_caller_id     BIGINT,
     p_target_id     BIGINT,
@@ -473,6 +505,8 @@ BEGIN
 END; $$;
 
 -- 4.2: Administrative Delete User
+DROP FUNCTION IF EXISTS public.admin_delete_user(INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS public.admin_delete_user(BIGINT, BIGINT);
 CREATE OR REPLACE FUNCTION public.admin_delete_user(
     p_caller_id BIGINT,
     p_target_id BIGINT
@@ -493,6 +527,8 @@ BEGIN
 END; $$;
 
 -- 4.3: Administrative Toggle User Status
+DROP FUNCTION IF EXISTS public.admin_toggle_user_status(INTEGER, INTEGER, BOOLEAN);
+DROP FUNCTION IF EXISTS public.admin_toggle_user_status(BIGINT, BIGINT, BOOLEAN);
 CREATE OR REPLACE FUNCTION public.admin_toggle_user_status(
     p_caller_id BIGINT,
     p_target_id BIGINT,
