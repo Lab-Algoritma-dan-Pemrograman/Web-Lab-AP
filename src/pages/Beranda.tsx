@@ -100,6 +100,9 @@ function PraktikanDashboard() {
   const [absensi, setAbsensi] = useState<any[]>([]);
 
   useEffect(() => {
+      const fetchData = async () => {
+          if (!user) return;
+
           // 1. Fetch Stats via Secure RPC
           const { data: globalStats } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
           
@@ -123,6 +126,8 @@ function PraktikanDashboard() {
             attendanceRate: globalStats?.attendance_rate || 0, 
             totalFeedback: globalStats?.total_feedback || 0 
           });
+      };
+      
       fetchData();
   }, [user]);
 
