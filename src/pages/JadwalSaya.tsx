@@ -71,65 +71,65 @@ export default function JadwalSaya() {
     setLoading(true);
 
     try {
+      const { data, error } = await supabase.rpc('get_personal_schedules_secure', { p_viewer_id: user.id });
+      if (error) throw error;
+
       if (user.role === 'praktikan') {
-        const { data: members, error: errMember } = await supabase
-            .from('group_members')
-            .select('*')
-            .eq('student_id', user.id);
-        
-        if (errMember) throw errMember;
-
-        if (members && members.length > 0) {
-            const scheduleIds = members.map(m => m.schedule_id);
-            const assistantIds = members.map(m => m.assistant_id);
-
-            const { data: schedules } = await supabase.from('schedules').select('*').in('id', scheduleIds);
-            const { data: assistants } = await supabase.from('users').select('id, full_name, phone_number').in('id', assistantIds);
-
-            const combined = members.map(m => ({
-                ...m,
-                schedule: schedules?.find(s => s.id === m.schedule_id),
-                assistant: assistants?.find(a => a.id === m.assistant_id)
-            }));
-            
-            setSchedulesData(combined);
-            syncToDatabase(combined, 'praktikan'); 
-        }
-
-      } else if (user.role === 'asisten' || user.role === 'koordinator') {
-        const { data: grpAsst, error: errAsst } = await supabase
-            .from('group_assistants')
-            .select('*')
-            .eq('assistant_id', user.id);
-
-        if (errAsst) throw errAsst;
-
-        if (grpAsst && grpAsst.length > 0) {
-            const scheduleIds = grpAsst.map(g => g.schedule_id);
-            const { data: schedules } = await supabase.from('schedules').select('*').in('id', scheduleIds);
-
-            const { data: grpMembers } = await supabase.from('group_members').select('*').eq('assistant_id', user.id);
-            
-            let allStudentsData: any[] = [];
-            if (grpMembers && grpMembers.length > 0) {
-                const studentIds = grpMembers.map(m => m.student_id);
-                const { data: studentUsers } = await supabase.from('users').select('id, full_name, username, phone_number').in('id', studentIds);
-                
-                allStudentsData = grpMembers.map(m => ({
-                    ...m,
-                    student: studentUsers?.find(su => su.id === m.student_id)
-                }));
-            }
-
-            const combined = grpAsst.map(ga => ({
-                ...ga,
-                schedule: schedules?.find(s => s.id === ga.schedule_id),
-                students: allStudentsData.filter(student => student.schedule_id === ga.schedule_id)
-            }));
-
-            setSchedulesData(combined);
-            syncToDatabase(combined, 'asisten');
-        }
+        const transformed = (data || []).map((row: any) => ({
+          ...row,
+          schedule: {
+            id: row.schedule_id,
+            title: row.schedule_title,
+            day_of_week: row.schedule_day,
+            start_time: row.schedule_start,
+            end_time: row.schedule_end,
+            major: row.schedule_major,
+            class_code: row.schedule_class
+          },
+          assistant: {
+            id: row.assistant_id,
+            full_name: row.assistant_name,
+            phone_number: row.assistant_phone
+          }
+        }));
+        setSchedulesData(transformed);
+        syncToDatabase(transformed, 'praktikan');
+      } else {
+        // Group by schedule for assistant view
+        const grouped = (data || []).reduce((acc: any[], current: any) => {
+          let schedule = acc.find(a => a.schedule_id === current.schedule_id);
+          if (!schedule) {
+            schedule = {
+              schedule_id: current.schedule_id,
+              schedule: {
+                id: current.schedule_id,
+                title: current.schedule_title,
+                day_of_week: current.schedule_day,
+                start_time: current.schedule_start,
+                end_time: current.schedule_end,
+                major: current.schedule_major,
+                class_code: current.schedule_class
+              },
+              students: []
+            };
+            acc.push(schedule);
+          }
+          if (current.student_id) {
+            schedule.students.push({
+              student_id: current.student_id,
+              student: {
+                id: current.student_id,
+                full_name: current.student_name,
+                username: current.student_nim,
+                shift: current.student_shift,
+                phone_number: null 
+              }
+            });
+          }
+          return acc;
+        }, []);
+        setSchedulesData(grouped);
+        syncToDatabase(grouped, 'asisten');
       }
     } catch (error: any) {
       toast.error("Gagal memuat jadwal: " + error.message);
@@ -187,7 +187,10 @@ export default function JadwalSaya() {
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                   Kelas {item.schedule?.class_code || "-"}
                 </Badge>
-                <Badge variant="secondary" className="truncate max-w-[120px]">{item.schedule?.major}</Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge variant="secondary" className="truncate max-w-[120px]">{item.schedule?.major}</Badge>
+                  {item.student_shift && <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Shift {item.student_shift}</Badge>}
+                </div>
               </div>
               <CardTitle className="text-xl mt-2">{item.schedule?.title || "Praktikum"}</CardTitle>
             </CardHeader>
@@ -260,7 +263,7 @@ export default function JadwalSaya() {
                   <TableRow className="bg-white">
                     <TableHead className="w-[80px] text-center">No</TableHead>
                     <TableHead>Nama Mahasiswa</TableHead>
-                    <TableHead>NIM</TableHead>
+                    <TableHead>NIM & Shift</TableHead>
                     <TableHead className="text-right">No. WhatsApp</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -272,7 +275,12 @@ export default function JadwalSaya() {
                       <TableRow key={student.id}>
                         <TableCell className="text-center font-medium text-gray-500">{sIdx + 1}</TableCell>
                         <TableCell className="font-bold">{student.student?.full_name || "Unknown"}</TableCell>
-                        <TableCell><Badge variant="secondary" className="font-mono">{student.student?.username || "-"}</Badge></TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="secondary" className="font-mono w-fit">{student.student?.username || "-"}</Badge>
+                            {student.student?.shift && <Badge variant="outline" className="w-fit text-[9px] bg-orange-50 text-orange-700 border-orange-200">Shift {student.student?.shift}</Badge>}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">
                             {student.student?.phone_number ? (
                                 <a 

@@ -24,6 +24,19 @@ BEGIN
     RETURN EXISTS (SELECT 1 FROM public.users WHERE id = p_user_id AND role IN ('asisten', 'koordinator', 'sekretaris', 'k3') AND is_active = true);
 END; $$;
 
+-- Helper to check if someone is PJ Absen today
+CREATE OR REPLACE FUNCTION public.is_pj_absen_today(p_user_id BIGINT)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.schedule_assignments 
+        WHERE user_id = p_user_id 
+        AND task_role = 'PJ Absen' 
+        AND activity_date = CURRENT_DATE 
+        AND status = 'aktif'
+    );
+END; $$;
+
 -- ==========================================
 -- STEP 2: LOCKDOWN ALL TABLES
 -- Close direct SELECT/INSERT/UPDATE for anon
@@ -91,14 +104,14 @@ DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
-    custom_user_id BIGINT,
-    check_in_time TIMESTAMP WITH TIME ZONE,
     status TEXT,
     notes TEXT,
-    verification_status TEXT,
+    check_in_time TIMESTAMP WITH TIME ZONE,
     is_verified BOOLEAN,
+    verification_status TEXT,
     reschedule_status TEXT,
     reschedule_schedule_id UUID,
+    user_id BIGINT,
     user_full_name TEXT,
     user_role TEXT,
     user_username TEXT,
@@ -113,9 +126,8 @@ RETURNS TABLE (
 BEGIN
     IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
-        SELECT al.id, al.custom_user_id, al.check_in_time, al.status, al.notes, 
-               al.verification_status, al.is_verified, al.reschedule_status, al.reschedule_schedule_id,
-               u.full_name, u.role, u.username, u.major, u.class_code, u.shift, u.phone_number,
+        SELECT al.id, al.status, al.notes, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id,
+               u.id as user_id, u.full_name, u.role, u.username, u.division as major, u.class_code, u.shift, u.phone_number,
                s.title, s.day_of_week, s.start_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
@@ -123,9 +135,8 @@ BEGIN
         ORDER BY al.check_in_time DESC;
     ELSE
         RETURN QUERY 
-        SELECT al.id, al.custom_user_id, al.check_in_time, al.status, al.notes, 
-               al.verification_status, al.is_verified, al.reschedule_status, al.reschedule_schedule_id,
-               u.full_name, u.role, u.username, u.major, u.class_code, u.shift, u.phone_number,
+        SELECT al.id, al.status, al.notes, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id,
+               u.id as user_id, u.full_name, u.role, u.username, u.division as major, u.class_code, u.shift, u.phone_number,
                s.title, s.day_of_week, s.start_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
@@ -133,6 +144,18 @@ BEGIN
         WHERE al.custom_user_id = p_viewer_id
         ORDER BY al.check_in_time DESC;
     END IF;
+END; $$;
+
+-- 3.1.b: Check already absent today
+CREATE OR REPLACE FUNCTION public.check_already_absent_secure(p_user_id BIGINT)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.attendance_logs 
+        WHERE custom_user_id = p_user_id 
+        AND check_in_time >= CURRENT_DATE 
+        AND check_in_time < CURRENT_DATE + 1
+    );
 END; $$;
 
 -- 3.2: Fetch Feedback Securely
@@ -237,11 +260,10 @@ CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id BIGI
 RETURNS TABLE (
     id UUID,
     nim TEXT,
-    lessons_completed INTEGER,
+    completed_lessons INTEGER,
     total_lessons INTEGER,
     completion_percentage DECIMAL,
-    is_completed BOOLEAN,
-    current_level TEXT
+    is_completed BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
     v_user_nim TEXT;
@@ -250,11 +272,11 @@ BEGIN
     
     IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
-        SELECT ep.id, ep.nim, ep.lessons_completed, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.current_level 
+        SELECT ep.id, ep.nim, ep.completed_lessons, ep.total_lessons, ep.completion_percentage, ep.is_completed
         FROM public.elearning_progress ep;
     ELSE
         RETURN QUERY 
-        SELECT ep.id, ep.nim, ep.lessons_completed, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.current_level 
+        SELECT ep.id, ep.nim, ep.completed_lessons, ep.total_lessons, ep.completion_percentage, ep.is_completed
         FROM public.elearning_progress ep 
         WHERE ep.nim = v_user_nim;
     END IF;
@@ -539,6 +561,295 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
     UPDATE public.users SET is_active = p_is_active WHERE id = p_target_id;
+END; $$;
+
+-- 4.4: Administrative Verify Attendance (License/Reschedule)
+CREATE OR REPLACE FUNCTION public.admin_verify_attendance_secure(
+    p_caller_id BIGINT,
+    p_log_id BIGINT,
+    p_is_approved BOOLEAN,
+    p_type TEXT -- 'license' or 'reschedule'
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_type = 'license' THEN
+        UPDATE public.attendance_logs SET
+            verification_status = CASE WHEN p_is_approved THEN 'approved' ELSE 'rejected' END,
+            is_verified = p_is_approved
+        WHERE id = p_log_id;
+    ELSIF p_type = 'reschedule' THEN
+        UPDATE public.attendance_logs SET
+            reschedule_status = CASE WHEN p_is_approved THEN 'approved' ELSE 'rejected' END,
+            reschedule_schedule_id = CASE WHEN p_is_approved THEN reschedule_schedule_id ELSE NULL END
+        WHERE id = p_log_id;
+    END IF;
+END; $$;
+
+-- 4.5: Financial Management Secure
+CREATE OR REPLACE FUNCTION public.upsert_financial_record_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_title TEXT,
+    p_amount DECIMAL,
+    p_type TEXT,
+    p_category TEXT
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_id = 0 OR p_id IS NULL THEN
+        INSERT INTO public.financial_records (title, amount, type, category, date)
+        VALUES (p_title, p_amount, p_type, p_category, CURRENT_DATE);
+    ELSE
+        UPDATE public.financial_records SET
+            title = p_title,
+            amount = p_amount,
+            type = p_type,
+            category = p_category
+        WHERE id = p_id;
+    END IF;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.delete_financial_record_secure(p_caller_id BIGINT, p_id BIGINT)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+    DELETE FROM public.financial_records WHERE id = p_id;
+END; $$;
+
+-- 5.0: Equipment Management
+CREATE OR REPLACE FUNCTION public.get_equipment_secure()
+RETURNS TABLE (
+    id BIGINT,
+    name TEXT,
+    type TEXT,
+    description TEXT,
+    file_url TEXT,
+    uploaded_at TIMESTAMP WITH TIME ZONE
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY SELECT e.id, e.name, e.type, e.description, e.file_url, e.uploaded_at FROM public.equipment e ORDER BY e.uploaded_at DESC;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.upsert_equipment_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_name TEXT,
+    p_type TEXT,
+    p_description TEXT,
+    p_file_url TEXT
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    -- Check if admin or has division access (simplified to is_staff for now)
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_id = 0 OR p_id IS NULL THEN
+        INSERT INTO public.equipment (name, type, description, file_url)
+        VALUES (p_name, p_type, p_description, p_file_url);
+    ELSE
+        UPDATE public.equipment SET
+            name = p_name,
+            type = p_type,
+            description = p_description,
+            file_url = p_file_url
+        WHERE id = p_id;
+    END IF;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.delete_equipment_secure(p_caller_id BIGINT, p_id BIGINT)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+    DELETE FROM public.equipment WHERE id = p_id;
+END; $$;
+
+-- 6.0: Assistant Availability Management
+CREATE OR REPLACE FUNCTION public.save_assistant_availability_secure(
+    p_caller_id BIGINT,
+    p_target_user_id BIGINT,
+    p_id BIGINT,
+    p_day TEXT,
+    p_start TIME,
+    p_end TIME
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    -- Allow self-update or is_admin (coordinator)
+    IF p_caller_id != p_target_user_id AND NOT public.is_admin(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_id = 0 OR p_id IS NULL THEN
+        INSERT INTO public.assistant_availability (user_id, day_of_week, start_time, end_time)
+        VALUES (p_target_user_id, p_day, p_start, p_end);
+    ELSE
+        UPDATE public.assistant_availability SET
+            day_of_week = p_day,
+            start_time = p_start,
+            end_time = p_end
+        WHERE id = p_id AND user_id = p_target_user_id;
+    END IF;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.delete_assistant_availability_secure(p_caller_id BIGINT, p_id BIGINT)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+    -- Note: We allow any staff to delete availability for now, 
+    -- but usually it's own or coordinator.
+    DELETE FROM public.assistant_availability WHERE id = p_id;
+END; $$;
+
+-- 7.0: Complex Attendance Operations
+CREATE OR REPLACE FUNCTION public.upsert_attendance_log_secure(
+    p_caller_id BIGINT,
+    p_target_user_id BIGINT,
+    p_status TEXT,
+    p_notes TEXT,
+    p_check_in TIMESTAMP WITH TIME ZONE,
+    p_is_verified BOOLEAN,
+    p_type TEXT, -- 'scan', 'izin', 'staff_manual', 'reschedule'
+    p_schedule_id UUID DEFAULT NULL,
+    p_session_id UUID DEFAULT NULL
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    -- Permissions check
+    IF p_type = 'scan' OR p_type = 'izin' THEN
+        IF p_caller_id != p_target_user_id THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    ELSIF p_type = 'staff_manual' THEN
+        IF NOT (public.is_staff(p_caller_id) OR public.is_pj_absen_today(p_caller_id)) THEN
+            RAISE EXCEPTION 'Unauthorized staff access';
+        END IF;
+    ELSIF p_type = 'reschedule' THEN
+        IF p_caller_id != p_target_user_id THEN RAISE EXCEPTION 'Unauthorized reschedule'; END IF;
+    END IF;
+
+    IF p_type = 'reschedule' THEN
+        UPDATE public.attendance_logs 
+        SET reschedule_schedule_id = p_schedule_id, reschedule_status = 'pending'
+        WHERE custom_user_id = p_target_user_id AND id = CAST(p_notes AS BIGINT); -- In reschedule, notes usually carries target log ID
+    ELSE
+        INSERT INTO public.attendance_logs (custom_user_id, status, notes, check_in_time, is_verified, session_id)
+        VALUES (p_target_user_id, p_status, p_notes, p_check_in, p_is_verified, p_session_id);
+    END IF;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.delete_attendance_log_secure(
+    p_caller_id BIGINT,
+    p_log_id BIGINT,
+    p_reason TEXT,
+    p_target_nim TEXT,
+    p_snapshot_data TEXT
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT (public.is_staff(p_caller_id) OR public.is_pj_absen_today(p_caller_id)) THEN
+        RAISE EXCEPTION 'Unauthorized deletion';
+    END IF;
+
+    INSERT INTO public.attendance_deletion_history (deleted_by, target_user_id, snapshot_data, reason)
+    VALUES (p_caller_id, p_target_nim, p_snapshot_data, p_reason);
+
+    DELETE FROM public.attendance_logs WHERE id = p_log_id;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.get_deletion_history_secure(p_caller_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    deleted_by_name TEXT,
+    target_user_id TEXT,
+    reason TEXT,
+    deleted_at TIMESTAMP WITH TIME ZONE
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    RETURN QUERY 
+    SELECT h.id, u.full_name, h.target_user_id, h.reason, h.deleted_at
+    FROM public.attendance_deletion_history h
+    JOIN public.users u ON h.deleted_by = u.id
+    ORDER BY h.deleted_at DESC;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.get_assistant_contact_secure(p_caller_id BIGINT)
+RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_phone TEXT;
+BEGIN
+    -- This is a helper for praktikan to find an active assistant contact
+    -- Try division with access first, then koor
+    SELECT u.phone_number INTO v_phone
+    FROM public.users u
+    JOIN public.division_access da ON u.division = da.division
+    WHERE da.menu_key = '/validasi-absensi' AND u.role = 'asisten' AND u.phone_number IS NOT NULL
+    LIMIT 1;
+
+    IF v_phone IS NULL THEN
+        SELECT u.phone_number INTO v_phone FROM public.users u WHERE u.role = 'koordinator' AND u.phone_number IS NOT NULL LIMIT 1;
+    END IF;
+
+    RETURN v_phone;
+END; $$;
+
+-- 8.0: Personal Schedule Management (Including Shift)
+CREATE OR REPLACE FUNCTION public.get_personal_schedules_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    role TEXT,
+    schedule_id UUID,
+    schedule_title TEXT,
+    schedule_day TEXT,
+    schedule_start TIME,
+    schedule_end TIME,
+    schedule_major TEXT,
+    schedule_class TEXT,
+    student_id BIGINT,
+    student_name TEXT,
+    student_nim TEXT,
+    student_shift TEXT,
+    assistant_id BIGINT,
+    assistant_name TEXT,
+    assistant_phone TEXT
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_role TEXT;
+BEGIN
+    SELECT u.role INTO v_role FROM public.users u WHERE u.id = p_viewer_id;
+
+    IF v_role = 'praktikan' THEN
+        RETURN QUERY
+        SELECT v_role, s.id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
+               u.id, u.full_name, u.username, u.shift,
+               a.id, a.full_name, a.phone_number
+        FROM public.group_members gm
+        JOIN public.schedules s ON gm.schedule_id = s.id
+        JOIN public.users u ON gm.student_id = u.id
+        LEFT JOIN public.users a ON gm.assistant_id = a.id
+        WHERE gm.student_id = p_viewer_id;
+    ELSIF v_role IN ('asisten', 'koordinator', 'sekretaris', 'k3') THEN
+        RETURN QUERY
+        SELECT v_role, s.id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
+               stu.id, stu.full_name, stu.username, stu.shift,
+               asst.id, asst.full_name, asst.phone_number
+        FROM public.group_assistants ga
+        JOIN public.schedules s ON ga.schedule_id = s.id
+        JOIN public.users asst ON ga.assistant_id = asst.id
+        LEFT JOIN public.group_members gm ON ga.schedule_id = gm.schedule_id AND ga.assistant_id = gm.assistant_id
+        LEFT JOIN public.users stu ON gm.student_id = stu.id
+        WHERE ga.assistant_id = p_viewer_id;
+    END IF;
 END; $$;
 
 ALTER TABLE public.assistant_availability ENABLE ROW LEVEL SECURITY;

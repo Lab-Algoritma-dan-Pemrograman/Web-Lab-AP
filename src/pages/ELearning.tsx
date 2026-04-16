@@ -42,7 +42,7 @@ interface ElearningProgress {
   id: string;
   nim: string;
   student_name: string | null;
-  lessons_completed: number;
+  completed_lessons: number;
   total_lessons: number;
   completion_percentage: number;
   is_completed: boolean;
@@ -127,7 +127,7 @@ export default function ELearning() {
             setProgress(data);
             setLastSyncTime(new Date());
             toast.success("Progress terupdate!", {
-              description: `${data.lessons_completed}/${data.total_lessons} materi selesai`,
+              description: `${data.completed_lessons}/${data.total_lessons} materi selesai`,
               icon: <Sparkles className="h-4 w-4" />
             });
           }
@@ -179,7 +179,7 @@ export default function ELearning() {
   // ===== Computed Values =====
   const completionPercent = progress?.completion_percentage ?? 0;
   const isCompleted = progress?.is_completed || completionPercent >= 100;
-  const completedLessons = progress?.lessons_completed ?? 0;
+  const completedLessons = progress?.completed_lessons ?? 0;
   const totalLessons = progress?.total_lessons ?? 0;
 
   // Format relative time

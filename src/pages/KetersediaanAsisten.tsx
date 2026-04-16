@@ -117,31 +117,27 @@ export default function KetersediaanAsisten() {
     
     setLoading(true);
 
-    if (isEditMode && editingId) {
-        const { error } = await supabase
-            .from('assistant_availability')
-            .update({ day_of_week: day, start_time: start, end_time: end })
-            .eq('id', editingId);
+    try {
+        const { error } = await supabase.rpc('save_assistant_availability_secure', {
+            p_caller_id: user.id,
+            p_target_user_id: parseInt(targetUserId),
+            p_id: isEditMode && editingId ? editingId : 0,
+            p_day: day,
+            p_start: start,
+            p_end: end
+        });
 
         setLoading(false);
         if (error) toast.error(error.message);
         else {
-            toast.success("Jadwal berhasil diperbarui!");
-            handleCancelEdit(); 
+            toast.success(isEditMode ? "Jadwal berhasil diperbarui!" : "Jadwal manual ditambahkan!");
+            if (isEditMode) handleCancelEdit();
+            else { setDay(""); setStart(""); setEnd(""); }
             await fetchMySlots();
         }
-    } else {
-        const { error } = await supabase.from('assistant_availability').insert({
-          user_id: parseInt(targetUserId), day_of_week: day, start_time: start, end_time: end
-        });
-        
+    } catch (err: any) {
         setLoading(false);
-        if (error) toast.error(error.message);
-        else {
-          toast.success("Jadwal manual ditambahkan!");
-          setDay(""); setStart(""); setEnd(""); 
-          await fetchMySlots();
-        }
+        toast.error(err.message);
     }
   };
 
@@ -162,13 +158,16 @@ export default function KetersediaanAsisten() {
 
   const handleDelete = async (id: any) => {
     if(!confirm("Hapus slot waktu ini?")) return;
-    const { error } = await supabase.from('assistant_availability').delete().eq('id', id);
+    const { error } = await supabase.rpc('delete_assistant_availability_secure', {
+        p_caller_id: user.id,
+        p_id: id
+    });
     if(!error) {
         toast.success("Berhasil menghapus jadwal");
         await fetchMySlots();
         setSelectedSlots(prev => prev.filter(sid => sid !== id));
     }
-    else toast.error("Gagal menghapus data");
+    else toast.error("Gagal menghapus data: " + error.message);
   };
 
   const handleMultipleDelete = async () => {
@@ -176,18 +175,23 @@ export default function KetersediaanAsisten() {
     if (!confirm(`Hapus ${selectedSlots.length} slot waktu yang dipilih?`)) return;
 
     setLoading(true);
-    const { error } = await supabase
-        .from('assistant_availability')
-        .delete()
-        .in('id', selectedSlots);
+    let successCount = 0;
+    try {
+        for (const id of selectedSlots) {
+            const { error } = await supabase.rpc('delete_assistant_availability_secure', {
+                p_caller_id: user.id,
+                p_id: id
+            });
+            if (!error) successCount++;
+        }
 
-    setLoading(false);
-    if (!error) {
-        toast.success(`${selectedSlots.length} jadwal berhasil dihapus!`);
+        setLoading(false);
+        toast.success(`${successCount} jadwal berhasil dihapus!`);
         setSelectedSlots([]);
         await fetchMySlots();
-    } else {
-        toast.error("Gagal menghapus beberapa data: " + error.message);
+    } catch (err: any) {
+        setLoading(false);
+        toast.error("Gagal menghapus beberapa data: " + err.message);
     }
   };
 
@@ -296,17 +300,20 @@ export default function KetersediaanAsisten() {
 
     setLoading(true);
     try {
-        const payload = detectedSlots.map(slot => ({
-            user_id: parseInt(targetUserId),
-            day_of_week: getSafeString(slot?.day_of_week, "Senin"),
-            start_time: formatTime(slot?.start_time),
-            end_time: formatTime(slot?.end_time)
-        }));
+        let successCount = 0;
+        for (const slot of detectedSlots) {
+            const { error } = await supabase.rpc('save_assistant_availability_secure', {
+                p_caller_id: user.id,
+                p_target_user_id: parseInt(targetUserId),
+                p_id: 0,
+                p_day: getSafeString(slot?.day_of_week, "Senin"),
+                p_start: formatTime(slot?.start_time),
+                p_end: formatTime(slot?.end_time)
+            });
+            if (!error) successCount++;
+        }
 
-        const { error } = await supabase.from('assistant_availability').insert(payload);
-        if (error) throw error;
-
-        toast.success(`${detectedSlots.length} jadwal free berhasil disimpan!`);
+        toast.success(`${successCount} jadwal free berhasil disimpan!`);
         clearFile(); 
         await fetchMySlots(); 
     } catch (err: any) {

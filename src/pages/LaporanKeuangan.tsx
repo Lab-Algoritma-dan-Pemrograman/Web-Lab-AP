@@ -55,15 +55,29 @@ export default function LaporanKeuangan() {
   useEffect(() => { fetchRecords(); }, []);
 
   const handleSave = async () => {
-    const { error } = await supabase.from('financial_records').insert(form);
-    if (error) toast.error("Gagal menyimpan");
+    const { error } = await supabase.rpc('upsert_financial_record_secure', {
+        p_caller_id: user.id,
+        p_id: 0,
+        p_title: form.title,
+        p_amount: form.amount,
+        p_type: form.type,
+        p_category: form.category
+    });
+    if (error) toast.error("Gagal menyimpan: " + error.message);
     else { toast.success("Data tersimpan"); setIsOpen(false); fetchRecords(); }
   };
 
   const handleDelete = async (id: number) => {
     if(confirm("Hapus data ini?")) {
-        await supabase.from('financial_records').delete().eq('id', id);
-        fetchRecords();
+        const { error } = await supabase.rpc('delete_financial_record_secure', {
+            p_caller_id: user.id,
+            p_id: id
+        });
+        if (error) toast.error("Gagal menghapus: " + error.message);
+        else {
+            toast.success("Data dihapus");
+            fetchRecords();
+        }
     }
   };
 

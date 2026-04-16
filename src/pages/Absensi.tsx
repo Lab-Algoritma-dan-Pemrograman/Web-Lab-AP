@@ -127,19 +127,16 @@ export default function Absensi() {
     if (!user) return;
     const { data } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
 
-    // Filter by date on client side for now, or we can add p_date to RPC later
-    const filtered = (data || []).filter((log: any) => {
-      const logDate = new Date(log.check_in_time).toLocaleDateString('en-CA');
-      return logDate === filterDate;
-    });
-
     // Map to the structure expected by the UI (nesting users)
     const formatted = filtered.map((log: any) => ({
       ...log,
       users: {
         full_name: log.user_full_name,
         role: log.user_role,
-        // Other fields like username/major are retrieved in the RPC if we update it
+        username: log.user_username,
+        major: log.user_major,
+        class_code: log.user_class_code,
+        shift: log.user_shift
       }
     }));
 
@@ -153,11 +150,7 @@ export default function Absensi() {
 
   const fetchDeletionHistory = async () => {
     if (!hasFullAccess) return;
-    const { data } = await supabase
-      .from('attendance_deletion_history')
-      .select('*, users:deleted_by(full_name)')
-      .order('deleted_at', { ascending: false })
-      .limit(50);
+    const { data } = await supabase.rpc('get_deletion_history_secure', { p_caller_id: user.id });
     setDeletionHistory(data || []);
   };
 
@@ -170,42 +163,8 @@ export default function Absensi() {
 
   const fetchAdminContact = async () => {
     if (isStaff) return;
-    
-    // 1. Cari divisi yang memiliki hak akses ke halaman Validasi Absensi
-    const { data: accessData } = await supabase
-      .from('division_access')
-      .select('division')
-      .eq('menu_key', '/validasi-absensi');
-    
-    if (accessData && accessData.length > 0) {
-      const divisions = accessData.map(d => d.division);
-      
-      // 2. Cari Asisten di divisi tersebut yang memiliki nomor HP aktif
-      const { data: assistantData } = await supabase
-        .from('users')
-        .select('phone_number')
-        .in('division', divisions)
-        .eq('role', 'asisten')
-        .not('phone_number', 'is', null)
-        .limit(1);
-      
-      if (assistantData && assistantData.length > 0) {
-        setAdminPhone(assistantData[0].phone_number);
-        return;
-      }
-    }
-    
-    // 3. Fallback: Koordinator
-    const { data: coordData } = await supabase
-      .from('users')
-      .select('phone_number')
-      .eq('role', 'koordinator')
-      .not('phone_number', 'is', null)
-      .limit(1);
-    
-    if (coordData && coordData.length > 0) {
-      setAdminPhone(coordData[0].phone_number);
-    }
+    const { data } = await supabase.rpc('get_assistant_contact_secure', { p_caller_id: user.id });
+    if (data) setAdminPhone(data);
   };
 
   // --- EFEK UTAMA & SUPABASE REALTIME ---
@@ -275,10 +234,16 @@ export default function Absensi() {
     if (!selectedSchedule) return toast.error("Pilih jadwal pengganti!");
     setLoading(true);
     try {
-      const { error } = await supabase.from('attendance_logs').update({
-        reschedule_schedule_id: parseInt(selectedSchedule),
-        reschedule_status: 'pending'
-      }).eq('id', logId);
+      const { error } = await supabase.rpc('upsert_attendance_log_secure', {
+        p_caller_id: user.id,
+        p_target_user_id: user.id,
+        p_status: "Hadir", // Re-verified as hadir usually
+        p_notes: logId.toString(), // Carry log ID in notes for reschedule type
+        p_check_in: new Date().toISOString(),
+        p_is_verified: true,
+        p_type: 'reschedule',
+        p_schedule_id: selectedSchedule
+      });
 
       if (error) throw error;
       toast.success("Jadwal diajukan. Tunggu persetujuan Asisten.");
@@ -338,19 +303,24 @@ export default function Absensi() {
         setScanLocked(false); setLoading(false); return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      const { data: ex } = await supabase.from('attendance_logs').select('*').eq('custom_user_id', user?.id).gte('check_in_time', `${today}T00:00:00`).lte('check_in_time', `${today}T23:59:59.999`).maybeSingle();
-
-      if (ex) {
+      const { data: already } = await supabase.rpc('check_already_absent_secure', { p_user_id: user.id });
+      if (already) {
         toast.warning("Anda sudah melakukan absensi hari ini!");
         setLoading(false); return;
       }
 
-      await supabase.from('attendance_logs').insert({
-        custom_user_id: user?.id, status: "Hadir", notes: `Scan QR: ${session.title}`,
-        check_in_time: new Date().toISOString(), is_verified: true, session_id: session.id
+      const { error } = await supabase.rpc('upsert_attendance_log_secure', {
+        p_caller_id: user.id,
+        p_target_user_id: user.id,
+        p_status: "Hadir",
+        p_notes: `Scan QR: ${session.title}`,
+        p_check_in: new Date().toISOString(),
+        p_is_verified: true,
+        p_type: 'scan',
+        p_session_id: session.id
       });
 
+      if (error) throw error;
       toast.success("Berhasil Absen!");
     } catch (err: any) {
       toast.error(err.message);
@@ -372,13 +342,16 @@ export default function Absensi() {
       const prefixInfo = schedInfo ? `[Kelas ${schedInfo.class_code} - ${schedInfo.day_of_week}] ` : "";
       const targetDateTime = new Date(`${izinDate}T08:00:00`).toISOString();
 
-      await supabase.from('attendance_logs').insert({
-        custom_user_id: user?.id,
-        status: izinType,
-        notes: prefixInfo + izinReason,
-        check_in_time: targetDateTime,
-        is_verified: false
+      const { error } = await supabase.rpc('upsert_attendance_log_secure', {
+        p_caller_id: user.id,
+        p_target_user_id: user.id,
+        p_status: izinType,
+        p_notes: prefixInfo + izinReason,
+        p_check_in: targetDateTime,
+        p_is_verified: false,
+        p_type: 'izin'
       });
+      if (error) throw error;
       toast.success("Terkirim! Silakan kirim bukti ke Asisten.");
       setIzinReason("");
       setIzinDate("");
@@ -395,13 +368,16 @@ export default function Absensi() {
 
       const targetDateTime = new Date(`${filterDate}T08:00:00`).toISOString();
 
-      await supabase.from('attendance_logs').insert({
-        custom_user_id: usr.id,
-        status: targetStatus,
-        notes: targetNote || "Input Manual Oleh Staff",
-        check_in_time: targetDateTime,
-        is_verified: true
+      const { error } = await supabase.rpc('upsert_attendance_log_secure', {
+        p_caller_id: user.id,
+        p_target_user_id: usr.id,
+        p_status: targetStatus,
+        p_notes: targetNote || "Input Manual Oleh Staff",
+        p_check_in: targetDateTime,
+        p_is_verified: true,
+        p_type: 'staff_manual'
       });
+      if (error) throw error;
       toast.success("Absensi Manual Berhasil!"); setTargetNim(""); setTargetNote("");
     } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
   };
@@ -410,17 +386,13 @@ export default function Absensi() {
     if (!confirm("Hapus data absen ini? Pastikan Anda tidak salah hapus!")) return;
     setLoading(true);
     try {
-      // 1. Simpan riwayat penghapusan terlebih dahulu
-      await supabase.from('attendance_deletion_history').insert({
-        deleted_by: user?.id,
-        target_user_id: logData.users?.username, // simpan nim
-        snapshot_data: JSON.stringify(logData),
-        reason: "Dihapus manual oleh Asisten",
-        deleted_at: new Date().toISOString()
+      const { error } = await supabase.rpc('delete_attendance_log_secure', {
+        p_caller_id: user.id,
+        p_log_id: id,
+        p_reason: "Dihapus manual oleh Asisten",
+        p_target_nim: logData.users?.username,
+        p_snapshot_data: JSON.stringify(logData)
       });
-
-      // 2. Hapus dari tabel utama
-      const { error } = await supabase.from('attendance_logs').delete().eq('id', id);
       if (error) throw error;
       toast.success("Data berhasil dihapus dan riwayat tersimpan");
       fetchDeletionHistory();

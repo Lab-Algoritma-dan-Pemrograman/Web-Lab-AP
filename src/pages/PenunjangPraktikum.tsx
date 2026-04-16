@@ -67,10 +67,7 @@ export default function PenunjangPraktikum() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('equipment')
-                .select('*')
-                .order('uploaded_at', { ascending: false });
+            const { data, error } = await supabase.rpc('get_equipment_secure');
             
             if (error) throw error;
             setEquipments(data || []);
@@ -104,22 +101,18 @@ export default function PenunjangPraktikum() {
         
         setSaving(true);
         try {
-            const payload = {
-                name: formData.name,
-                type: formData.type,
-                description: formData.description,
-                file_url: formData.file_url
-            };
+            const { error } = await supabase.rpc('upsert_equipment_secure', {
+                p_caller_id: user.id,
+                p_id: isEdit ? formData.id : 0,
+                p_name: formData.name,
+                p_type: formData.type,
+                p_description: formData.description,
+                p_file_url: formData.file_url
+            });
 
-            if (isEdit) {
-                const { error } = await supabase.from('equipment').update(payload).eq('id', formData.id);
-                if (error) throw error;
-                toast.success("Data berhasil diperbarui!");
-            } else {
-                const { error } = await supabase.from('equipment').insert([payload]);
-                if (error) throw error;
-                toast.success("Materi baru berhasil ditambahkan!");
-            }
+            if (error) throw error;
+            
+            toast.success(isEdit ? "Data berhasil diperbarui!" : "Materi baru berhasil ditambahkan!");
             setIsOpen(false);
             fetchData();
         } catch (err: any) {
@@ -132,7 +125,10 @@ export default function PenunjangPraktikum() {
     const handleDelete = async (id: number, name: string) => {
         if (!confirm(`Yakin ingin menghapus "${name}"?`)) return;
         try {
-            const { error } = await supabase.from('equipment').delete().eq('id', id);
+            const { error } = await supabase.rpc('delete_equipment_secure', {
+                p_caller_id: user.id,
+                p_id: id
+            });
             if (error) throw error;
             toast.success("Data dihapus.");
             fetchData();

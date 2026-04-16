@@ -105,8 +105,19 @@ export default function ValidasiAbsensi() {
         setHistoryLogs(prev => [{...item, verification_status: newStatus, is_verified: isApproved}, ...prev]);
     }
 
-    await supabase.from('attendance_logs').update({ verification_status: newStatus, is_verified: isApproved }).eq('id', id);
-    toast.success(isApproved ? "Izin Disetujui. Praktikan bisa pilih jadwal." : "Izin Ditolak.");
+    const { error } = await supabase.rpc('admin_verify_attendance_secure', {
+        p_caller_id: user.id,
+        p_log_id: id,
+        p_is_approved: isApproved,
+        p_type: 'license'
+    });
+
+    if (error) {
+        toast.error("Gagal memvalidasi: " + error.message);
+        fetchData(); // Rollback UI if failed
+    } else {
+        toast.success(isApproved ? "Izin Disetujui. Praktikan bisa pilih jadwal." : "Izin Ditolak.");
+    }
   };
 
   const handleVerifyReschedule = async (id: number, isApproved: boolean) => {
@@ -116,14 +127,19 @@ export default function ValidasiAbsensi() {
         return;
     }
 
-    const newStatus = isApproved ? 'approved' : 'rejected';
+    const { error } = await supabase.rpc('admin_verify_attendance_secure', {
+        p_caller_id: user.id,
+        p_log_id: id,
+        p_is_approved: isApproved,
+        p_type: 'reschedule'
+    });
 
-    // Jika ditolak, set schedule_id ke null agar praktikan harus pilih ulang
-    const updateData: any = { reschedule_status: newStatus };
-    if (!isApproved) updateData.reschedule_schedule_id = null;
-
-    await supabase.from('attendance_logs').update(updateData).eq('id', id);
-    toast.success(isApproved ? "Jadwal Disetujui & Terkunci." : "Jadwal Ditolak.");
+    if (error) {
+        toast.error("Gagal memproses jadwal: " + error.message);
+    } else {
+        toast.success(isApproved ? "Jadwal Disetujui & Terkunci." : "Jadwal Ditolak.");
+        fetchData();
+    }
   };
 
   const handleResetReschedule = async (id: number) => {
@@ -135,8 +151,20 @@ export default function ValidasiAbsensi() {
         return;
     }
 
-    await supabase.from('attendance_logs').update({ reschedule_status: null, reschedule_schedule_id: null }).eq('id', id);
-    toast.success("Jadwal di-reset.");
+    // Resetting reschedule can be treated as 'rejecting' a reschedule to clear it
+    const { error } = await supabase.rpc('admin_verify_attendance_secure', {
+        p_caller_id: user.id,
+        p_log_id: id,
+        p_is_approved: false,
+        p_type: 'reschedule'
+    });
+
+    if (error) {
+        toast.error("Gagal me-reset: " + error.message);
+    } else {
+        toast.success("Jadwal di-reset.");
+        fetchData();
+    }
   };
 
   return (
