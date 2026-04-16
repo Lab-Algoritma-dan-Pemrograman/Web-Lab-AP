@@ -110,6 +110,8 @@ export default function ManajemenUser() {
   const [accessList, setAccessList] = useState<string[]>([]);
   const [loadingAccess, setLoadingAccess] = useState(false);
 
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Fetch Users & Ambil Divisi Unik
@@ -139,6 +141,52 @@ export default function ManajemenUser() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- LOGIC BULK DELETE ---
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredUsers.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredUsers.map(u => u.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Hapus ${selectedIds.length} user terpilih? Seluruh riwayat absensi, bimbingan, dan jadwal yang berkaitan akan ikut terhapus secara permanen.`)) return;
+
+    setLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    // Kita lakukan secara serial agar tidak membani database dan memastikan pembersihan benar
+    for (const id of selectedIds) {
+      try {
+        await Promise.all([
+          supabase.from('attendance_logs').delete().eq('custom_user_id', id),
+          supabase.from('feedback').delete().eq('custom_user_id', id),
+          supabase.from('group_members').delete().or(`student_id.eq.${id},assistant_id.eq.${id}`),
+          supabase.from('group_assistants').delete().eq('assistant_id', id),
+          supabase.from('schedule_assignments').delete().eq('user_id', id)
+        ]);
+        const { error } = await supabase.from('users').delete().eq('id', id);
+        if (error) throw error;
+        successCount++;
+      } catch (err) {
+        console.error(`Gagal menghapus ID ${id}:`, err);
+        failCount++;
+      }
+    }
+
+    toast.success(`Proses selesai. ${successCount} berhasil dihapus, ${failCount} gagal.`);
+    setSelectedIds([]);
+    fetchUsers();
+    setLoading(false);
   };
 
   useEffect(() => { 
@@ -299,10 +347,37 @@ export default function ManajemenUser() {
       return;
     }
 
-    if (!confirm(`Hapus user "${name}"?`)) return;
-    await supabase.from('users').delete().eq('id', id);
-    toast.success("User dihapus.");
-    fetchUsers();
+    if (!confirm(`Hapus user "${name}"? Seluruh riwayat absensi, bimbingan, dan jadwal yang berkaitan dengan orang ini akan ikut terhapus secara permanen.`)) return;
+    
+    setLoading(true);
+    try {
+        // 1. Hapus keterkaitan di tabel-tabel lain secara manual (Sequential Delete)
+        // Kita gunakan Promise.all agar lebih cepat, tetapi jika ada FK antar anak tabel, urutan penting.
+        // Di sini kita asumsikan tabel-tabel ini adalah leaf nodes yang merujuk ke 'users'.
+        
+        await Promise.all([
+            supabase.from('attendance_logs').delete().eq('custom_user_id', id),
+            supabase.from('feedback').delete().eq('custom_user_id', id),
+            supabase.from('group_members').delete().or(`student_id.eq.${id},assistant_id.eq.${id}`),
+            supabase.from('group_assistants').delete().eq('assistant_id', id),
+            supabase.from('schedule_assignments').delete().eq('user_id', id)
+        ]);
+
+        // 2. Akhirnya hapus user utama
+        const { error } = await supabase.from('users').delete().eq('id', id);
+        
+        if (error) throw error;
+
+        toast.success("User dan seluruh data terkait berhasil dihapus.");
+        fetchUsers();
+    } catch (err: any) {
+        console.error("Delete error:", err);
+        toast.error("Gagal menghapus user", { 
+            description: err.message || "Terjadi kesalahan saat mencoba menghapus data terkait." 
+        });
+    } finally {
+        setLoading(false);
+    }
   };
 
   // Import Excel
@@ -463,6 +538,11 @@ export default function ManajemenUser() {
                       <Download className="w-4 h-4"/>
                   </Button>
                 </div>
+                {selectedIds.length > 0 && (
+                  <Button variant="destructive" onClick={handleBulkDelete}>
+                    <Trash2 className="w-4 h-4 mr-2" /> Hapus {selectedIds.length} User
+                  </Button>
+                )}
                 <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" /> Tambah Manual</Button>
               </>
             )}
@@ -506,6 +586,14 @@ export default function ManajemenUser() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[50px] text-center">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 rounded border-gray-300"
+                          checked={filteredUsers.length > 0 && selectedIds.length === filteredUsers.length}
+                          onChange={toggleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead>Nama Lengkap</TableHead>
                       <TableHead>NIM / Username</TableHead>
                        <TableHead>Kontak (No HP)</TableHead>
@@ -517,9 +605,17 @@ export default function ManajemenUser() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Data tidak ditemukan.</TableCell></TableRow> : 
+                    {filteredUsers.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Data tidak ditemukan.</TableCell></TableRow> : 
                       filteredUsers.map((u) => (
-                        <TableRow key={u.id}>
+                        <TableRow key={u.id} className={selectedIds.includes(u.id) ? "bg-muted/50" : ""}>
+                          <TableCell className="text-center">
+                            <input 
+                              type="checkbox" 
+                              className="w-4 h-4 rounded border-gray-300"
+                              checked={selectedIds.includes(u.id)}
+                              onChange={() => toggleSelect(u.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{u.full_name}</TableCell>
                           <TableCell className="font-mono text-xs">{u.username}</TableCell>
                           <TableCell>
