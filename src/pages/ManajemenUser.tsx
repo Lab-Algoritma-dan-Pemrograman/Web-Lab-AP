@@ -699,7 +699,12 @@ export default function ManajemenUser() {
         {/* DIALOG 1: FORM USER (Edit/Tambah) */}
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader><DialogTitle>{isEdit ? "Edit Data User" : "Tambah User Baru"}</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>{isEdit ? "Edit Data User" : "Tambah User Baru"}</DialogTitle>
+              <DialogDescription>
+                {isEdit ? "Perbarui informasi akun pengguna di bawah ini." : "Silakan lengkapi formulir untuk mendaftarkan akun baru ke sistem."}
+              </DialogDescription>
+            </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Username / NIM</Label><Input value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} placeholder="202314..." required disabled={isEdit && currentUser?.role !== 'koordinator'} /></div>

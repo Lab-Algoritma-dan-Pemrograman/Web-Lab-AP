@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -437,6 +437,9 @@ export default function ManajemenKelas() {
                                     <span>Plotting: {item.title}</span>
                                     <span className="text-xs font-normal text-muted-foreground">{item.major} - Kelas {item.class_code}</span>
                                 </DialogTitle>
+                                <DialogDescription className="sr-only">
+                                    Kelola pembagian asisten dan praktikan untuk kelompok praktikum ini.
+                                </DialogDescription>
                                 {hasEditAccess && students.length > 0 && (
                                     <Button size="sm" variant="outline" className="h-8 border-green-600 text-green-700 hover:bg-green-50" onClick={handleExportPerKelas}>
                                         <DownloadCloud className="w-4 h-4 mr-2"/> Download Kelompok

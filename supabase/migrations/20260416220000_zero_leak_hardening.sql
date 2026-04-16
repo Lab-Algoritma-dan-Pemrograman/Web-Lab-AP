@@ -37,20 +37,44 @@ BEGIN
 END $$;
 
 -- Explicitly block sensitive tables for anon SELECT
+DROP POLICY IF EXISTS "Block direct select" ON public.attendance_logs;
 CREATE POLICY "Block direct select" ON public.attendance_logs FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.feedback;
 CREATE POLICY "Block direct select" ON public.feedback FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.financial_records;
 CREATE POLICY "Block direct select" ON public.financial_records FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.elearning_progress;
 CREATE POLICY "Block direct select" ON public.elearning_progress FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.group_members;
 CREATE POLICY "Block direct select" ON public.group_members FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.group_assistants;
 CREATE POLICY "Block direct select" ON public.group_assistants FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.assistant_availability;
 CREATE POLICY "Block direct select" ON public.assistant_availability FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.qr_sessions;
 CREATE POLICY "Block direct select" ON public.qr_sessions FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Block direct select" ON public.external_links;
 CREATE POLICY "Block direct select" ON public.external_links FOR SELECT TO anon USING (false);
 
 -- Keep some tables READABLE for anon (Needed for app initialization/UI)
+DROP POLICY IF EXISTS "Public read access" ON public.system_settings;
 CREATE POLICY "Public read access" ON public.system_settings FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "Public read access" ON public.division_access;
 CREATE POLICY "Public read access" ON public.division_access FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "Public read access" ON public.schedules;
 CREATE POLICY "Public read access" ON public.schedules FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "Public read access" ON public.inventory_items;
 CREATE POLICY "Public read access" ON public.inventory_items FOR SELECT TO anon USING (true);
 
 -- ==========================================
@@ -58,17 +82,17 @@ CREATE POLICY "Public read access" ON public.inventory_items FOR SELECT TO anon 
 -- ==========================================
 
 -- 3.1: Fetch Attendance Logs Securely
-CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id INTEGER,
-    custom_user_id INTEGER,
+    id BIGINT,
+    custom_user_id BIGINT,
     check_in_time TIMESTAMP WITH TIME ZONE,
     status TEXT,
     notes TEXT,
     verification_status TEXT,
     is_verified BOOLEAN,
     reschedule_status TEXT,
-    reschedule_schedule_id INTEGER,
+    reschedule_schedule_id BIGINT,
     user_full_name TEXT,
     user_role TEXT,
     user_username TEXT,
@@ -106,10 +130,10 @@ BEGIN
 END; $$;
 
 -- 3.2: Fetch Feedback Securely
-CREATE OR REPLACE FUNCTION public.get_feedback_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_feedback_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id INTEGER,
-    custom_user_id INTEGER,
+    id BIGINT,
+    custom_user_id BIGINT,
     category TEXT,
     content TEXT,
     created_at TIMESTAMP WITH TIME ZONE,
@@ -134,9 +158,9 @@ BEGIN
 END; $$;
 
 -- 3.3: Fetch Financial Records (Staff Only)
-CREATE OR REPLACE FUNCTION public.get_financial_records_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_financial_records_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id INTEGER,
+    id BIGINT,
     title TEXT,
     amount DECIMAL,
     type TEXT,
@@ -156,12 +180,12 @@ BEGIN
 END; $$;
 
 -- 3.4: Fetch Group Members Securely
-CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id INTEGER, p_schedule_id INTEGER DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id BIGINT, p_schedule_id BIGINT DEFAULT NULL)
 RETURNS TABLE (
-    id INTEGER,
-    schedule_id INTEGER,
-    student_id INTEGER,
-    assistant_id INTEGER,
+    id BIGINT,
+    schedule_id BIGINT,
+    student_id BIGINT,
+    assistant_id BIGINT,
     student_name TEXT,
     student_nim TEXT,
     assistant_name TEXT,
@@ -195,9 +219,9 @@ BEGIN
 END; $$;
 
 -- 3.5: E-Learning Progress Securely
-CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id UUID,
+    id BIGINT,
     nim TEXT,
     lessons_completed INTEGER,
     total_lessons INTEGER,
@@ -223,9 +247,9 @@ BEGIN
 END; $$;
 
 -- 3.6: Fetch External Links Securely
-CREATE OR REPLACE FUNCTION public.get_external_links_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_external_links_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id INTEGER,
+    id BIGINT,
     title TEXT,
     url TEXT,
     is_active BOOLEAN,
@@ -240,10 +264,10 @@ BEGIN
 END; $$;
 
 -- 3.7: Fetch Group Assistants Securely
-CREATE OR REPLACE FUNCTION public.get_group_assistants_secure(p_viewer_id INTEGER, p_schedule_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_group_assistants_secure(p_viewer_id BIGINT, p_schedule_id BIGINT)
 RETURNS TABLE (
-    id INTEGER,
-    assistant_id INTEGER,
+    id BIGINT,
+    assistant_id BIGINT,
     assistant_name TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -315,9 +339,9 @@ BEGIN
 END; $$;
 
 -- 3.10: Fetch Users Securely (Staff Only)
-CREATE OR REPLACE FUNCTION public.get_users_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_users_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id INTEGER,
+    id BIGINT,
     username TEXT,
     full_name TEXT,
     phone_number TEXT,
@@ -342,23 +366,23 @@ BEGIN
 END; $$;
 
 -- 3.11: Fetch Schedule Assignments Securely
-CREATE OR REPLACE FUNCTION public.get_schedule_assignments_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_schedule_assignments_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id INTEGER,
+    id BIGINT,
     task_role TEXT,
     activity_name TEXT,
     activity_date DATE,
     status TEXT,
-    substitute_user_id INTEGER,
-    original_user_id INTEGER,
-    schedule_id INTEGER,
+    substitute_user_id BIGINT,
+    original_user_id BIGINT,
+    schedule_id BIGINT,
     schedule_title TEXT,
     schedule_day TEXT,
     schedule_start TIME,
     schedule_end TIME,
     schedule_major TEXT,
     schedule_class_code TEXT,
-    user_id INTEGER,
+    user_id BIGINT,
     user_full_name TEXT,
     original_user_full_name TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -375,7 +399,7 @@ BEGIN
 END; $$;
 
 -- 3.12: Check Menu Access Securely
-CREATE OR REPLACE FUNCTION public.check_menu_access_secure(p_viewer_id INTEGER, p_menu_key TEXT)
+CREATE OR REPLACE FUNCTION public.check_menu_access_secure(p_viewer_id BIGINT, p_menu_key TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
     v_division TEXT;
@@ -396,6 +420,7 @@ BEGIN
 END; $$;
 
 ALTER TABLE public.assistant_availability ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read availability" ON public.assistant_availability;
 CREATE POLICY "Public read availability" ON public.assistant_availability FOR SELECT TO anon USING (true);
 -- All writes must go through RPC.
 
