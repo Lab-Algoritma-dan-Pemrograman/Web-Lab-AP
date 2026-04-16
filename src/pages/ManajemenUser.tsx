@@ -12,6 +12,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,14 +168,7 @@ export default function ManajemenUser() {
     // Kita lakukan secara serial agar tidak membani database dan memastikan pembersihan benar
     for (const id of selectedIds) {
       try {
-        await Promise.all([
-          supabase.from('attendance_logs').delete().eq('custom_user_id', id),
-          supabase.from('feedback').delete().eq('custom_user_id', id),
-          supabase.from('group_members').delete().or(`student_id.eq.${id},assistant_id.eq.${id}`),
-          supabase.from('group_assistants').delete().eq('assistant_id', id),
-          supabase.from('schedule_assignments').delete().eq('user_id', id)
-        ]);
-        const { error } = await supabase.from('users').delete().eq('id', id);
+        const { error } = await supabase.rpc('admin_delete_user', { p_id: id });
         if (error) throw error;
         successCount++;
       } catch (err) {
@@ -210,10 +204,8 @@ export default function ManajemenUser() {
     setIsUpdatingShift(true);
     try {
       const { error } = await supabase
-        .from('system_settings')
-        .update({ active_shift: val })
-        .eq('id', 1); // Mengasumsikan ID 1 sesuai data yang Anda berikan
-      
+        .rpc('admin_update_system_setting', { p_active_shift: val });
+
       if (error) throw error;
       setGlobalActiveShift(val);
       toast.success(`Akses praktikan diatur ke: ${val === 'all' ? 'Semua Aktif' : val === 'none' ? 'Semua Tertutup' : 'Hanya Shift ' + val}`);
@@ -243,12 +235,12 @@ export default function ManajemenUser() {
     }
     setLoadingAccess(true);
     try {
-        // Hapus akses lama lalu insert baru
-        await supabase.from('division_access').delete().eq('division', selectedDivision);
-        if(accessList.length > 0) {
-            const inserts = accessList.map(key => ({ division: selectedDivision, menu_key: key }));
-            await supabase.from('division_access').insert(inserts);
-        }
+        // Simpan akses via RPC aman (SECURITY DEFINER, bypass RLS)
+        const { error: accessError } = await supabase.rpc('admin_save_division_access', {
+            p_division: selectedDivision,
+            p_menu_keys: accessList.length > 0 ? accessList : []
+        });
+        if (accessError) throw accessError;
         toast.success("Hak akses disimpan!");
     } catch (err: any) { toast.error(err.message); } 
     finally { setLoadingAccess(false); }
@@ -300,9 +292,21 @@ export default function ManajemenUser() {
       };
 
       if (isEdit) {
-        // Pisahkan password dari payload umum (karena update password pakai RPC)
-        const { password, ...payloadWithoutPassword } = payload;
-        const { error: updateError } = await supabase.from('users').update(payloadWithoutPassword).eq('id', formData.id);
+        // Update user via RPC aman (SECURITY DEFINER, bypass RLS)
+        const { password } = payload;
+        const { error: updateError } = await supabase.rpc('admin_update_user', {
+            p_id: formData.id,
+            p_username: payload.username,
+            p_full_name: payload.full_name,
+            p_phone_number: payload.phone_number || null,
+            p_role: payload.role,
+            p_is_active: payload.is_active,
+            p_shift: payload.shift || null,
+            p_nim: payload.nim || null,
+            p_class_code: payload.class_code || null,
+            p_division: payload.division || null,
+            p_assistant_code: payload.assistant_code || null
+        });
         if (updateError) throw updateError;
 
         // Jika isian password tidak kosong, maka update password
@@ -351,21 +355,9 @@ export default function ManajemenUser() {
     
     setLoading(true);
     try {
-        // 1. Hapus keterkaitan di tabel-tabel lain secara manual (Sequential Delete)
-        // Kita gunakan Promise.all agar lebih cepat, tetapi jika ada FK antar anak tabel, urutan penting.
-        // Di sini kita asumsikan tabel-tabel ini adalah leaf nodes yang merujuk ke 'users'.
-        
-        await Promise.all([
-            supabase.from('attendance_logs').delete().eq('custom_user_id', id),
-            supabase.from('feedback').delete().eq('custom_user_id', id),
-            supabase.from('group_members').delete().or(`student_id.eq.${id},assistant_id.eq.${id}`),
-            supabase.from('group_assistants').delete().eq('assistant_id', id),
-            supabase.from('schedule_assignments').delete().eq('user_id', id)
-        ]);
+        // Hapus user beserta seluruh data terkait via RPC aman (SECURITY DEFINER)
+        const { error } = await supabase.rpc('admin_delete_user', { p_id: id });
 
-        // 2. Akhirnya hapus user utama
-        const { error } = await supabase.from('users').delete().eq('id', id);
-        
         if (error) throw error;
 
         toast.success("User dan seluruh data terkait berhasil dihapus.");
@@ -377,6 +369,26 @@ export default function ManajemenUser() {
         });
     } finally {
         setLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (id: number, currentStatus: boolean) => {
+    // SECURE CHECK: Hanya Koordinator & Asisten yang boleh ubah status
+    if (!['koordinator', 'asisten'].includes(currentUser?.role || '')) {
+      toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mengubah status user." });
+      return;
+    }
+
+    try {
+        const { error } = await supabase
+            .rpc('admin_toggle_user_status', { p_id: id, p_is_active: !currentStatus });
+
+        if (error) throw error;
+        
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: !currentStatus } : u));
+        toast.success(`Status user berhasil ${!currentStatus ? 'diaktifkan' : 'dinonaktifkan'}.`);
+    } catch (err: any) {
+        toast.error("Gagal mengubah status: " + err.message);
     }
   };
 
@@ -650,7 +662,18 @@ export default function ManajemenUser() {
                             )}
                           </TableCell>
                           <TableCell><Badge variant={u.role==='koordinator'?'destructive':u.role==='asisten'?'default':'secondary'}>{u.role.toUpperCase()}</Badge></TableCell>
-                          <TableCell className="text-center">{u.is_active?<span className="text-green-600 text-xs font-bold">Aktif</span>:<span className="text-red-500 text-xs font-bold">Non-Aktif</span>}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center items-center gap-2">
+                                <Switch 
+                                    checked={u.is_active} 
+                                    onCheckedChange={() => handleToggleStatus(u.id, u.is_active)}
+                                    disabled={!canEdit(u) || (u.id === currentUser?.id && u.role === 'koordinator')} 
+                                />
+                                <span className={`text-[10px] font-bold uppercase w-12 ${u.is_active ? 'text-green-600' : 'text-red-500'}`}>
+                                    {u.is_active ? 'Aktif' : 'Non-Aktif'}
+                                </span>
+                            </div>
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               {canEdit(u) && <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="w-4 h-4 text-blue-500" /></Button>}
@@ -710,6 +733,17 @@ export default function ManajemenUser() {
                   </div>
                )}
               {(formData.role === 'asisten' || formData.role === 'koordinator') && <div className={`grid ${formData.role === 'asisten' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-3 bg-muted/50 rounded-md`}><div className="space-y-2"><Label>Divisi</Label><Input value={formData.division || ""} onChange={(e) => setFormData({...formData, division: e.target.value})} placeholder="Divisi" /></div>{formData.role === 'asisten' && <div className="space-y-2"><Label>Kode Asisten</Label><Input value={formData.assistant_code || ""} onChange={(e) => setFormData({...formData, assistant_code: e.target.value})} placeholder="SA" /></div>}</div>}
+              
+              <div className="flex items-center justify-between p-3 border rounded-md bg-primary/5">
+                <div className="space-y-0.5">
+                  <Label>Status Akun</Label>
+                  <p className="text-xs text-muted-foreground">Aktifkan atau nonaktifkan akses login user ini.</p>
+                </div>
+                <Switch 
+                    checked={formData.is_active} 
+                    onCheckedChange={(val) => setFormData({ ...formData, is_active: val })}
+                />
+              </div>
               
               <DialogFooter className="pt-4"><Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Batal</Button><Button type="submit" disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Simpan</Button></DialogFooter>
             </form>

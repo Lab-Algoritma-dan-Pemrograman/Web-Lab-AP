@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Clock, Plus, Trash2, CalendarCheck, Save, UploadCloud, Image as ImageIcon, Loader2, Sparkles, X, FileText, Pencil, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function KetersediaanAsisten() {
   const { user, allowedPaths } = useAuth() as any; // Cast as any if allowedPaths is not strictly typed yet
@@ -39,6 +40,7 @@ export default function KetersediaanAsisten() {
   const [detectedSlots, setDetectedSlots] = useState<any[]>([]);
   // Kami asumsikan penamaan model sesuai instruksi user
   const [selectedAiModel, setSelectedAiModel] = useState("gemini-3-flash");
+  const [selectedSlots, setSelectedSlots] = useState<any[]>([]);
 
   // ==========================================
   // INITIAL LOAD
@@ -56,7 +58,10 @@ export default function KetersediaanAsisten() {
 
   useEffect(() => {
       // Fetch slot ulang setiap kali target user berubah
-      if (targetUserId) fetchMySlots();
+      if (targetUserId) {
+          fetchMySlots();
+          setSelectedSlots([]); // Clear seleksi saat ganti user
+      }
   }, [targetUserId]);
 
   const fetchAssistantsList = async () => {
@@ -158,8 +163,46 @@ export default function KetersediaanAsisten() {
   const handleDelete = async (id: any) => {
     if(!confirm("Hapus slot waktu ini?")) return;
     const { error } = await supabase.from('assistant_availability').delete().eq('id', id);
-    if(!error) await fetchMySlots();
+    if(!error) {
+        toast.success("Berhasil menghapus jadwal");
+        await fetchMySlots();
+        setSelectedSlots(prev => prev.filter(sid => sid !== id));
+    }
     else toast.error("Gagal menghapus data");
+  };
+
+  const handleMultipleDelete = async () => {
+    if (selectedSlots.length === 0) return;
+    if (!confirm(`Hapus ${selectedSlots.length} slot waktu yang dipilih?`)) return;
+
+    setLoading(true);
+    const { error } = await supabase
+        .from('assistant_availability')
+        .delete()
+        .in('id', selectedSlots);
+
+    setLoading(false);
+    if (!error) {
+        toast.success(`${selectedSlots.length} jadwal berhasil dihapus!`);
+        setSelectedSlots([]);
+        await fetchMySlots();
+    } else {
+        toast.error("Gagal menghapus beberapa data: " + error.message);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedSlots.length === mySlots.length) {
+        setSelectedSlots([]);
+    } else {
+        setSelectedSlots(mySlots.map(s => s.id));
+    }
+  };
+
+  const toggleSelectSlot = (id: any) => {
+    setSelectedSlots(prev => 
+        prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
   };
 
   // ==========================================
@@ -277,8 +320,15 @@ export default function KetersediaanAsisten() {
           
           return mySlots.map((slot, index) => {
               if (!slot) return null;
+              const isChecked = selectedSlots.includes(slot.id);
               return (
-                  <TableRow key={slot?.id || `fallback-${index}`}>
+                  <TableRow key={slot?.id || `fallback-${index}`} className={isChecked ? "bg-blue-50/50" : ""}>
+                      <TableCell>
+                          <Checkbox 
+                              checked={isChecked}
+                              onCheckedChange={() => toggleSelectSlot(slot.id)}
+                          />
+                      </TableCell>
                       <TableCell className="font-bold">{getSafeString(slot?.day_of_week, "Tidak diketahui")}</TableCell>
                       <TableCell>
                           <Badge variant="outline" className="flex w-fit items-center gap-1 font-mono text-sm bg-gray-50">
@@ -300,7 +350,7 @@ export default function KetersediaanAsisten() {
               );
           });
       } catch (error: any) {
-          return <TableRow><TableCell colSpan={3} className="text-center py-10 text-red-500 font-bold bg-red-50">Error memuat tabel. Refresh halaman.</TableCell></TableRow>;
+          return <TableRow><TableCell colSpan={4} className="text-center py-10 text-red-500 font-bold bg-red-50">Error memuat tabel. Refresh halaman.</TableCell></TableRow>;
       }
   };
 
@@ -491,7 +541,20 @@ export default function KetersediaanAsisten() {
                 <Card className="h-full">
                     <CardHeader className="pb-3 border-b mb-2">
                         <CardTitle className="text-lg flex justify-between items-center">
-                            <span>Jadwal Free Tersimpan</span>
+                            <div className="flex items-center gap-2">
+                                <span>Jadwal Free Tersimpan</span>
+                                {selectedSlots.length > 0 && (
+                                    <Button 
+                                        variant="destructive" 
+                                        size="sm" 
+                                        className="h-7 px-2 text-xs flex items-center gap-1 animate-in fade-in slide-in-from-left-2"
+                                        onClick={handleMultipleDelete}
+                                        disabled={loading}
+                                    >
+                                        <Trash2 className="w-3 h-3"/> Hapus {selectedSlots.length}
+                                    </Button>
+                                )}
+                            </div>
                             {isCoordinator && targetUserId !== user?.id?.toString() && (
                                 <Badge className="bg-blue-100 text-blue-800 text-xs border-none">
                                     Lihat Mode Koordinator
@@ -503,6 +566,12 @@ export default function KetersediaanAsisten() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[40px]">
+                                        <Checkbox 
+                                            checked={mySlots.length > 0 && selectedSlots.length === mySlots.length}
+                                            onCheckedChange={toggleSelectAll}
+                                        />
+                                    </TableHead>
                                     <TableHead>Hari</TableHead>
                                     <TableHead>Jam Free</TableHead>
                                     <TableHead className="text-right">Aksi</TableHead>
