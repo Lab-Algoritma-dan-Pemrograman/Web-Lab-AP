@@ -37,13 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const parsedUser = JSON.parse(storedSession) as LabUser;
 
           // === SERVER-SIDE ROLE VERIFICATION ===
-          // Re-query database untuk memastikan role di localStorage
-          // belum dimanipulasi oleh user melalui DevTools.
-          const { data: dbUser, error } = await supabase
-            .from("users")
-            .select("id, username, full_name, role, nim, assistant_code, division")
-            .eq("id", parsedUser.id)
-            .maybeSingle();
+          // Re-query database menggunakan RPC yang aman agar RLS tidak dilewati.
+          const { data, error } = await supabase
+            .rpc("get_user_profile", { 
+              p_target_id: parsedUser.id 
+            });
+
+          const dbUser = Array.isArray(data) ? data[0] : data;
 
           if (error || !dbUser) {
             // User tidak ditemukan di database → session tidak valid

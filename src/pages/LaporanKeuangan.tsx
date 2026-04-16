@@ -47,7 +47,8 @@ export default function LaporanKeuangan() {
   }, [user]);
 
   const fetchRecords = async () => {
-    const { data } = await supabase.from('financial_records').select('*').order('date', { ascending: false });
+    if (!user) return;
+    const { data } = await supabase.rpc('get_financial_records_secure', { p_viewer_id: user.id });
     setRecords(data || []);
   };
 

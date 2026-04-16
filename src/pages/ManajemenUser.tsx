@@ -115,13 +115,10 @@ export default function ManajemenUser() {
 
   // 1. Fetch Users & Ambil Divisi Unik
   const fetchUsers = async () => {
+    if (!currentUser) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('role', { ascending: true })
-        .order('full_name', { ascending: true });
+      const { data, error } = await supabase.rpc('get_users_secure', { p_viewer_id: currentUser.id });
       
       if (error) throw error;
       setUsers(data as UserData[]);
@@ -166,7 +163,10 @@ export default function ManajemenUser() {
     // Kita lakukan secara serial agar tidak membani database dan memastikan pembersihan benar
     for (const id of selectedIds) {
       try {
-        const { error } = await supabase.rpc('admin_delete_user', { p_id: id });
+        const { error } = await supabase.rpc('admin_delete_user', { 
+            p_caller_id: currentUser?.id,
+            p_target_id: id 
+        });
         if (error) throw error;
         successCount++;
       } catch (err) {
@@ -293,7 +293,8 @@ export default function ManajemenUser() {
         // Update user via RPC aman (SECURITY DEFINER, bypass RLS)
         const { password } = payload;
         const { error: updateError } = await supabase.rpc('admin_update_user', {
-            p_id: formData.id,
+            p_caller_id: currentUser?.id,
+            p_target_id: formData.id,
             p_username: payload.username,
             p_full_name: payload.full_name,
             p_phone_number: payload.phone_number || null,
@@ -354,7 +355,10 @@ export default function ManajemenUser() {
     setLoading(true);
     try {
         // Hapus user beserta seluruh data terkait via RPC aman (SECURITY DEFINER)
-        const { error } = await supabase.rpc('admin_delete_user', { p_id: id });
+        const { error } = await supabase.rpc('admin_delete_user', { 
+            p_caller_id: currentUser?.id,
+            p_target_id: id 
+        });
 
         if (error) throw error;
 
@@ -379,7 +383,11 @@ export default function ManajemenUser() {
 
     try {
         const { error } = await supabase
-            .rpc('admin_toggle_user_status', { p_id: id, p_is_active: !currentStatus });
+            .rpc('admin_toggle_user_status', { 
+                p_caller_id: currentUser?.id,
+                p_target_id: id, 
+                p_is_active: !currentStatus 
+            });
 
         if (error) throw error;
         

@@ -71,30 +71,49 @@ export default function ManajemenKelas() {
 
   // --- 2. LOGIKA DETAIL KELAS ---
   const fetchGroupDetails = async (schedule: any) => {
+    if (!user) return;
     setLoading(true);
     setSelectedGroup(schedule);
 
     try {
-        const { data: assigned } = await supabase.from('group_assistants').select('id, assistant_id, users(full_name)').eq('schedule_id', schedule.id);
-        setAssignedAssistants(assigned || []);
-
-        const { data: mhs, error: errMhs } = await supabase
-          .from('group_members')
-          .select(`id, student_id, assistant_id, schedule_id, users:users!fk_student (full_name, nim), assistant:users!fk_assistant (full_name)`)
-          .eq('schedule_id', schedule.id)
-          .order('users(full_name)');
+        // 2.1 Fetch Assigned Assistants via RPC
+        const { data: assigned } = await supabase.rpc('get_group_assistants_secure', { 
+          p_viewer_id: user.id, 
+          p_schedule_id: schedule.id 
+        });
         
-        if (errMhs) console.error(errMhs);
-        setStudents(mhs || []);
+        const formattedAssigned = (assigned || []).map((a: any) => ({
+          ...a,
+          users: { full_name: a.assistant_name }
+        }));
+        setAssignedAssistants(formattedAssigned);
 
-        const { data: available } = await supabase.from('assistant_availability')
-          .select('user_id, users(full_name)')
-          .eq('day_of_week', schedule.day_of_week)
-          .lte('start_time', schedule.start_time)
-          .gte('end_time', schedule.end_time);
+        // 2.2 Fetch Students via RPC
+        const { data: mhs } = await supabase.rpc('get_group_members_secure', { 
+          p_viewer_id: user.id, 
+          p_schedule_id: schedule.id 
+        });
+        
+        const formattedStudents = (mhs || []).map((s: any) => ({
+          ...s,
+          users: { full_name: s.student_name, nim: s.student_nim },
+          assistant: { full_name: s.assistant_name }
+        }));
+        setStudents(formattedStudents);
 
-        const assignedIds = assigned?.map((a: any) => a.assistant_id) || [];
-        const cleanList = available?.filter((a: any) => !assignedIds.includes(a.user_id)) || [];
+        // 2.3 Fetch Available Assistants via RPC
+        const { data: available } = await supabase.rpc('get_assistant_availability_secure', {
+          p_viewer_id: user.id,
+          p_day: schedule.day_of_week,
+          p_start: schedule.start_time,
+          p_end: schedule.end_time
+        });
+
+        const assignedIds = formattedAssigned.map((a: any) => a.assistant_id);
+        const cleanList = (available || []).filter((a: any) => !assignedIds.includes(a.user_id)).map((a: any) => ({
+          ...a,
+          users: { full_name: a.user_full_name }
+        }));
         setAvailableAssistants(cleanList);
 
     } catch (err: any) {

@@ -118,30 +118,32 @@ export default function Absensi() {
 
   // --- FETCH DATA ---
   const fetchMyLogs = async () => {
-    if (isStaff) return;
-    const { data } = await supabase.from('attendance_logs')
-      .select('*, schedules:reschedule_schedule_id(*)')
-      .eq('custom_user_id', user?.id)
-      .order('check_in_time', { ascending: false })
-      .limit(10);
+    if (isStaff || !user) return;
+    const { data } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
     setMyLogs(data || []);
   };
 
   const fetchAttendanceData = async () => {
-    const { data } = await supabase
-      .from('attendance_logs')
-      .select(`
-        id, 
-        check_in_time, 
-        status, 
-        notes, 
-        users:custom_user_id (full_name, username, major, class_code, shift)
-      `)
-      .gte('check_in_time', `${filterDate}T00:00:00`)
-      .lte('check_in_time', `${filterDate}T23:59:59.999`)
-      .order('check_in_time', { ascending: false });
+    if (!user) return;
+    const { data } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
 
-    setAllAttendanceData(data || []);
+    // Filter by date on client side for now, or we can add p_date to RPC later
+    const filtered = (data || []).filter((log: any) => {
+      const logDate = new Date(log.check_in_time).toLocaleDateString('en-CA');
+      return logDate === filterDate;
+    });
+
+    // Map to the structure expected by the UI (nesting users)
+    const formatted = filtered.map((log: any) => ({
+      ...log,
+      users: {
+        full_name: log.user_full_name,
+        role: log.user_role,
+        // Other fields like username/major are retrieved in the RPC if we update it
+      }
+    }));
+
+    setAllAttendanceData(formatted || []);
   };
 
   const fetchSchedules = async () => {

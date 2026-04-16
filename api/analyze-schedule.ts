@@ -24,6 +24,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Server configuration error" });
   }
 
+  // Verify internal secret to prevent public abuse
+  const appSecret = process.env.APP_INTERNAL_SECRET;
+  const clientSecret = req.headers["x-app-secret"];
+
+  if (!appSecret || clientSecret !== appSecret) {
+    return res.status(401).json({ error: "Unauthorized access" });
+  }
+
   const { fileBase64, mimeType, model } = req.body || {};
 
   if (!fileBase64 || !mimeType) {

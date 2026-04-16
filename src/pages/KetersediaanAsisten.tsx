@@ -258,9 +258,13 @@ export default function KetersediaanAsisten() {
         });
 
         // Call server-side API (API key is on server, NOT in browser)
+        const secret = import.meta.env.VITE_APP_INTERNAL_SECRET;
         const res = await fetch("/api/analyze-schedule", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "X-App-Secret": secret || ""
+            },
             body: JSON.stringify({ fileBase64, mimeType: uploadFile.type, model: selectedAiModel }),
         });
 

@@ -9,7 +9,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 // --- IMPORT SEMUA HALAMAN ---
 import Login from "./pages/Login";
 import Beranda from "./pages/Beranda";
-import UploadLaporan from "./pages/UploadLaporan";
 import NotFound from "./pages/NotFound";
 import ManajemenUser from "./pages/ManajemenUser";
 import Profil from "./pages/Profil";
@@ -52,7 +51,6 @@ function AppRoutes() {
       <Route path="/beranda" element={<ProtectedRoute><Beranda /></ProtectedRoute>} />
       
       {/* PRAKTIKAN */}
-      <Route path="/upload-laporan" element={<ProtectedRoute allowedRoles={["praktikan"]}><UploadLaporan /></ProtectedRoute>} />
       <Route path="/e-learning" element={<ProtectedRoute requiredMenuKey="/e-learning"><ELearning /></ProtectedRoute>} />
 
       {/* UMUM (Semua User Login) */}

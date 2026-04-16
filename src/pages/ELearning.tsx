@@ -17,9 +17,13 @@ const ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
 // ===== JWT via Server API (Secret never reaches the browser) =====
 
 async function requestJWT(payload: { nim: string; nama: string; kelas: string }): Promise<string> {
+  const secret = import.meta.env.VITE_APP_INTERNAL_SECRET;
   const res = await fetch("/api/generate-jwt", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "X-App-Secret": secret || ""
+    },
     body: JSON.stringify(payload),
   });
 
@@ -63,23 +67,22 @@ export default function ELearning() {
 
   // ===== Fetch Progress from Supabase =====
   const fetchProgress = useCallback(async (showToast = false) => {
-    if (!userNim) return;
+    if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from("elearning_progress")
-        .select("*")
-        .eq("nim", userNim)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_elearning_progress_secure', { p_viewer_id: user.id });
 
       if (error) {
-        console.error("Supabase error:", error);
+        console.error("RPC error:", error);
         if (showToast) toast.error("Gagal sinkronisasi", { description: error.message });
         return;
       }
 
-      if (data) {
-        setProgress(data as ElearningProgress);
+      // If praktikan, it returns a single row table
+      const studentProgress = Array.isArray(data) ? data[0] : data;
+
+      if (studentProgress) {
+        setProgress(studentProgress as ElearningProgress);
         setLastSyncTime(new Date());
         if (showToast) toast.success("Data berhasil disinkronkan!");
       } else {
@@ -92,7 +95,7 @@ export default function ELearning() {
     } finally {
       setLoadingProgress(false);
     }
-  }, [userNim]);
+  }, [user]);
 
   // ===== Initial Load =====
   useEffect(() => {

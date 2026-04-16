@@ -26,10 +26,11 @@ function UserContactCard() {
   useEffect(() => {
     const fetchPhone = async () => {
       if (!user) return;
-      const { data } = await supabase.from('users').select('phone_number').eq('id', user.id).single();
-      if (data) {
-        setPhone(data.phone_number || "");
-        setNewPhone(data.phone_number || "");
+      // Use the stats RPC to get basic profile info or a specific profile RPC
+      const { data } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
+      if (data && data.user_phone) {
+        setPhone(data.user_phone || "");
+        setNewPhone(data.user_phone || "");
       }
     };
     fetchPhone();
@@ -99,26 +100,29 @@ function PraktikanDashboard() {
   const [absensi, setAbsensi] = useState<any[]>([]);
 
   useEffect(() => {
-      const fetchData = async () => {
-          if (!user) return;
+          // 1. Fetch Stats via Secure RPC
+          const { data: globalStats } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
+          
+          // 2. Fetch Recent Attendance via Secure RPC
+          const { data: attendanceData } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
+          setAbsensi((attendanceData || []).slice(0, 4));
 
-          const { data: memberData } = await supabase.from('group_members').select('schedules(*)').eq('student_id', user.id);
-          const schedules = memberData?.map((m: any) => m.schedules).filter(Boolean) || [];
+          // 3. Fetch My Groups via Secure RPC
+          const { data: memberData } = await supabase.rpc('get_group_members_secure', { p_viewer_id: user.id });
+          const schedules = (memberData || []).map((m: any) => ({
+            title: m.schedule_title,
+            day_of_week: m.schedule_day,
+            start_time: m.schedule_time,
+            end_time: m.schedule_time, // Placeholder for end time if not in RPC
+            class_code: m.schedule_class_code
+          }));
           setJadwal(schedules);
-
-          const { data: attendanceData } = await supabase.from('attendance_logs').select('*').eq('custom_user_id', user.id).order('check_in_time', { ascending: false });
-          setAbsensi(attendanceData?.slice(0, 4) || []);
-
-          let rate = 0;
-          if (attendanceData && attendanceData.length > 0) {
-              const hadir = attendanceData.filter(a => a.status === 'Hadir').length;
-              rate = Math.round((hadir / attendanceData.length) * 100);
-          }
-
-          const { count: feedbackCount } = await supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('custom_user_id', user.id);
-
-          setStats({ totalKelas: schedules.length, attendanceRate: rate, totalFeedback: feedbackCount || 0 });
-      };
+          
+          setStats({ 
+            totalKelas: globalStats?.total_kelas || 0, 
+            attendanceRate: globalStats?.attendance_rate || 0, 
+            totalFeedback: globalStats?.total_feedback || 0 
+          });
       fetchData();
   }, [user]);
 
@@ -221,28 +225,14 @@ function AsistenDashboard() {
       const fetchData = async () => {
           if (!user) return;
 
-          const { data: memberData } = await supabase.from('group_members').select('student_id').eq('assistant_id', user.id);
-          const uniqueStudents = new Set(memberData?.map(m => m.student_id)).size;
+          const { data: statsData } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
 
-          const { data: classData } = await supabase.from('group_assistants').select('schedule_id').eq('assistant_id', user.id);
-          const uniqueClasses = new Set(classData?.map(c => c.schedule_id)).size;
-
-          const { count: absenCount } = await supabase.from('attendance_logs').select('*', { count: 'exact', head: true }).eq('custom_user_id', user.id);
-
-          // UPDATE BARU: Ambil jumlah Jadwal Jaga mendatang dari tabel schedule_assignments
-          const hariIni = new Date().toISOString().split('T')[0];
-          const { count: shiftCount } = await supabase
-              .from('schedule_assignments')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .eq('status', 'aktif') // Pastikan status shiftnya aktif
-              .gte('activity_date', hariIni); // Tanggal hari ini ke depan
-
+          // Recent Activity/Summary
           setStats({ 
-              mahasiswa: uniqueStudents, 
-              kelas: uniqueClasses, 
-              absenSaya: absenCount || 0,
-              jadwalJaga: shiftCount || 0 
+              mahasiswa: statsData?.total_students_under_me || 0, 
+              kelas: statsData?.total_classes_under_me || 0, 
+              absenSaya: statsData?.my_attendance_count || 0,
+              jadwalJaga: statsData?.upcoming_shifts_count || 0 
           });
       };
       fetchData();
@@ -314,66 +304,18 @@ function KoordinatorDashboard() {
       const fetchGlobalStats = async () => {
           if (!user) return;
 
-          // 1. Metrik Pengguna Global
-          const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
-          const { count: asistenCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'asisten');
-          const { count: praktikanCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'praktikan');
-
-          // 2. Metrik Personal (Koordinator sebagai Asisten)
-          const { data: classData } = await supabase.from('group_assistants').select('schedule_id').eq('assistant_id', user.id);
-          const uniqueClasses = new Set(classData?.map(c => c.schedule_id)).size;
-          
-          const { data: memberData } = await supabase.from('group_members').select('student_id').eq('assistant_id', user.id);
-          const uniqueStudents = new Set(memberData?.map(m => m.student_id)).size;
-
-          // HITUNG JADWAL JAGA MENDATANG (Koordinator)
-          const hariIni = new Date().toISOString().split('T')[0];
-          const { count: shiftCount } = await supabase
-              .from('schedule_assignments')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .ilike('status', '%aktif%') // Asumsi jadwal berjalan statusnya aktif
-              .gte('activity_date', hariIni);
-
-          // 3. Total Kritik & Saran
-          const { count: fbCount } = await supabase.from('feedback').select('*', { count: 'exact', head: true });
-
-          // 4. Hitung Absensi PRAKTIKAN Menunggu Validasi (Izin & Jadwal Pengganti)
-          const { data: absenData } = await supabase
-              .from('attendance_logs')
-              .select(`verification_status, reschedule_status, status, users!inner(role)`)
-              .eq('users.role', 'praktikan')
-              .neq('status', 'Hadir'); 
-          
-          let pendingPraktikan = 0;
-          if (absenData) {
-              absenData.forEach((log: any) => {
-                  const vStatus = log.verification_status?.toLowerCase() || '';
-                  const rStatus = log.reschedule_status?.toLowerCase() || '';
-                  
-                  // Hitung jika ada izin pending ATAU jadwal pengganti pending
-                  if (vStatus === 'pending' || rStatus === 'pending') {
-                      pendingPraktikan++;
-                  }
-              });
-          }
-
-          // 5. Hitung Permintaan IZIN/TUKAR JAGA ASISTEN
-          const { count: izinPendingCount } = await supabase
-              .from('schedule_assignments')
-              .select('*', { count: 'exact', head: true })
-              .in('status', ['mencari_pengganti','menunggu_persetujuan']);
+          const { data: statsData } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
 
           setStats({ 
-              totalUsers: usersCount || 0, 
-              totalAsisten: asistenCount || 0, 
-              totalPraktikan: praktikanCount || 0, 
-              totalFeedback: fbCount || 0,
-              kelasBimbingan: uniqueClasses,
-              praktikanBimbingan: uniqueStudents,
-              jadwalJaga: shiftCount || 0, // <--- MASUKKAN DATANYA KE SINI
-              pendingAbsenPraktikan: pendingPraktikan,
-              pendingIzinAsisten: izinPendingCount || 0
+              totalUsers: statsData?.total_users || 0, 
+              totalAsisten: statsData?.total_assistants || 0, 
+              totalPraktikan: statsData?.total_students || 0, 
+              totalFeedback: statsData?.total_feedback || 0,
+              kelasBimbingan: statsData?.total_classes_under_me || 0,
+              praktikanBimbingan: statsData?.total_students_under_me || 0,
+              jadwalJaga: statsData?.upcoming_shifts_count || 0,
+              pendingAbsenPraktikan: statsData?.pending_attendance || 0,
+              pendingIzinAsisten: statsData?.pending_assistant_requests || 0
           });
       };
       

@@ -55,29 +55,22 @@ export default function KritikSaran() {
   const fetchData = async () => {
     if (!user) return;
 
-    // 1. Fetch Feedback
-    let queryFb = supabase
-      .from('feedback')
-      .select('*, users:custom_user_id(full_name, role, username)')
-      .order('created_at', { ascending: false });
-
-    if (user.role === 'praktikan') {
-        queryFb = queryFb.eq('custom_user_id', user.id);
-    } 
-    const { data: fbData } = await queryFb;
-    setFeedbacks(fbData || []);
-
-    // 2. Fetch External Links (Asumsi tabel 'external_links' sudah ada di Supabase)
-    const { data: linkData } = await supabase
-        .from('external_links')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+    // 1. Fetch Feedback via Secure RPC
+    const { data: fbData } = await supabase.rpc('get_feedback_secure', { p_viewer_id: user.id });
     
-    // Jika terjadi error karena tabel belum ada, kita tangkap agar tidak merusak halaman
-    if (linkData) {
-        setExternalLinks(linkData);
-    }
+    // Map flattened result back to the structure expected by the UI
+    const formattedFb = (fbData || []).map((fb: any) => ({
+        ...fb,
+        users: {
+            full_name: fb.user_full_name,
+            username: fb.user_username
+        }
+    }));
+    setFeedbacks(formattedFb);
+
+    // 2. Fetch External Links via Secure RPC
+    const { data: linkData } = await supabase.rpc('get_external_links_secure', { p_viewer_id: user.id });
+    setExternalLinks(linkData || []);
   };
 
   useEffect(() => {

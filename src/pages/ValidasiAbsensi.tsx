@@ -23,29 +23,42 @@ export default function ValidasiAbsensi() {
   };
 
   const fetchData = async () => {
+    if (!user) return;
     setLoading(true);
+
+    const { data } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
     
-    // 1. Ambil PENDING (Menunggu Validasi Izin Awal)
-    const { data: pending } = await supabase
-      .from('attendance_logs')
-      .select('*, users:custom_user_id(full_name, role, phone_number)')
-      .eq('verification_status', 'pending') 
-      .eq('users.role', 'praktikan')
-      .neq('status', 'Hadir') // Abaikan yang sudah Hadir
-      .order('check_in_time', { ascending: false });
+    // Map to structure expected by UI
+    const formatted = (data || []).map((log: any) => ({
+      ...log,
+      users: {
+        full_name: log.user_full_name,
+        role: log.user_role,
+        phone_number: log.user_phone_number
+      },
+      schedules: log.reschedule_schedule_id ? {
+        id: log.reschedule_schedule_id,
+        title: log.schedule_title,
+        day_of_week: log.schedule_day,
+        start_time: log.schedule_time
+      } : null
+    }));
 
-    // 2. Ambil RIWAYAT (Izin sudah Approved/Rejected)
-    const { data: history } = await supabase
-      .from('attendance_logs')
-      .select('*, users:custom_user_id(full_name, role, phone_number), schedules:reschedule_schedule_id(*)')
-      .in('verification_status', ['approved', 'rejected']) 
-      .eq('users.role', 'praktikan')
-      .neq('status', 'Hadir') // Abaikan yang sudah Hadir
-      .order('check_in_time', { ascending: false })
-      .limit(20);
+    // Filter into Pending and History
+    const pending = formatted.filter((l: any) => 
+      l.verification_status === 'pending' && 
+      l.user_role === 'praktikan' && 
+      l.status !== 'Hadir'
+    );
 
-    setPendingLogs(pending || []);
-    setHistoryLogs(history || []);
+    const history = formatted.filter((l: any) => 
+      ['approved', 'rejected'].includes(l.verification_status) && 
+      l.user_role === 'praktikan' && 
+      l.status !== 'Hadir'
+    ).slice(0, 20);
+
+    setPendingLogs(pending);
+    setHistoryLogs(history);
     setLoading(false);
   };
 
