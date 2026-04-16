@@ -30,7 +30,6 @@ const RESTRICTED_MENUS = [
   "/laporan-keuangan",
   "/penunjang-praktikum",
   "/e-learning",
-  "/buat-qr",
   "/ketersediaan"
 ];
 
@@ -118,6 +117,8 @@ export function AppSidebar() {
     if (user.role === 'koordinator') return true;
     if (user.role === 'praktikan') return true;
     if (user.role === 'asisten') {
+        // /absensi & /buat-qr selalu tampil untuk semua asisten
+        if (item.url === '/absensi' || item.url === '/buat-qr') return true;
         if (item.url === '/absensi' && isPJAbsenToday) return true;
         if (RESTRICTED_MENUS.includes(item.url)) return allowedPaths.includes(item.url);
         return true; 
