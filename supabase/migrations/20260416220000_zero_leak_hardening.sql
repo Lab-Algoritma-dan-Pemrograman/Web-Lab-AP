@@ -7,14 +7,14 @@
 -- STEP 1: HELPER FUNCTIONS (RE-VERIFY)
 -- ==========================================
 
--- Ensure is_admin and is_asisten exist and are secure
-CREATE OR REPLACE FUNCTION public.is_admin(p_user_id INTEGER)
+-- Ensure is_admin and is_staff exist and are secure
+CREATE OR REPLACE FUNCTION public.is_admin(p_user_id BIGINT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     RETURN EXISTS (SELECT 1 FROM public.users WHERE id = p_user_id AND role = 'koordinator' AND is_active = true);
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.is_staff(p_user_id INTEGER)
+CREATE OR REPLACE FUNCTION public.is_staff(p_user_id BIGINT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     RETURN EXISTS (SELECT 1 FROM public.users WHERE id = p_user_id AND role IN ('asisten', 'koordinator', 'sekretaris', 'k3') AND is_active = true);
@@ -92,7 +92,7 @@ RETURNS TABLE (
     verification_status TEXT,
     is_verified BOOLEAN,
     reschedule_status TEXT,
-    reschedule_schedule_id BIGINT,
+    reschedule_schedule_id UUID,
     user_full_name TEXT,
     user_role TEXT,
     user_username TEXT,
@@ -180,10 +180,10 @@ BEGIN
 END; $$;
 
 -- 3.4: Fetch Group Members Securely
-CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id BIGINT, p_schedule_id BIGINT DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id BIGINT, p_schedule_id UUID DEFAULT NULL)
 RETURNS TABLE (
     id BIGINT,
-    schedule_id BIGINT,
+    schedule_id UUID,
     student_id BIGINT,
     assistant_id BIGINT,
     student_name TEXT,
@@ -221,7 +221,7 @@ END; $$;
 -- 3.5: E-Learning Progress Securely
 CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id BIGINT,
+    id UUID,
     nim TEXT,
     lessons_completed INTEGER,
     total_lessons INTEGER,
@@ -264,7 +264,7 @@ BEGIN
 END; $$;
 
 -- 3.7: Fetch Group Assistants Securely
-CREATE OR REPLACE FUNCTION public.get_group_assistants_secure(p_viewer_id BIGINT, p_schedule_id BIGINT)
+CREATE OR REPLACE FUNCTION public.get_group_assistants_secure(p_viewer_id BIGINT, p_schedule_id UUID)
 RETURNS TABLE (
     id BIGINT,
     assistant_id BIGINT,
@@ -283,9 +283,9 @@ BEGIN
 END; $$;
 
 -- 3.8: Fetch Assistant Availability Securely
-CREATE OR REPLACE FUNCTION public.get_assistant_availability_secure(p_viewer_id INTEGER, p_day TEXT, p_start TIME, p_end TIME)
+CREATE OR REPLACE FUNCTION public.get_assistant_availability_secure(p_viewer_id BIGINT, p_day TEXT, p_start TIME, p_end TIME)
 RETURNS TABLE (
-    user_id INTEGER,
+    user_id BIGINT,
     user_full_name TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -303,7 +303,7 @@ BEGIN
 END; $$;
 
 -- 3.9: Fetch Dashboard Stats Securely
-CREATE OR REPLACE FUNCTION public.get_dashboard_stats_secure(p_viewer_id INTEGER)
+CREATE OR REPLACE FUNCTION public.get_dashboard_stats_secure(p_viewer_id BIGINT)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
     v_stats JSONB;
@@ -375,7 +375,7 @@ RETURNS TABLE (
     status TEXT,
     substitute_user_id BIGINT,
     original_user_id BIGINT,
-    schedule_id BIGINT,
+    schedule_id UUID,
     schedule_title TEXT,
     schedule_day TEXT,
     schedule_start TIME,
@@ -417,6 +417,92 @@ BEGIN
     ) INTO v_has_access;
     
     RETURN v_has_access;
+END; $$;
+
+-- 4.0: Fetch User Profile Securely
+CREATE OR REPLACE FUNCTION public.get_user_profile(p_target_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    username TEXT,
+    full_name TEXT,
+    role TEXT,
+    nim TEXT,
+    assistant_code TEXT,
+    division TEXT,
+    is_active BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT u.id, u.username, u.full_name, u.role, u.nim, u.assistant_code, u.division, u.is_active
+    FROM public.users u
+    WHERE u.id = p_target_id;
+END; $$;
+
+-- 4.1: Administrative Update User
+CREATE OR REPLACE FUNCTION public.admin_update_user(
+    p_caller_id     BIGINT,
+    p_target_id     BIGINT,
+    p_username      TEXT,
+    p_full_name     TEXT,
+    p_phone_number  TEXT,
+    p_role          TEXT,
+    p_is_active     BOOLEAN,
+    p_shift         TEXT,
+    p_nim           TEXT,
+    p_class_code    TEXT,
+    p_division      TEXT,
+    p_assistant_code TEXT
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_admin(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    UPDATE public.users SET
+        username         = p_username,
+        full_name        = p_full_name,
+        phone_number     = p_phone_number,
+        role             = p_role,
+        is_active        = p_is_active,
+        shift            = p_shift,
+        nim              = p_nim,
+        class_code       = p_class_code,
+        division         = p_division,
+        assistant_code   = p_assistant_code
+    WHERE id = p_target_id;
+END; $$;
+
+-- 4.2: Administrative Delete User
+CREATE OR REPLACE FUNCTION public.admin_delete_user(
+    p_caller_id BIGINT,
+    p_target_id BIGINT
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_admin(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    DELETE FROM public.attendance_logs     WHERE custom_user_id = p_target_id;
+    DELETE FROM public.feedback            WHERE custom_user_id = p_target_id;
+    DELETE FROM public.group_members       WHERE student_id = p_target_id OR assistant_id = p_target_id;
+    DELETE FROM public.group_assistants    WHERE assistant_id = p_target_id;
+    DELETE FROM public.schedule_assignments WHERE user_id = p_target_id;
+    DELETE FROM public.assistant_availability WHERE user_id = p_target_id;
+    DELETE FROM public.elearning_progress  WHERE nim = (SELECT username FROM public.users WHERE id = p_target_id);
+    DELETE FROM public.users WHERE id = p_target_id;
+END; $$;
+
+-- 4.3: Administrative Toggle User Status
+CREATE OR REPLACE FUNCTION public.admin_toggle_user_status(
+    p_caller_id BIGINT,
+    p_target_id BIGINT,
+    p_is_active BOOLEAN
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_admin(p_caller_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+    UPDATE public.users SET is_active = p_is_active WHERE id = p_target_id;
 END; $$;
 
 ALTER TABLE public.assistant_availability ENABLE ROW LEVEL SECURITY;
