@@ -16,21 +16,21 @@ const ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
 
 // ===== JWT via Server API (Secret never reaches the browser) =====
 
-async function requestJWT(payload: { nim: string; nama: string; kelas: string }): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+async function requestJWT(userId: number): Promise<string> {
+  // 1. Get Secure Handshake from Database
+  const { data: handshakeCode, error: rpcError } = await supabase.rpc('get_elearning_handshake_secure', { 
+    p_viewer_id: userId 
+  });
 
-  if (!token) {
-    throw new Error("Sesi tidak valid. Harap login kembali.");
+  if (rpcError || !handshakeCode) {
+    throw new Error("Gagal melakukan verifikasi keamanan. Harap coba lagi.");
   }
 
+  // 2. Exchange Handshake for JWT via Backend API
   const res = await fetch("/api/generate-jwt", {
     method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ handshake_code: handshakeCode }),
   });
 
   if (!res.ok) {
@@ -163,11 +163,7 @@ export default function ELearning() {
 
     setIsLoading(true);
     try {
-      const token = await requestJWT({
-        nim: userNim,
-        nama: user.full_name,
-        kelas: "",
-      });
+      const token = await requestJWT(user.id);
 
       const url = `${ELEARNING_URL}?token=${token}`;
       window.open(url, "_blank");

@@ -63,43 +63,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Read secret from server-side env (NOT VITE_ prefixed)
   const secret = process.env.JWT_SECRET;
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!secret || !supabaseUrl || !supabaseAnonKey) {
-    console.error("Missing critical environment variables (JWT_SECRET, SUPABASE_URL, etc)");
+  if (!secret || !supabaseUrl || !supabaseServiceKey) {
+    console.error("Missing critical environment variables (JWT_SECRET, SUPABASE_SERVICE_ROLE_KEY, etc)");
     return res.status(500).json({ error: "Server configuration error" });
   }
 
-  // 1. Get Token from Authorization Header
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing or invalid authorization header" });
+  const { handshake_code } = req.body || {};
+
+  if (!handshake_code) {
+    return res.status(401).json({ error: "Missing handshake code" });
   }
-  const token = authHeader.split(" ")[1];
 
   try {
-    // 2. Verify with Supabase
     const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const supabaseServer = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // 1. Verify Handshake
+    const { data: handshake, error: handshakeError } = await supabaseServer
+      .from("sso_handshakes")
+      .select("user_id, users(nim, full_name)")
+      .eq("code", handshake_code)
+      .gt("expires_at", new Date().toISOString())
+      .single();
 
-    if (authError || !user) {
-      console.warn("Unauthorized JWT request: Invalid Supabase session");
-      return res.status(401).json({ error: "Session invalid or expired" });
+    if (handshakeError || !handshake) {
+      console.warn("Invalid or expired handshake:", handshake_code);
+      return res.status(401).json({ error: "Sesi verifikasi kadaluarsa. Harap coba lagi." });
     }
 
-    const { nim, nama, kelas } = req.body || {};
+    // 2. Consume Handshake (Delete so it can't be reused)
+    await supabaseServer.from("sso_handshakes").delete().eq("code", handshake_code);
 
-    if (!nim || !nama) {
-      return res.status(400).json({ error: "nim and nama are required" });
-    }
+    const userData: any = handshake.users;
+    const nim = userData.nim;
+    const nama = userData.full_name;
 
     // 3. Generate SSO Token
     const jwt = await signJWT({ 
         nim, 
         nama, 
-        kelas: kelas || "",
-        auth_id: user.id // For extra tracing
+        kelas: "", // Filled if needed
+        auth_id: handshake.user_id 
     }, secret);
     
     return res.status(200).json({ token: jwt });
