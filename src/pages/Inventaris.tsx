@@ -30,7 +30,7 @@ export default function Inventaris() {
     if (!user) return;
     const { error } = await supabase.rpc('upsert_inventory_item_secure', {
         p_caller_id: user.id,
-        p_id: form.id || 0,
+        p_id: form.id?.toString() || "0",
         p_name: form.name,
         p_condition: form.condition,
         p_quantity: parseInt(form.quantity),
@@ -41,12 +41,12 @@ export default function Inventaris() {
     else { toast.success("Berhasil disimpan"); setIsOpen(false); fetchItems(); }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (!user) return;
     if(confirm("Hapus barang ini?")) {
         const { error } = await supabase.rpc('delete_inventory_item_secure', {
             p_caller_id: user.id,
-            p_id: id
+            p_id: id.toString()
         });
         if (error) toast.error("Gagal menghapus: " + error.message);
         else { toast.success("Barang dihapus"); fetchItems(); }
