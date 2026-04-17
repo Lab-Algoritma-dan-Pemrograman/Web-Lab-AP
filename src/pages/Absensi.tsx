@@ -112,7 +112,19 @@ export default function Absensi() {
         p_viewer_id: user.id,
         p_date_filter: filterDate || null 
     });
-    setMyLogs(data || []);
+    
+    // Map to include nested schedules for "Riwayat & Status Pengajuan Saya"
+    const formatted = (data || []).map((log: any) => ({
+      ...log,
+      schedules: log.reschedule_schedule_id ? {
+        id: log.reschedule_schedule_id,
+        title: log.schedule_title,
+        day_of_week: log.schedule_day,
+        start_time: log.schedule_time
+      } : null
+    }));
+    
+    setMyLogs(formatted || []);
   };
 
   const fetchAttendanceData = async () => {
@@ -122,7 +134,7 @@ export default function Absensi() {
         p_date_filter: filterDate || null
     });
 
-    // Map to the structure expected by the UI (nesting users)
+    // Map to the structure expected by the UI (nesting users and schedules)
     const formatted = (data || []).map((log: any) => ({
       ...log,
       users: {
@@ -132,7 +144,13 @@ export default function Absensi() {
         major: log.user_major,
         class_code: log.user_class_code,
         shift: log.user_shift
-      }
+      },
+      schedules: log.reschedule_schedule_id ? {
+        id: log.reschedule_schedule_id,
+        title: log.schedule_title,
+        day_of_week: log.schedule_day,
+        start_time: log.schedule_time
+      } : null
     }));
 
     setAllAttendanceData(formatted || []);
