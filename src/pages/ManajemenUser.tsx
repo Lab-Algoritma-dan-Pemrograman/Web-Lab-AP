@@ -493,7 +493,7 @@ export default function ManajemenUser() {
 
   // Dialog Helpers
   const openAdd = () => { setFormData(DEFAULT_FORM); setIsEdit(false); setShowPassword(false); setIsOpen(true); };
-  const openEdit = (user: UserData) => { setFormData({ ...user }); setIsEdit(true); setShowPassword(false); setIsOpen(true); };
+  const openEdit = (user: UserData) => { setFormData({ ...user, password: "" }); setIsEdit(true); setShowPassword(false); setIsOpen(true); };
   const canEdit = (target: UserData) => {
     if (!currentUser) return false;
     if (currentUser.role === 'koordinator') return true;
@@ -730,7 +730,21 @@ export default function ManajemenUser() {
                 </div>
               </div>
 
-              <div className="space-y-2"><Label>Password</Label><div className="relative"><Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Masukkan password" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+              <div className="space-y-2">
+                <Label>Password {isEdit && <span className="text-[10px] text-muted-foreground font-normal italic">(Kosongkan jika tidak ingin ganti)</span>}</Label>
+                <div className="relative">
+                  <Input 
+                    type={showPassword ? "text" : "password"} 
+                    value={formData.password} 
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+                    placeholder={isEdit ? "Masukkan password baru" : "Masukkan password"} 
+                    required={!isEdit} 
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
               {formData.role === 'praktikan' && (
                 <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-md">
