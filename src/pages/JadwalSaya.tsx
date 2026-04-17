@@ -237,7 +237,7 @@ export default function JadwalSaya() {
                   const greeting = getGreeting();
                   const honorific = getHonorific();
                   
-                  let chatText = `Selamat ${greeting} ${honorific} ${item.assistant?.full_name}, saya ${user?.full_name} dengan NIM ${user?.username} dari jurusan ${item.schedule?.major} kelas ${item.schedule?.class_code}.`;
+                  let chatText = `Selamat ${greeting} ${honorific} ${item.assistant?.full_name}, Mohon maaf mengganggu waktunya. Saya ${user?.full_name} dengan NIM ${user?.username} dari jurusan ${item.schedule?.major} kelas ${item.schedule?.class_code}.`;
                   
                   if (waTemplates?.chat_asisten) {
                     chatText = waTemplates.chat_asisten

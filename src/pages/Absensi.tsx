@@ -286,7 +286,7 @@ export default function Absensi() {
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
     
     // Default fallback text
-    let text = `Selamat ${getGreeting()} ${getHonorific(adminCode)}, saya ${user?.full_name} (${user?.username}) ingin mengirimkan bukti izin: ${type} - ${notes}`;
+    let text = `Selamat ${getGreeting()} ${getHonorific(adminCode)}, Mohon maaf mengganggu waktunya. Saya ${user?.full_name} (${user?.username}) ingin mengirimkan bukti izin: ${type} - ${notes}`;
     
     if (waTemplates?.absen_izin) {
         text = waTemplates.absen_izin
