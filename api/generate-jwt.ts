@@ -83,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 1. Verify Handshake
     const { data: handshake, error: handshakeError } = await supabaseServer
       .from("sso_handshakes")
-      .select("user_id, users(nim, full_name)")
+      .select("user_id, users!inner(nim, username, full_name)")
       .eq("code", handshake_code)
       .gt("expires_at", new Date().toISOString())
       .single();
@@ -97,15 +97,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await supabaseServer.from("sso_handshakes").delete().eq("code", handshake_code);
 
     const userData: any = handshake.users;
-    const nim = userData.nim;
-    const nama = userData.full_name;
+    const finalNim = userData.nim || userData.username; // Use username as fallback for NIM
+    const finalNama = userData.full_name;
 
-    // 3. Generate SSO Token
+    if (!finalNim || !finalNama) {
+      return res.status(400).json({ error: "Data pengguna tidak lengkap di database" });
+    }
+
+    // 3. Generate SSO Token (STRICT ALIGNMENT)
+    // Only include original fields to avoid confusing the destination platform
     const jwt = await signJWT({ 
-        nim, 
-        nama, 
-        kelas: "", // Filled if needed
-        auth_id: handshake.user_id 
+        nim: finalNim, 
+        nama: finalNama, 
+        kelas: "" 
     }, secret);
     
     return res.status(200).json({ token: jwt });
