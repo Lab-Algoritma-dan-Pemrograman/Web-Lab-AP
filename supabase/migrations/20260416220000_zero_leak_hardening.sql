@@ -456,10 +456,6 @@ BEGIN
     END IF;
 END; $$;
 
-    ORDER BY sa.activity_date ASC;
-END; $$;
-*/
-
 -- 3.12: Check Menu Access Securely
 DROP FUNCTION IF EXISTS public.check_menu_access_secure(INTEGER, TEXT);
 DROP FUNCTION IF EXISTS public.check_menu_access_secure(BIGINT, TEXT);
