@@ -17,12 +17,18 @@ const ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
 // ===== JWT via Server API (Secret never reaches the browser) =====
 
 async function requestJWT(payload: { nim: string; nama: string; kelas: string }): Promise<string> {
-  const secret = import.meta.env.VITE_APP_INTERNAL_SECRET;
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  if (!token) {
+    throw new Error("Sesi tidak valid. Harap login kembali.");
+  }
+
   const res = await fetch("/api/generate-jwt", {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
-      "X-App-Secret": secret || ""
+      "Authorization": `Bearer ${token}`
     },
     body: JSON.stringify(payload),
   });

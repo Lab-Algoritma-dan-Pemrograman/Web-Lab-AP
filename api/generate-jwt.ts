@@ -62,31 +62,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Read secret from server-side env (NOT VITE_ prefixed)
   const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    console.error("JWT_SECRET is not set in environment variables");
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+
+  if (!secret || !supabaseUrl || !supabaseAnonKey) {
+    console.error("Missing critical environment variables (JWT_SECRET, SUPABASE_URL, etc)");
     return res.status(500).json({ error: "Server configuration error" });
   }
 
-  // Verify internal secret to prevent public abuse
-  const appSecret = process.env.APP_INTERNAL_SECRET || process.env.VITE_APP_INTERNAL_SECRET;
-  const clientSecret = req.headers["x-app-secret"];
-
-  if (!appSecret || clientSecret !== appSecret) {
-    console.warn("Unauthorized JWT request: Secret mismatch or missing");
-    return res.status(401).json({ error: "Unauthorized access" });
+  // 1. Get Token from Authorization Header
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing or invalid authorization header" });
   }
-
-  const { nim, nama, kelas } = req.body || {};
-
-  if (!nim || !nama) {
-    return res.status(400).json({ error: "nim and nama are required" });
-  }
+  const token = authHeader.split(" ")[1];
 
   try {
-    const token = await signJWT({ nim, nama, kelas: kelas || "" }, secret);
-    return res.status(200).json({ token });
+    // 2. Verify with Supabase
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      console.warn("Unauthorized JWT request: Invalid Supabase session");
+      return res.status(401).json({ error: "Session invalid or expired" });
+    }
+
+    const { nim, nama, kelas } = req.body || {};
+
+    if (!nim || !nama) {
+      return res.status(400).json({ error: "nim and nama are required" });
+    }
+
+    // 3. Generate SSO Token
+    const jwt = await signJWT({ 
+        nim, 
+        nama, 
+        kelas: kelas || "",
+        auth_id: user.id // For extra tracing
+    }, secret);
+    
+    return res.status(200).json({ token: jwt });
   } catch (err: any) {
     console.error("JWT generation failed:", err);
-    return res.status(500).json({ error: "Failed to generate token" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
