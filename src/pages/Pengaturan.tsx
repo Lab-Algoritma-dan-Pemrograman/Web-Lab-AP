@@ -18,11 +18,12 @@ export default function Pengaturan() {
 
   useEffect(() => {
     const fetch = async () => {
-        const { data } = await supabase.from('system_settings').select('*').single();
-        if (data) setSettings(data);
+        if (!user) return;
+        const { data } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
+        if (data && data.length > 0) setSettings(data[0]);
     };
     fetch();
-  }, []);
+  }, [user]);
 
   const handleSave = async () => {
     // SECURE CHECK
@@ -32,13 +33,14 @@ export default function Pengaturan() {
     }
 
     setLoading(true);
-    const { error } = await supabase.from('system_settings').update({
-        semester_active: settings.semester_active,
-        announcement: settings.announcement,
-        is_recruitment_open: settings.is_recruitment_open
-    }).eq('id', settings.id);
+    const { error } = await supabase.rpc('admin_update_global_settings_secure', {
+        p_caller_id: user.id,
+        p_semester_active: settings.semester_active,
+        p_announcement: settings.announcement,
+        p_is_recruitment_open: settings.is_recruitment_open
+    });
 
-    if (error) toast.error("Gagal menyimpan pengaturan");
+    if (error) toast.error("Gagal menyimpan pengaturan: " + error.message);
     else toast.success("Pengaturan diperbarui!");
     setLoading(false);
   };

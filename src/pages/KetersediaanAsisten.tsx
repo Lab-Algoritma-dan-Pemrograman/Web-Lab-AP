@@ -65,8 +65,9 @@ export default function KetersediaanAsisten() {
   }, [targetUserId]);
 
   const fetchAssistantsList = async () => {
-      const { data } = await supabase.from('users').select('id, full_name').in('role', ['asisten', 'koordinator']);
-      setAssistantsList(data || []);
+      const { data } = await supabase.rpc('get_users_secure', { p_viewer_id: user.id });
+      const assistOnly = (data || []).filter((u: any) => ['asisten', 'koordinator'].includes(u.role));
+      setAssistantsList(assistOnly || []);
   };
 
   // ==========================================
@@ -85,10 +86,10 @@ export default function KetersediaanAsisten() {
   const fetchMySlots = async () => {
     try {
         if(!targetUserId) return;
-        const { data, error } = await supabase
-          .from('assistant_availability')
-          .select('*')
-          .eq('user_id', parseInt(targetUserId));
+        const { data, error } = await supabase.rpc('get_all_availability_for_user_secure', { 
+            p_viewer_id: user.id, 
+            p_target_user_id: parseInt(targetUserId)
+        });
         
         if (error) {
             console.error("Error Fetch DB:", error);

@@ -35,33 +35,20 @@ export default function ManajemenKelas() {
 
   // --- CEK HAK AKSES ---
   const checkAccess = async () => {
-      if (user?.role === 'koordinator') { 
-          setHasEditAccess(true); 
-          return; 
-      }
-      if (user?.division) {
-          const { data } = await supabase
-              .from('division_access')
-              .select('*')
-              .eq('division', user.division)
-              .eq('menu_key', '/manajemen-kelas');
-              
-          if (data && data.length > 0) {
-              setHasEditAccess(true);
-          }
-      }
+      if (!user) return;
+      const { data, error } = await supabase.rpc('check_menu_access_secure', { 
+          p_viewer_id: user.id, 
+          p_menu_key: '/manajemen-kelas' 
+      });
+      if (!error && data) setHasEditAccess(true);
   };
 
   // --- 1. FETCH DATA DARI JADWAL ---
   const fetchGroups = async () => {
-    const { data } = await supabase
-        .from('schedules')
-        .select('*')
-        .eq('status', 'approved')
-        .eq('type', 'praktikum') 
-        .order('day_of_week');
-    
-    setSchedules(data || []);
+    if (!user) return;
+    const { data } = await supabase.rpc('get_schedules_secure', { p_viewer_id: user.id });
+    const praktikumOnly = (data || []).filter((s: any) => s.type === 'praktikum' && s.status === 'approved');
+    setSchedules(praktikumOnly);
   };
 
   useEffect(() => { 
@@ -125,34 +112,24 @@ export default function ManajemenKelas() {
 
   // --- 3. SYNC MAHASISWA OTOMATIS ---
   const handleSyncStudents = async () => {
-    if(!selectedGroup) return;
+    if(!selectedGroup || !user) return;
     
-    // SECURE CHECK
     if (!hasEditAccess) {
-        toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mensinkronisasi mahasiswa." });
+        toast.error("Akses Ditolak");
         return;
     }
 
     setLoading(true);
-
     try {
-        const { data: candidates } = await supabase
-            .from('users')
-            .select('id')
-            .eq('role', 'praktikan')
-            .eq('major', selectedGroup.major)
-            .eq('class_code', selectedGroup.class_code);
-
-        if (!candidates || candidates.length === 0) {
-            toast.error(`Tidak ditemukan praktikan jurusan "${selectedGroup.major}" Kelas ${selectedGroup.class_code}.`);
-            setLoading(false); return;
-        }
-
-        const payload = candidates.map(c => ({ schedule_id: selectedGroup.id, student_id: c.id }));
-        const { error } = await supabase.from('group_members').upsert(payload, { onConflict: 'schedule_id, student_id', ignoreDuplicates: true });
+        const { error } = await supabase.rpc('sync_students_to_group_secure', { 
+            p_caller_id: user.id,
+            p_schedule_id: selectedGroup.id,
+            p_major: selectedGroup.major,
+            p_class_code: selectedGroup.class_code
+        });
 
         if (error) throw error;
-        toast.success(`Berhasil sync ${candidates.length} mahasiswa!`);
+        toast.success(`Proses sinkronisasi praktikan selesai!`);
         fetchGroupDetails(selectedGroup); 
 
     } catch (err: any) { toast.error("Gagal sync: " + err.message); } finally { setLoading(false); }
@@ -163,9 +140,8 @@ export default function ManajemenKelas() {
     if (assignedAssistants.length === 0) return toast.error("Masukkan tim asisten dulu!");
     if (students.length === 0) return toast.error("Sync data mahasiswa dulu!");
 
-    // SECURE CHECK
     if (!hasEditAccess) {
-        toast.error("Akses Ditolak", { description: "Hanya Koordinator atau divisi berwenang yang dapat membagi rata." });
+        toast.error("Akses Ditolak");
         return;
     }
 
@@ -177,27 +153,24 @@ export default function ManajemenKelas() {
         if (distributionMode === "selang-seling") {
             updates = students.map((s, index) => ({
                 id: s.id, 
-                schedule_id: selectedGroup.id,
-                student_id: s.student_id,
                 assistant_id: assistantIds[index % assistantIds.length]
             }));
         } else {
-            // Berurutan (Kelompok)
             const groupSize = Math.ceil(students.length / assistantIds.length);
             updates = students.map((s, index) => {
                 const asstIndex = Math.floor(index / groupSize);
-                // Fallback to last assistant if index exceeds due to ceiling
                 const safeAsstIndex = Math.min(asstIndex, assistantIds.length - 1);
                 return {
                     id: s.id, 
-                    schedule_id: selectedGroup.id,
-                    student_id: s.student_id,
                     assistant_id: assistantIds[safeAsstIndex]
                 };
             });
         }
 
-        const { error } = await supabase.from('group_members').upsert(updates);
+        const { error } = await supabase.rpc('update_group_members_batch_secure', {
+            p_caller_id: user?.id,
+            p_updates: updates
+        });
         if (error) throw error;
 
         toast.success("Mahasiswa berhasil dibagi rata!");
@@ -209,7 +182,6 @@ export default function ManajemenKelas() {
   const handleResetPlotting = async () => {
     if(!confirm("Yakin ingin menghapus semua pembagian asisten? Data mahasiswa tidak akan hilang.")) return;
     
-    // SECURE CHECK
     if (!hasEditAccess) {
         toast.error("Akses Ditolak");
         return;
@@ -217,7 +189,10 @@ export default function ManajemenKelas() {
 
     setLoading(true);
     try {
-        const { error } = await supabase.from('group_members').update({ assistant_id: null }).eq('schedule_id', selectedGroup.id);
+        const { error } = await supabase.rpc('reset_group_plotting_secure', {
+            p_caller_id: user?.id,
+            p_schedule_id: selectedGroup.id
+        });
         if(error) throw error;
         toast.success("Plotting berhasil di-reset!");
         fetchGroupDetails(selectedGroup);
@@ -226,17 +201,16 @@ export default function ManajemenKelas() {
 
   // --- 6. UPDATE MANUAL PER MAHASISWA ---
   const handleUpdateStudentAssistant = async (memberId: number, newAssistantId: string) => {
-    // SECURE CHECK
     if (!hasEditAccess) {
-        toast.error("Akses Ditolak", { description: "Anda tidak berwenang mengubah pembimbing." });
+        toast.error("Akses Ditolak");
         return;
     }
 
     setStudents(prev => prev.map(s => s.id === memberId ? {...s, assistant_id: newAssistantId} : s));
-    const { error } = await supabase
-        .from('group_members')
-        .update({ assistant_id: newAssistantId === "unassigned" ? null : newAssistantId })
-        .eq('id', memberId);
+    const { error } = await supabase.rpc('update_group_members_batch_secure', {
+        p_caller_id: user?.id,
+        p_updates: [{ id: memberId, assistant_id: newAssistantId === "unassigned" ? null : parseInt(newAssistantId) }]
+    });
     
     if (error) {
         toast.error("Gagal update: " + error.message);
@@ -248,16 +222,21 @@ export default function ManajemenKelas() {
 
   // --- 7. TAMBAH TIM ASISTEN ---
   const handleAddAssistant = async () => {
-    if (!selectedAssistantId) return;
+    if (!selectedAssistantId || !user) return;
 
-    // SECURE CHECK
     if (!hasEditAccess) {
         toast.error("Akses Ditolak");
         return;
     }
 
-    await supabase.from('group_assistants').insert({ schedule_id: selectedGroup.id, assistant_id: selectedAssistantId });
-    fetchGroupDetails(selectedGroup); setSelectedAssistantId("");
+    const { error } = await supabase.rpc('upsert_group_assistant_secure', {
+        p_caller_id: user.id,
+        p_schedule_id: selectedGroup.id,
+        p_assistant_id: parseInt(selectedAssistantId)
+    });
+    
+    if (error) toast.error(error.message);
+    else { fetchGroupDetails(selectedGroup); setSelectedAssistantId(""); }
   };
 
   // ==========================================
@@ -285,29 +264,22 @@ export default function ManajemenKelas() {
   const handleExportSemuaKelompok = async () => {
       const loadingToast = toast.loading("Menyiapkan file Excel Keseluruhan...");
       try {
-          const { data, error } = await supabase
-              .from('group_members')
-              .select(`
-                  id,
-                  schedule:schedule_id ( class_code, major, title, day_of_week, start_time, end_time ),
-                  assistant:assistant_id ( full_name ),
-                  student:student_id ( full_name, nim )
-              `);
+          const { data, error } = await supabase.rpc('get_all_group_members_secure', { p_viewer_id: user.id });
 
           if (error) throw error;
           if (!data || data.length === 0) {
               toast.dismiss(loadingToast); return toast.error("Data plotting belum tersedia.");
           }
 
-          const excelData = data.map((row) => ({
-              "Jurusan": row.schedule?.major || "-",
-              "Kelas": row.schedule?.class_code || "-",
-              "Hari": row.schedule?.day_of_week || "-",
-              "Jam": `${row.schedule?.start_time?.slice(0,5)} - ${row.schedule?.end_time?.slice(0,5)}`,
-              "Modul Praktikum": row.schedule?.title || "-",
-              "Asisten Pembimbing": row.assistant?.full_name || "Belum ditentukan",
-              "NIM Praktikan": row.student?.nim || "-",
-              "Nama Praktikan": row.student?.full_name || "-"
+          const excelData = data.map((row: any) => ({
+              "Jurusan": row.schedule_major || "-",
+              "Kelas": row.schedule_class_code || "-",
+              "Hari": row.schedule_day || "-",
+              "Jam": `${row.schedule_start?.slice(0,5)} - ${row.schedule_end?.slice(0,5)}`,
+              "Modul Praktikum": row.schedule_title || "-",
+              "Asisten Pembimbing": row.assistant_name || "Belum ditentukan",
+              "NIM Praktikan": row.student_nim || "-",
+              "Nama Praktikan": row.student_name || "-"
           }));
 
           excelData.sort((a, b) => {
@@ -456,7 +428,14 @@ export default function ManajemenKelas() {
                                         assignedAssistants.map(a => (
                                             <div key={a.id} className="bg-white p-2 text-sm rounded border shadow-sm flex justify-between items-center">
                                                 <span>{a.users?.full_name}</span>
-                                                {hasEditAccess && <Trash2 className="w-3 h-3 text-red-400 cursor-pointer" onClick={async()=>{await supabase.from('group_assistants').delete().eq('id', a.id); fetchGroupDetails(item);}}/>}
+                                                {hasEditAccess && <Trash2 className="w-3 h-3 text-red-400 cursor-pointer" onClick={async()=>{
+                                                    const { error } = await supabase.rpc('delete_group_assistant_secure', {
+                                                        p_caller_id: user?.id,
+                                                        p_id: a.id
+                                                    });
+                                                    if(error) toast.error(error.message);
+                                                    else fetchGroupDetails(item);
+                                                }}/>}
                                             </div>
                                         ))}
                                     </div>

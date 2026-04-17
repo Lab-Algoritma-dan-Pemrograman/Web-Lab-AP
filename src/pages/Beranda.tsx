@@ -40,7 +40,10 @@ function UserContactCard() {
     if (!newPhone) return toast.error("Nomor HP tidak boleh kosong");
     setLoading(true);
     try {
-      const { error } = await supabase.from('users').update({ phone_number: newPhone }).eq('id', user?.id);
+      const { error } = await supabase.rpc('update_user_profile_secure', {
+        p_caller_id: user.id,
+        p_phone_number: newPhone
+      });
       if (error) throw error;
       setPhone(newPhone);
       toast.success("Nomor WhatsApp berhasil diperbarui!");

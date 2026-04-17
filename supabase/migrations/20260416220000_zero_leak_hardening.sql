@@ -124,7 +124,7 @@ RETURNS TABLE (
     schedule_time TIME
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-    IF public.is_staff(p_viewer_id) THEN
+    IF public.is_staff(p_viewer_id) OR public.is_pj_absen_today(p_viewer_id) THEN
         RETURN QUERY 
         SELECT al.id, al.status, al.notes, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id,
                u.id as user_id, u.full_name, u.role, u.username, u.division as major, u.class_code, u.shift, u.phone_number,
@@ -260,10 +260,16 @@ CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id BIGI
 RETURNS TABLE (
     id UUID,
     nim TEXT,
+    student_name TEXT,
     completed_lessons INTEGER,
     total_lessons INTEGER,
     completion_percentage DECIMAL,
-    is_completed BOOLEAN
+    is_completed BOOLEAN,
+    completed_levels JSONB,
+    current_level TEXT,
+    last_accessed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
     v_user_nim TEXT;
@@ -272,12 +278,14 @@ BEGIN
     
     IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
-        SELECT ep.id, ep.nim, ep.completed_lessons, ep.total_lessons, ep.completion_percentage, ep.is_completed
-        FROM public.elearning_progress ep;
+        SELECT ep.id, ep.nim, u.full_name as student_name, ep.completed_lessons, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at, ep.created_at, ep.updated_at
+        FROM public.elearning_progress ep
+        LEFT JOIN public.users u ON ep.nim = u.username;
     ELSE
         RETURN QUERY 
-        SELECT ep.id, ep.nim, ep.completed_lessons, ep.total_lessons, ep.completion_percentage, ep.is_completed
+        SELECT ep.id, ep.nim, u.full_name as student_name, ep.completed_lessons, ep.total_lessons, ep.completion_percentage, ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at, ep.created_at, ep.updated_at
         FROM public.elearning_progress ep 
+        LEFT JOIN public.users u ON ep.nim = u.username
         WHERE ep.nim = v_user_nim;
     END IF;
 END; $$;
@@ -299,6 +307,21 @@ BEGIN
     FROM public.external_links el
     WHERE el.is_active = true
     ORDER BY el.created_at DESC;
+END; $$;
+
+-- 3.6.b: Fetch QR Session Securely (For Scan)
+CREATE OR REPLACE FUNCTION public.get_qr_session_secure(p_token TEXT)
+RETURNS TABLE (
+    id UUID,
+    title TEXT,
+    is_active BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT qs.id, qs.title, qs.is_active
+    FROM public.qr_sessions qs
+    WHERE qs.token = p_token AND qs.is_active = true
+    LIMIT 1;
 END; $$;
 
 -- 3.7: Fetch Group Assistants Securely
@@ -339,6 +362,26 @@ BEGIN
         WHERE aa.day_of_week = p_day
           AND aa.start_time <= p_start
           AND aa.end_time >= p_end;
+    ELSE
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+END; $$;
+
+-- 3.8.b: Fetch ALL Availability for a specific user
+CREATE OR REPLACE FUNCTION public.get_all_availability_for_user_secure(p_viewer_id BIGINT, p_target_user_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    day_of_week TEXT,
+    start_time TIME,
+    end_time TIME
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    -- Allow viewing self or if viewer is staff
+    IF p_viewer_id = p_target_user_id OR public.is_staff(p_viewer_id) THEN
+        RETURN QUERY 
+        SELECT aa.id, aa.day_of_week, aa.start_time, aa.end_time
+        FROM public.assistant_availability aa
+        WHERE aa.user_id = p_target_user_id;
     ELSE
         RAISE EXCEPTION 'Unauthorized';
     END IF;
@@ -805,6 +848,8 @@ BEGIN
 END; $$;
 
 -- 8.0: Personal Schedule Management (Including Shift)
+DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(INTEGER);
+DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_personal_schedules_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     role TEXT,
@@ -831,8 +876,8 @@ BEGIN
     IF v_role = 'praktikan' THEN
         RETURN QUERY
         SELECT v_role, s.id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
-               u.id, u.full_name, u.username, u.shift,
-               a.id, a.full_name, a.phone_number
+               u.id::BIGINT, u.full_name, u.username, u.shift,
+               a.id::BIGINT, a.full_name, a.phone_number
         FROM public.group_members gm
         JOIN public.schedules s ON gm.schedule_id = s.id
         JOIN public.users u ON gm.student_id = u.id
@@ -841,8 +886,8 @@ BEGIN
     ELSIF v_role IN ('asisten', 'koordinator', 'sekretaris', 'k3') THEN
         RETURN QUERY
         SELECT v_role, s.id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
-               stu.id, stu.full_name, stu.username, stu.shift,
-               asst.id, asst.full_name, asst.phone_number
+               stu.id::BIGINT, stu.full_name, stu.username, stu.shift,
+               asst.id::BIGINT, asst.full_name, asst.phone_number
         FROM public.group_assistants ga
         JOIN public.schedules s ON ga.schedule_id = s.id
         JOIN public.users asst ON ga.assistant_id = asst.id
@@ -859,3 +904,579 @@ CREATE POLICY "Public read availability" ON public.assistant_availability FOR SE
 
 -- 5: Cleanup decommissioned tables
 DROP TABLE IF EXISTS public.submissions;
+
+-- 9.0: Jadwal Jaga Secure Management
+CREATE OR REPLACE FUNCTION public.get_schedule_assignments_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    schedule_id UUID,
+    schedule_title TEXT,
+    schedule_day TEXT,
+    schedule_start TIME,
+    schedule_end TIME,
+    schedule_major TEXT,
+    schedule_class_code TEXT,
+    user_id BIGINT,
+    user_full_name TEXT,
+    original_user_id BIGINT,
+    original_user_full_name TEXT,
+    substitute_user_id BIGINT,
+    task_role TEXT,
+    activity_name TEXT,
+    activity_date DATE,
+    status TEXT
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY
+    SELECT sa.id::BIGINT, sa.schedule_id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
+           u.id::BIGINT, u.full_name, ou.id::BIGINT, ou.full_name, sa.substitute_user_id::BIGINT,
+           sa.task_role, sa.activity_name, sa.activity_date, sa.status
+    FROM public.schedule_assignments sa
+    JOIN public.schedules s ON sa.schedule_id = s.id
+    LEFT JOIN public.users u ON sa.user_id = u.id
+    LEFT JOIN public.users ou ON sa.original_user_id = ou.id
+    ORDER BY sa.activity_date DESC, s.start_time ASC;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.upsert_schedule_assignment_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_schedule_id UUID,
+    p_user_id BIGINT,
+    p_task_role TEXT,
+    p_activity_name TEXT,
+    p_activity_date DATE
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+
+    IF p_id IS NULL OR p_id = 0 THEN
+        INSERT INTO public.schedule_assignments (schedule_id, user_id, task_role, activity_name, activity_date, status)
+        VALUES (p_schedule_id, p_user_id, p_task_role, p_activity_name, p_activity_date, 'aktif');
+    ELSE
+        UPDATE public.schedule_assignments SET
+            schedule_id = p_schedule_id,
+            user_id = p_user_id,
+            task_role = p_task_role,
+            activity_name = p_activity_name,
+            activity_date = p_activity_date
+        WHERE id = p_id;
+    END IF;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.delete_schedule_assignment_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+    DELETE FROM public.schedule_assignments WHERE id = p_id;
+END; $$;
+
+-- 10.0: Manajemen Kelas / Plotting Secure
+CREATE OR REPLACE FUNCTION public.get_schedules_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    id UUID,
+    title TEXT,
+    major TEXT,
+    class_code TEXT,
+    day_of_week TEXT,
+    start_time TIME,
+    end_time TIME,
+    type TEXT,
+    status TEXT
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY SELECT s.id, s.title, s.major, s.class_code, s.day_of_week, s.start_time, s.end_time, s.type, s.status
+    FROM public.schedules s;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.sync_students_to_group_secure(
+    p_caller_id BIGINT,
+    p_schedule_id UUID,
+    p_major TEXT,
+    p_class_code TEXT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+
+    INSERT INTO public.group_members (schedule_id, student_id)
+    SELECT p_schedule_id, u.id
+    FROM public.users u
+    WHERE u.role = 'praktikan' AND u.division = p_major AND u.class_code = p_class_code
+    ON CONFLICT (schedule_id, student_id) DO NOTHING;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.update_group_members_batch_secure(
+    p_caller_id BIGINT,
+    p_updates JSONB
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_item RECORD;
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_updates) AS x(id BIGINT, assistant_id BIGINT)
+    LOOP
+        UPDATE public.group_members SET assistant_id = v_item.assistant_id WHERE id = v_item.id;
+    END LOOP;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.reset_group_plotting_secure(
+    p_caller_id BIGINT,
+    p_schedule_id UUID
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+    UPDATE public.group_members SET assistant_id = NULL WHERE schedule_id = p_schedule_id;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.upsert_group_assistant_secure(
+    p_caller_id BIGINT,
+    p_schedule_id UUID,
+    p_assistant_id BIGINT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+    INSERT INTO public.group_assistants (schedule_id, assistant_id)
+    VALUES (p_schedule_id, p_assistant_id)
+    ON CONFLICT (schedule_id, assistant_id) DO NOTHING;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.delete_group_assistant_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+    DELETE FROM public.group_assistants WHERE id = p_id;
+END; $$;
+
+-- 11.0: Bulk Data Operations
+CREATE OR REPLACE FUNCTION public.get_all_group_members_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    schedule_class_code TEXT,
+    schedule_major TEXT,
+    schedule_title TEXT,
+    schedule_day TEXT,
+    schedule_start TIME,
+    schedule_end TIME,
+    assistant_name TEXT,
+    student_name TEXT,
+    student_nim TEXT
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF NOT public.is_staff(p_viewer_id) THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+
+    RETURN QUERY
+    SELECT gm.id, s.class_code, s.major, s.title, s.day_of_week, s.start_time, s.end_time,
+           u_a.full_name, u_s.full_name, u_s.username
+    FROM public.group_members gm
+    JOIN public.schedules s ON gm.schedule_id = s.id
+    JOIN public.users u_s ON gm.student_id = u_s.id
+    LEFT JOIN public.users u_a ON gm.assistant_id = u_a.id;
+END; $$;
+-- 3.12: Fetch External Links Securely
+DROP FUNCTION IF EXISTS public.get_external_links_secure(BIGINT);
+CREATE OR REPLACE FUNCTION public.get_external_links_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    title TEXT,
+    url TEXT,
+    is_active BOOLEAN,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY SELECT el.id, el.title, el.url, el.is_active, el.created_at FROM public.external_links el ORDER BY el.created_at DESC;
+END;
+$$;
+
+-- 3.13: Fetch Inventory Items Securely
+DROP FUNCTION IF EXISTS public.get_inventory_items_secure(BIGINT);
+CREATE OR REPLACE FUNCTION public.get_inventory_items_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    name TEXT,
+    condition TEXT,
+    quantity INTEGER,
+    location TEXT,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY SELECT ii.id, ii.name, ii.condition, ii.quantity, ii.location, ii.created_at FROM public.inventory_items ii ORDER BY ii.name ASC;
+END;
+$$;
+
+-- 3.14: Fetch System Settings Securely
+DROP FUNCTION IF EXISTS public.get_system_settings_secure(BIGINT);
+CREATE OR REPLACE FUNCTION public.get_system_settings_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    active_shift TEXT,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY SELECT ss.active_shift, ss.updated_at FROM public.system_settings ss LIMIT 1;
+END;
+$$;
+
+-- ==========================================
+-- SECTION 4: Data Management (Write Ops)
+-- ==========================================
+
+-- 4.1: Upsert Schedule Secure (Admin Only)
+CREATE OR REPLACE FUNCTION public.upsert_schedule_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_day_of_week TEXT,
+    p_start_time TIME,
+    p_end_time TIME,
+    p_title TEXT,
+    p_major TEXT,
+    p_class_code TEXT,
+    p_type TEXT DEFAULT 'praktikum',
+    p_status TEXT DEFAULT 'approved'
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya staff yang dapat mengelola jadwal.';
+    END IF;
+
+    IF p_id IS NULL OR p_id = 0 THEN
+        INSERT INTO public.schedules (day_of_week, start_time, end_time, title, major, class_code, type, status)
+        VALUES (p_day_of_week, p_start_time, p_end_time, p_title, p_major, p_class_code, p_type, p_status);
+    ELSE
+        UPDATE public.schedules SET
+            day_of_week = p_day_of_week, start_time = p_start_time, end_time = p_end_time,
+            title = p_title, major = p_major, class_code = p_class_code, type = p_type,
+            status = p_status, updated_at = NOW()
+        WHERE id = p_id;
+    END IF;
+END;
+$$;
+
+-- 4.2: Delete Schedule Secure (Admin Only)
+CREATE OR REPLACE FUNCTION public.delete_schedule_secure(p_caller_id BIGINT, p_id BIGINT)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_admin(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya koordinator yang dapat menghapus jadwal.';
+    END IF;
+    DELETE FROM public.schedules WHERE id = p_id;
+END;
+$$;
+
+-- 4.3: Upsert Inventory Item Secure (Staff Only)
+CREATE OR REPLACE FUNCTION public.upsert_inventory_item_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_name TEXT,
+    p_condition TEXT,
+    p_quantity INTEGER,
+    p_location TEXT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya staff yang dapat mengelola inventaris.';
+    END IF;
+
+    IF p_id IS NULL OR p_id = 0 THEN
+        INSERT INTO public.inventory_items (name, condition, quantity, location)
+        VALUES (p_name, p_condition, p_quantity, p_location);
+    ELSE
+        UPDATE public.inventory_items SET
+            name = p_name, condition = p_condition, quantity = p_quantity, 
+            location = p_location, updated_at = NOW()
+        WHERE id = p_id;
+    END IF;
+END;
+$$;
+
+-- 4.4: Delete Inventory Item Secure (Staff Only)
+CREATE OR REPLACE FUNCTION public.delete_inventory_item_secure(p_caller_id BIGINT, p_id BIGINT)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya staff yang dapat menghapus inventaris.';
+    END IF;
+    DELETE FROM public.inventory_items WHERE id = p_id;
+END;
+$$;
+
+-- 4.5: Insert Feedback Secure
+CREATE OR REPLACE FUNCTION public.insert_feedback_secure(
+    p_caller_id BIGINT,
+    p_category TEXT,
+    p_content TEXT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    INSERT INTO public.feedback (custom_user_id, category, content)
+    VALUES (p_caller_id, p_category, p_content);
+END;
+$$;
+
+-- 4.6: Upsert External Link Secure (Staff Only)
+CREATE OR REPLACE FUNCTION public.upsert_external_link_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_title TEXT,
+    p_url TEXT,
+    p_is_active BOOLEAN
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya staff yang dapat mengelola tautan.';
+    END IF;
+
+    IF p_id IS NULL OR p_id = 0 THEN
+        INSERT INTO public.external_links (title, url, is_active)
+        VALUES (p_title, p_url, p_is_active);
+    ELSE
+        UPDATE public.external_links SET
+            title = p_title, url = p_url, is_active = p_is_active
+        WHERE id = p_id;
+    END IF;
+END;
+$$;
+
+-- 4.7: Delete External Link Secure (Staff Only)
+CREATE OR REPLACE FUNCTION public.delete_external_link_secure(p_caller_id BIGINT, p_id BIGINT)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya staff yang dapat menghapus tautan.';
+    END IF;
+    DELETE FROM public.external_links WHERE id = p_id;
+END;
+$$;
+
+-- 4.8: Upsert QR Session Secure (Staff Only)
+CREATE OR REPLACE FUNCTION public.upsert_qr_session_secure(
+    p_caller_id BIGINT,
+    p_title TEXT,
+    p_token TEXT
+) RETURNS TABLE (id BIGINT) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_new_id BIGINT;
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya staff yang dapat membuat sesi QR.';
+    END IF;
+
+    INSERT INTO public.qr_sessions (title, token, created_by, is_active)
+    VALUES (p_title, p_token, p_caller_id, TRUE)
+    RETURNING public.qr_sessions.id INTO v_new_id;
+    
+    RETURN QUERY SELECT v_new_id;
+END;
+$$;
+
+-- 4.9: Update QR Session Token (Staff Only)
+CREATE OR REPLACE FUNCTION public.update_qr_session_token_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_token TEXT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak.';
+    END IF;
+    UPDATE public.qr_sessions SET token = p_token WHERE id = p_id;
+END;
+$$;
+
+-- 4.10: Stop QR Session (Staff Only)
+CREATE OR REPLACE FUNCTION public.stop_qr_session_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak.';
+    END IF;
+    UPDATE public.qr_sessions SET is_active = FALSE WHERE id = p_id;
+END;
+$$;
+
+-- 4.11: Update Swap Status Secure (Assistant Only)
+CREATE OR REPLACE FUNCTION public.update_swap_status_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_status TEXT,
+    p_substitute_id BIGINT DEFAULT NULL
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    -- Hanya asisten yang bersangkutan atau staff yang bisa ubah status
+    IF NOT (public.is_staff(p_caller_id) OR EXISTS (SELECT 1 FROM public.schedule_assignments sa WHERE sa.id = p_id AND sa.user_id = p_caller_id)) THEN
+        RAISE EXCEPTION 'Akses ditolak.';
+    END IF;
+
+    UPDATE public.schedule_assignments SET 
+        status = p_status, 
+        substitute_user_id = p_substitute_id 
+    WHERE id = p_id;
+END;
+$$;
+
+-- 4.12: Approve Swap Secure (Admin Only)
+CREATE OR REPLACE FUNCTION public.approve_swap_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_sub_id BIGINT;
+    v_orig_id BIGINT;
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya staff yang dapat menyetujui swap.';
+    END IF;
+
+    SELECT user_id, substitute_user_id INTO v_orig_id, v_sub_id
+    FROM public.schedule_assignments WHERE id = p_id;
+
+    IF v_sub_id IS NULL THEN
+        RAISE EXCEPTION 'Tidak ada pengunganti yang terdaftar.';
+    END IF;
+
+    UPDATE public.schedule_assignments SET 
+        user_id = v_sub_id, 
+        original_user_id = v_orig_id, 
+        substitute_user_id = NULL, 
+        status = 'aktif' 
+    WHERE id = p_id;
+END;
+$$;
+
+-- 4.13: Refined Admin Save Division Access
+CREATE OR REPLACE FUNCTION public.admin_save_division_access(
+    p_caller_id BIGINT,
+    p_division TEXT,
+    p_menu_keys TEXT[]
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_admin(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak: Hanya koordinator yang dapat mengelola hak akses.';
+    END IF;
+
+    -- Hapus akses lama
+    DELETE FROM public.division_access WHERE division = p_division;
+
+    -- Insert akses baru
+    IF p_menu_keys IS NOT NULL AND array_length(p_menu_keys, 1) > 0 THEN
+        INSERT INTO public.division_access (division, menu_key)
+        SELECT p_division, unnest(p_menu_keys);
+    END IF;
+END;
+$$;
+
+-- 4.14: Admin Update System Setting
+CREATE OR REPLACE FUNCTION public.admin_update_system_setting(
+    p_caller_id BIGINT,
+    p_active_shift TEXT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_admin(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak.';
+    END IF;
+
+    UPDATE public.system_settings SET active_shift = p_active_shift, updated_at = NOW();
+    
+    -- Jika tidak ada record, insert
+    IF NOT FOUND THEN
+        INSERT INTO public.system_settings (active_shift) VALUES (p_active_shift);
+    END IF;
+END;
+$$;
+
+-- 4.15: Get Division Access Secure (Staff Only)
+DROP FUNCTION IF EXISTS public.get_division_access_secure(BIGINT, TEXT);
+CREATE OR REPLACE FUNCTION public.get_division_access_secure(
+    p_viewer_id BIGINT,
+    p_division TEXT
+) RETURNS TABLE (menu_key TEXT) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_staff(p_viewer_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak.';
+    END IF;
+    RETURN QUERY SELECT da.menu_key FROM public.division_access da WHERE da.division = p_division;
+END;
+$$;
+
+-- 4.16: Get System Settings Full Secure
+DROP FUNCTION IF EXISTS public.get_system_settings_full_secure(BIGINT);
+CREATE OR REPLACE FUNCTION public.get_system_settings_full_secure(p_viewer_id BIGINT)
+RETURNS TABLE (
+    id BIGINT,
+    semester_active TEXT,
+    announcement TEXT,
+    is_recruitment_open BOOLEAN,
+    active_shift TEXT,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY SELECT ss.id, ss.semester_active, ss.announcement, ss.is_recruitment_open, ss.active_shift, ss.updated_at FROM public.system_settings ss LIMIT 1;
+END;
+$$;
+
+-- 4.17: Update Global System Settings (Admin Only)
+CREATE OR REPLACE FUNCTION public.admin_update_global_settings_secure(
+    p_caller_id BIGINT,
+    p_semester_active TEXT,
+    p_announcement TEXT,
+    p_is_recruitment_open BOOLEAN
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    IF NOT public.is_admin(p_caller_id) THEN 
+        RAISE EXCEPTION 'Akses ditolak.';
+    END IF;
+
+    UPDATE public.system_settings SET 
+        semester_active = p_semester_active,
+        announcement = p_announcement,
+        is_recruitment_open = p_is_recruitment_open,
+        updated_at = NOW();
+    
+    IF NOT FOUND THEN
+        INSERT INTO public.system_settings (semester_active, announcement, is_recruitment_open) 
+        VALUES (p_semester_active, p_announcement, p_is_recruitment_open);
+    END IF;
+END;
+$$;
+
+-- 4.18: Get Public Settings (No Auth Required)
+DROP FUNCTION IF EXISTS public.get_public_settings();
+CREATE OR REPLACE FUNCTION public.get_public_settings()
+RETURNS TABLE (
+    announcement TEXT,
+    is_recruitment_open BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY SELECT ss.announcement, ss.is_recruitment_open FROM public.system_settings ss LIMIT 1;
+END;
+$$;
+
+-- 4.19: Update User Profile Secure (Self Only)
+CREATE OR REPLACE FUNCTION public.update_user_profile_secure(
+    p_caller_id BIGINT,
+    p_phone_number TEXT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    UPDATE public.users SET phone_number = p_phone_number WHERE id = p_caller_id;
+END;
+$$;

@@ -17,25 +17,37 @@ export default function Inventaris() {
   const [form, setForm] = useState<any>({ name: "", condition: "Baik", quantity: 1, location: "" });
 
   const fetchItems = async () => {
-    const { data } = await supabase.from('inventory_items').select('*').order('name');
+    if (!user) return;
+    const { data } = await supabase.rpc('get_inventory_items_secure', { p_viewer_id: user.id });
     setItems(data || []);
   };
 
   useEffect(() => { fetchItems(); }, []);
 
   const handleSave = async () => {
-    const { error } = form.id 
-      ? await supabase.from('inventory_items').update(form).eq('id', form.id)
-      : await supabase.from('inventory_items').insert(form);
+    if (!user) return;
+    const { error } = await supabase.rpc('upsert_inventory_item_secure', {
+        p_caller_id: user.id,
+        p_id: form.id || 0,
+        p_name: form.name,
+        p_condition: form.condition,
+        p_quantity: parseInt(form.quantity),
+        p_location: form.location
+    });
     
-    if (error) toast.error("Gagal menyimpan");
+    if (error) toast.error("Gagal menyimpan: " + error.message);
     else { toast.success("Berhasil disimpan"); setIsOpen(false); fetchItems(); }
   };
 
   const handleDelete = async (id: number) => {
+    if (!user) return;
     if(confirm("Hapus barang ini?")) {
-        await supabase.from('inventory_items').delete().eq('id', id);
-        fetchItems();
+        const { error } = await supabase.rpc('delete_inventory_item_secure', {
+            p_caller_id: user.id,
+            p_id: id
+        });
+        if (error) toast.error("Gagal menghapus: " + error.message);
+        else { toast.success("Barang dihapus"); fetchItems(); }
     }
   };
 

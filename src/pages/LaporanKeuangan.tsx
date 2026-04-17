@@ -26,21 +26,13 @@ export default function LaporanKeuangan() {
     const checkExportAccess = async () => {
       if (!user) return;
       
-      // Koor, Sekretaris, Bendahara (jika ada), K3 otomatis boleh export
-      if (['koordinator', 'sekretaris', 'k3'].includes(user.role)) {
+      const { data, error } = await supabase.rpc('check_menu_access_secure', {
+          p_viewer_id: user.id,
+          p_menu_key: '/laporan-keuangan'
+      });
+      
+      if (!error && data) {
           setHasExportAccess(true);
-      } 
-      // Jika asisten, cek apakah divisinya punya akses ke menu laporan keuangan
-      else if (user.role === 'asisten' && user.division) {
-          const { data } = await supabase
-              .from('division_access')
-              .select('id')
-              .eq('division', user.division)
-              .eq('menu_key', '/laporan-keuangan');
-          
-          if (data && data.length > 0) {
-              setHasExportAccess(true);
-          }
       }
     };
     checkExportAccess();

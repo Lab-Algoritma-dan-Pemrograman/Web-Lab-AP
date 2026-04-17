@@ -84,16 +84,17 @@ export default function KritikSaran() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return toast.error("Pesan tidak boleh kosong");
+    if (!user) return;
     
     setLoading(true);
-    const { error } = await supabase.from('feedback').insert({
-      custom_user_id: user?.id,
-      category: category,
-      content: content
+    const { error } = await supabase.rpc('insert_feedback_secure', {
+      p_caller_id: user.id,
+      p_category: category,
+      p_content: content
     });
 
     if (error) {
-      toast.error("Gagal mengirim pesan");
+      toast.error("Gagal mengirim pesan: " + error.message);
     } else {
       toast.success("Terima kasih! Masukan Anda telah terkirim.");
       setContent("");
@@ -144,6 +145,7 @@ export default function KritikSaran() {
   // --- LOGIKA EXTERNAL LINKS ---
   const handleAddLink = async () => {
       if(!linkTitle || !linkUrl) return toast.error("Judul dan URL harus diisi!");
+      if(!user) return;
       
       // Pastikan URL diawali http/https
       let finalUrl = linkUrl;
@@ -153,10 +155,12 @@ export default function KritikSaran() {
 
       setLoading(true);
       try {
-          const { error } = await supabase.from('external_links').insert({
-              title: linkTitle,
-              url: finalUrl,
-              is_active: true
+          const { error } = await supabase.rpc('upsert_external_link_secure', {
+              p_caller_id: user.id,
+              p_id: 0,
+              p_title: linkTitle,
+              p_url: finalUrl,
+              p_is_active: true
           });
           if(error) throw error;
           
@@ -164,21 +168,24 @@ export default function KritikSaran() {
           setLinkTitle(""); setLinkUrl(""); setIsLinkDialogOpen(false);
           fetchData();
       } catch(err: any) {
-          // Menangani kemungkinan tabel belum dibuat
-          toast.error("Gagal menambah link. Pastikan tabel 'external_links' sudah ada di Supabase!");
+          toast.error("Gagal menambah link: " + err.message);
       } finally {
           setLoading(false);
       }
   };
 
   const handleDeleteLink = async (id: number) => {
+      if(!user) return;
       if(!confirm("Hapus link ini?")) return;
       try {
-          const { error } = await supabase.from('external_links').delete().eq('id', id);
+          const { error } = await supabase.rpc('delete_external_link_secure', {
+              p_caller_id: user.id,
+              p_id: id
+          });
           if (error) throw error;
           toast.success("Link dihapus.");
           fetchData();
-      } catch (err:any) { toast.error(err.message); }
+      } catch (err:any) { toast.error("Gagal menghapus: " + err.message); }
   };
 
 

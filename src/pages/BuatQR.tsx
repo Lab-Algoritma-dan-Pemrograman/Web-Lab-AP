@@ -44,11 +44,15 @@ export default function BuatQR() {
   // --- UPDATE TOKEN OTOMATIS (5 DETIK) ---
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
-    if (sessionId) {
+    if (sessionId && user) {
       intervalId = setInterval(async () => {
         const newToken = Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 8);
-        // Update DB
-        const { error } = await supabase.from('qr_sessions').update({ token: newToken }).eq('id', sessionId);
+        // Update DB via Secure RPC
+        const { error } = await supabase.rpc('update_qr_session_token_secure', {
+            p_caller_id: user.id,
+            p_id: parseInt(sessionId),
+            p_token: newToken
+        });
         if (!error) {
           setQrToken(newToken);
           setTimeLeft(5);
@@ -56,7 +60,7 @@ export default function BuatQR() {
       }, 5000);
     }
     return () => clearInterval(intervalId);
-  }, [sessionId]);
+  }, [sessionId, user]);
 
   // --- COUNTDOWN VISUAL ---
   useEffect(() => {
@@ -73,6 +77,7 @@ export default function BuatQR() {
     if (!meetingType || !selectedMajor || !selectedClass) {
       return toast.error("Lengkapi semua pilihan (Pertemuan, Jurusan, & Kelas)!");
     }
+    if (!user) return;
     
     setLoading(true);
 
@@ -82,17 +87,16 @@ export default function BuatQR() {
 
     const firstToken = Math.random().toString(36).substring(2, 15);
 
-    const { data, error } = await supabase.from('qr_sessions').insert({
-      title: generatedTitle,
-      token: firstToken,
-      created_by: user?.id as any,
-      is_active: true
-    }).select().single();
+    const { data: sessionData, error } = await supabase.rpc('upsert_qr_session_secure', {
+      p_caller_id: user.id,
+      p_title: generatedTitle,
+      p_token: firstToken
+    });
 
     if (error) {
       toast.error("Gagal: " + error.message);
-    } else {
-      setSessionId(data.id);
+    } else if (sessionData && sessionData.length > 0) {
+      setSessionId(sessionData[0].id.toString());
       setQrToken(firstToken);
       setTimeLeft(5);
       toast.success(`Sesi Dimulai: ${generatedTitle}`);
@@ -102,12 +106,18 @@ export default function BuatQR() {
 
   // --- STOP SESI ---
   const handleStopSession = async () => {
-    if (!sessionId) return;
-    await supabase.from('qr_sessions').update({ is_active: false }).eq('id', sessionId);
-    setSessionId(null);
-    setQrToken(null);
-    setTitle("");
-    toast.info("Sesi Dihentikan.");
+    if (!sessionId || !user) return;
+    const { error } = await supabase.rpc('stop_qr_session_secure', {
+        p_caller_id: user.id,
+        p_id: parseInt(sessionId)
+    });
+    if (error) toast.error("Gagal menghentikan: " + error.message);
+    else {
+        setSessionId(null);
+        setQrToken(null);
+        setTitle("");
+        toast.info("Sesi Dihentikan.");
+    }
   };
 
   return (

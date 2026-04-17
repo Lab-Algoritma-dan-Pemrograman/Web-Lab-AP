@@ -39,20 +39,16 @@ export default function ManajemenJadwal() {
 
   // --- 1. FETCH DATA ---
   const fetchSchedules = async () => {
-    let query = supabase
-        .from('schedules')
-        .select('*')
-        .eq('status', 'approved') 
-        .order('day_of_week', { ascending: true })
-        .order('start_time', { ascending: true });
-
-    if (filterDay !== "all") {
-        query = query.eq('day_of_week', filterDay);
-    }
-    
-    const { data, error } = await query;
+    if (!user) return;
+    const { data, error } = await supabase.rpc('get_schedules_secure', { p_viewer_id: user.id });
     if (error) console.error("Error fetch:", error);
-    else setSchedules(data || []);
+    else {
+        let filtered = data || [];
+        if (filterDay !== "all") {
+            filtered = filtered.filter((s: any) => s.day_of_week === filterDay);
+        }
+        setSchedules(filtered);
+    }
   };
 
   useEffect(() => { fetchSchedules(); }, [filterDay]);
@@ -132,12 +128,25 @@ export default function ManajemenJadwal() {
                 return;
             }
 
-            // Insert ke Supabase
-            const { error } = await supabase.from('schedules').insert(validData);
+            // Insert ke Supabase via RPC dalam loop (untuk batching sederhana yang aman)
+            let successCount = 0;
+            for (const item of validData) {
+                const { error } = await supabase.rpc('upsert_schedule_secure', {
+                    p_caller_id: user.id,
+                    p_id: 0,
+                    p_day_of_week: item.day_of_week,
+                    p_start_time: item.start_time,
+                    p_end_time: item.end_time,
+                    p_title: item.title,
+                    p_major: item.major,
+                    p_class_code: item.class_code,
+                    p_type: item.type,
+                    p_status: item.status
+                });
+                if (!error) successCount++;
+            }
 
-            if (error) throw error;
-
-            toast.success(`Berhasil mengimport ${validData.length} jadwal!`);
+            toast.success(`Berhasil mengimport ${successCount} jadwal!`);
             fetchSchedules();
         } catch (error: any) {
             console.error(error);
@@ -170,24 +179,22 @@ export default function ManajemenJadwal() {
 
   const handleSave = async () => {
     if (!day || !startTime || !endTime || !title || !major || !classCode) return toast.error("Semua kolom wajib diisi!");
+    if (!user) return;
     
-    // SECURE CHECK: Pastikan user berwenang (Bukan Praktikan)
-    if (!['koordinator', 'asisten'].includes(user?.role || '')) {
-        toast.error("Akses Ditolak", { description: "Anda tidak memiliki izin untuk mengedit jadwal." });
-        return;
-    }
-
     setLoading(true);
     try {
-      const payload = {
-        day_of_week: day, start_time: startTime, end_time: endTime, title: title,
-        major: major, class_code: classCode, type: 'praktikum',
-        status: user?.role === 'koordinator' ? 'approved' : 'pending'
-      };
-
-      const { error } = isEditMode && editId 
-        ? await supabase.from('schedules').update(payload).eq('id', editId)
-        : await supabase.from('schedules').insert(payload);
+      const { error } = await supabase.rpc('upsert_schedule_secure', {
+        p_caller_id: user.id,
+        p_id: isEditMode && editId ? editId : 0,
+        p_day_of_week: day,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_title: title,
+        p_major: major,
+        p_class_code: classCode,
+        p_type: 'praktikum',
+        p_status: user?.role === 'koordinator' ? 'approved' : 'pending'
+      });
 
       if (error) throw error;
       toast.success(isEditMode ? "Jadwal diperbarui!" : "Jadwal disimpan!");
@@ -196,16 +203,15 @@ export default function ManajemenJadwal() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!user) return;
     if (!confirm("Hapus jadwal ini?")) return;
     
-    // SECURE CHECK: Hanya Koordinator yang boleh hapus
-    if (user?.role !== 'koordinator') {
-        toast.error("Akses Ditolak", { description: "Hanya Koordinator yang dapat menghapus jadwal." });
-        return;
-    }
-
-    await supabase.from('schedules').delete().eq('id', id);
-    fetchSchedules();
+    const { error } = await supabase.rpc('delete_schedule_secure', {
+        p_caller_id: user.id,
+        p_id: id
+    });
+    if (error) toast.error("Gagal: " + error.message);
+    else { toast.success("Jadwal dihapus"); fetchSchedules(); }
   };
 
   return (

@@ -20,8 +20,10 @@ export default function Login() {
   // Fetch settings once for Marquee
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data } = await supabase.from('system_settings').select('*').maybeSingle();
-      if (data) setSysSettings(data);
+      const { data } = await supabase.rpc('get_public_settings');
+      if (data && data.length > 0) {
+        setSysSettings(data[0]);
+      }
     };
     fetchSettings();
   }, []);

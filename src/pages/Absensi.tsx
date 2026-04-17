@@ -68,18 +68,18 @@ export default function Absensi() {
         setHasFullAccess(true);
       }
       // Jika asisten, cek apakah divisinya punya akses ke menu ini (Validasi/Sekre)
-      else if (user.role === 'asisten' && user.division) {
-        const { data } = await supabase
-          .from('division_access')
-          .select('id, menu_key')
-          .eq('division', user.division)
-          .in('menu_key', ['/absensi', '/validasi-absensi']);
+      else if (user.role === 'asisten') {
+        const { data: hasAbsen } = await supabase.rpc('check_menu_access_secure', { 
+            p_viewer_id: user.id, 
+            p_menu_key: '/absensi' 
+        });
+        const { data: hasValidasi } = await supabase.rpc('check_menu_access_secure', { 
+            p_viewer_id: user.id, 
+            p_menu_key: '/validasi-absensi' 
+        });
 
-        if (data && data.length > 0) {
-          const menus = data.map(d => d.menu_key);
-          if (menus.includes('/absensi')) setHasExportAccess(true);
-          if (menus.includes('/validasi-absensi')) setHasFullAccess(true);
-        }
+        if (hasAbsen) setHasExportAccess(true);
+        if (hasValidasi) setHasFullAccess(true);
       }
     };
     checkExportAccess();
@@ -98,19 +98,8 @@ export default function Absensi() {
   useEffect(() => {
     const checkPJAbsen = async () => {
       if (user?.role !== 'asisten') return;
-      const today = new Date().toLocaleDateString('en-CA');
-      const { data } = await supabase
-        .from('schedule_assignments')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('task_role', 'PJ Absen')
-        .eq('activity_date', today)
-        .eq('status', 'aktif')
-        .limit(1);
-
-      if (data && data.length > 0) {
-        setIsPJAbsenToday(true);
-      }
+      const { data: isPJ } = await supabase.rpc('is_pj_absen_today', { p_user_id: user.id });
+      if (isPJ) setIsPJAbsenToday(true);
     };
     checkPJAbsen();
   }, [user]);
@@ -128,7 +117,7 @@ export default function Absensi() {
     const { data } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
 
     // Map to the structure expected by the UI (nesting users)
-    const formatted = filtered.map((log: any) => ({
+    const formatted = (data || []).map((log: any) => ({
       ...log,
       users: {
         full_name: log.user_full_name,
@@ -144,8 +133,9 @@ export default function Absensi() {
   };
 
   const fetchSchedules = async () => {
-    const { data } = await supabase.from('schedules').select('*').eq('type', 'praktikum');
-    setAvailableSchedules(data || []);
+    const { data } = await supabase.rpc('get_schedules_secure', { p_viewer_id: user?.id || 0 });
+    const praktikumOnly = (data || []).filter((s: any) => s.type === 'praktikum');
+    setAvailableSchedules(praktikumOnly);
   };
 
   const fetchDeletionHistory = async () => {
@@ -156,9 +146,18 @@ export default function Absensi() {
 
   const fetchMyOwnSchedules = async () => {
     if (isStaff || !user) return;
-    const { data } = await supabase.from('group_members').select('schedules(*)').eq('student_id', user.id);
-    const schedules = data?.map((m: any) => m.schedules).filter(Boolean) || [];
-    setMyOwnSchedules(schedules);
+    const { data } = await supabase.rpc('get_personal_schedules_secure', { p_viewer_id: user.id });
+    // Map to match the older structure if needed
+    const formatted = (data || []).map((s: any) => ({
+        id: s.schedule_id,
+        title: s.schedule_title,
+        day_of_week: s.schedule_day,
+        start_time: s.schedule_start,
+        end_time: s.schedule_end,
+        major: s.schedule_major,
+        class_code: s.schedule_class
+    }));
+    setMyOwnSchedules(formatted);
   };
 
   const fetchAdminContact = async () => {
@@ -296,7 +295,7 @@ export default function Absensi() {
         token = decodedText.split('token=')[1].split('&')[0];
       }
 
-      const { data: session } = await supabase.from('qr_sessions').select('*').eq('token', token).eq('is_active', true).maybeSingle();
+      const { data: session } = await supabase.rpc('get_qr_session_secure', { p_token: token }).maybeSingle();
 
       if (!session) {
         toast.error("QR Code Salah atau Sesi Telah Berakhir!");
@@ -360,11 +359,11 @@ export default function Absensi() {
   };
 
   // --- LOGIKA STAFF ---
-  const handleStaffHelp = async () => {
-    if (!targetNim) return toast.error("Masukkan NIM!"); setLoading(true);
     try {
-      const { data: usr } = await supabase.from('users').select('id').eq('username', targetNim).maybeSingle();
-      if (!usr) { toast.error("NIM tidak ditemukan."); setLoading(false); return; }
+      const { data: allUsers } = await supabase.rpc('get_users_secure', { p_viewer_id: user.id });
+      const usr = (allUsers || []).find((u: any) => u.username === targetNim);
+      
+      if (!usr) { toast.error("NIM tidak ditemukan. Pastikan User sudah terdaftar."); setLoading(false); return; }
 
       const targetDateTime = new Date(`${filterDate}T08:00:00`).toISOString();
 

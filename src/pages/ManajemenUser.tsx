@@ -187,22 +187,24 @@ export default function ManajemenUser() {
   }, []);
 
   const fetchGlobalActiveShift = async () => {
+    if (!currentUser) return;
     try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('active_shift')
-        .maybeSingle();
-      if (data) setGlobalActiveShift(data.active_shift);
+      const { data, error } = await supabase.rpc('get_system_settings_secure', { p_viewer_id: currentUser.id });
+      if (data && data.length > 0) setGlobalActiveShift(data[0].active_shift);
     } catch (err) {
       console.error("Error fetching global shift:", err);
     }
   };
 
   const handleUpdateActiveShift = async (val: string) => {
+    if (!currentUser) return;
     setIsUpdatingShift(true);
     try {
       const { error } = await supabase
-        .rpc('admin_update_system_setting', { p_active_shift: val });
+        .rpc('admin_update_system_setting', { 
+            p_caller_id: currentUser.id,
+            p_active_shift: val 
+        });
 
       if (error) throw error;
       setGlobalActiveShift(val);
@@ -216,9 +218,13 @@ export default function ManajemenUser() {
 
   // --- LOGIC HAK AKSES ---
   const fetchDivisionAccess = async (divName: string) => {
+    if (!currentUser) return;
     setLoadingAccess(true);
-    const { data } = await supabase.from('division_access').select('menu_key').eq('division', divName);
-    setAccessList(data ? data.map(d => d.menu_key) : []);
+    const { data } = await supabase.rpc('get_division_access_secure', { 
+        p_viewer_id: currentUser.id,
+        p_division: divName 
+    });
+    setAccessList(data ? data.map((d: any) => d.menu_key) : []);
     setLoadingAccess(false);
   };
 
@@ -227,7 +233,8 @@ export default function ManajemenUser() {
   }, [selectedDivision, isAccessOpen]);
 
   const handleSaveAccess = async () => {
-    if (currentUser?.role !== 'koordinator') {
+    if (!currentUser) return;
+    if (currentUser.role !== 'koordinator') {
       toast.error("Akses Ditolak", { description: "Hanya Koordinator yang bisa mengelola hak akses divisi." });
       return;
     }
@@ -235,6 +242,7 @@ export default function ManajemenUser() {
     try {
         // Simpan akses via RPC aman (SECURITY DEFINER, bypass RLS)
         const { error: accessError } = await supabase.rpc('admin_save_division_access', {
+            p_caller_id: currentUser.id,
             p_division: selectedDivision,
             p_menu_keys: accessList.length > 0 ? accessList : []
         });

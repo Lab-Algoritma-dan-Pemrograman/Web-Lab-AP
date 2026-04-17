@@ -67,12 +67,9 @@ export default function JadwalJaga() {
     if (!user) return;
     setLoading(true);
     
-    // 1. Get Dashboard Stats (to get coord phone and basic info)
+    // 1. Get Dashboard Stats (to get basic info)
     const { data: statsData } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
-    if (statsData?.user_phone) setCoordPhone(statsData.user_phone); // For non-coord, this will be their own, but wait.
-    // Actually, I need coord phone specifically for the swap button.
-    // I already allowed staff to see coord phone in stats if they are staff? No.
-    // I'll assume coord phone is managed differently or staff can get it via get_users_secure.
+    if (statsData?.user_phone) setCoordPhone(statsData.user_phone);
     
     // 2. Fetch Assignments via Secure RPC
     const { data: assignData } = await supabase.rpc('get_schedule_assignments_secure', { p_viewer_id: user.id });
@@ -95,18 +92,13 @@ export default function JadwalJaga() {
         setAssignments(mapped);
     }
 
-    // 3. Fetch Available Schedules via existing secure RPC or similar
-    const { data: schedData } = await supabase.from('schedules').select('*').eq('type', 'praktikum');
-    setAvailableSchedules(schedData || []);
+    // 3. Fetch Available Schedules via Secure RPC
+    const { data: schedData } = await supabase.rpc('get_schedules_secure', { p_viewer_id: user.id });
+    setAvailableSchedules((schedData || []).filter((s: any) => s.type === 'praktikum'));
 
     // 4. Fetch Assistants via Secure RPC
     const { data: userData } = await supabase.rpc('get_users_secure', { p_viewer_id: user.id });
     setAssistants((userData || []).filter((u: any) => u.role === 'asisten'));
-
-    // 5. Fetch Assistant Availability via RPC
-    // Note: JadwalJaga.tsx uses full list for smart filter. 
-    // I'll need a list version or just keep the filter logic client-side if data is fetched securely.
-    // For now, I'll use a generic fetch if authorized.
     
     setLoading(false);
   };
@@ -221,31 +213,33 @@ export default function JadwalJaga() {
     setLoading(true);
     try {
         const payload = {
-            schedule_id: parseInt(selectedScheduleId), user_id: parseInt(selectedAssistantId),
-            task_role: selectedRole, activity_name: activityName, activity_date: activityDate
+            p_caller_id: user.id,
+            p_id: isEditMode && editingId ? editingId : 0,
+            p_schedule_id: selectedScheduleId, 
+            p_user_id: parseInt(selectedAssistantId),
+            p_task_role: selectedRole, 
+            p_activity_name: activityName, 
+            p_activity_date: activityDate
         };
 
-        if (isEditMode && editingId) {
-            const { error } = await supabase.from('schedule_assignments').update(payload).eq('id', editingId);
-            if (error) throw error; toast.success("Petugas berhasil diperbarui!");
-        } else {
-            const { error } = await supabase.from('schedule_assignments').insert(payload);
-            if (error) throw error; toast.success("Petugas ditambahkan!");
-        }
+        const { error } = await supabase.rpc('upsert_schedule_assignment_secure', payload);
+        if (error) throw error; 
+        
+        toast.success(isEditMode ? "Petugas berhasil diperbarui!" : "Petugas ditambahkan!");
         setIsDialogOpen(false);
+        fetchData();
     } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
   };
 
   const handleDelete = async (id: number) => {
     if(!confirm("Hapus petugas ini?")) return;
     
-    // SECURE CHECK
-    if (!hasEditAccess) {
-        toast.error("Akses Ditolak", { description: "Hanya Koordinator atau Divisi berwenang yang dapat menghapus." });
-        return;
-    }
-
-    await supabase.from('schedule_assignments').delete().eq('id', id); 
+    const { error } = await supabase.rpc('delete_schedule_assignment_secure', {
+        p_caller_id: user.id,
+        p_id: id
+    });
+    if (error) toast.error(error.message);
+    else { toast.success("Tugas dihapus"); fetchData(); }
   };
 
 
@@ -380,10 +374,23 @@ export default function JadwalJaga() {
               }
 
               if (payload.length > 0) {
-                  const { error } = await supabase.from('schedule_assignments').insert(payload);
-                  if (error) throw error;
-                  toast.success(`${payload.length} jadwal berhasil diimpor dengan deteksi otomatis!`);
+                  setLoading(true);
+                  let success = 0;
+                  for (const p of payload) {
+                      const { error } = await supabase.rpc('upsert_schedule_assignment_secure', {
+                          p_caller_id: user.id,
+                          p_id: 0,
+                          p_schedule_id: p.schedule_id,
+                          p_user_id: p.user_id,
+                          p_task_role: p.task_role,
+                          p_activity_name: p.activity_name,
+                          p_activity_date: p.activity_date
+                      });
+                      if (!error) success++;
+                  }
+                  toast.success(`${success} jadwal berhasil diimpor!`);
                   setIsImportDialogOpen(false);
+                  fetchData();
               } else if (errors.length === 0) { 
                   toast.error("Gagal", { description: "Format Excel salah atau data tidak lengkap." }); 
               }
@@ -402,13 +409,15 @@ export default function JadwalJaga() {
   const handleRequestLeave = async () => {
     if(!leaveAssignmentId) return toast.error("Pilih jadwal yang mau di-swap!");
     if(!leaveReason) return toast.error("Alasan harus diisi untuk Koordinator!");
+    if(!user) return;
     
     setSubmittingLeave(true);
     try {
-        const { error: updateError } = await supabase
-            .from('schedule_assignments')
-            .update({ status: 'mencari_pengganti' })
-            .eq('id', parseInt(leaveAssignmentId));
+        const { error: updateError } = await supabase.rpc('update_swap_status_secure', {
+            p_caller_id: user.id,
+            p_id: parseInt(leaveAssignmentId),
+            p_status: 'mencari_pengganti'
+        });
         if (updateError) throw updateError;
 
         if (coordPhone) {
@@ -424,18 +433,22 @@ export default function JadwalJaga() {
   };
 
   const handleOfferSubstitute = async (assignmentId: number) => {
+      if (!user) return;
       if (!confirm("Anda yakin bersedia menggantikan jadwal ini?")) return;
       try {
-          const { error } = await supabase
-              .from('schedule_assignments')
-              .update({ status: 'menunggu_persetujuan', substitute_user_id: user?.id })
-              .eq('id', assignmentId);
+          const { error } = await supabase.rpc('update_swap_status_secure', {
+              p_caller_id: user.id,
+              p_id: assignmentId,
+              p_status: 'menunggu_persetujuan',
+              p_substitute_id: user.id
+          });
           if (error) throw error;
           toast.success("Berhasil menawarkan diri! Menunggu persetujuan Koordinator.");
       } catch (err: any) { toast.error("Gagal menawarkan diri: " + err.message); }
   };
 
   const handleApproveSwap = async (assignmentId: number, substituteId: number, originalUserId: number) => {
+      if (!user) return;
       // SECURE CHECK: Hanya Koordinator yang boleh approve swap secara resmi lewat UI admin
       if (user?.role !== 'koordinator' && user?.role !== 'asisten') {
           toast.error("Akses Ditolak");
@@ -444,41 +457,42 @@ export default function JadwalJaga() {
 
       if(!confirm("Setujui pertukaran jadwal ini?")) return;
       try {
-          const { error } = await supabase
-              .from('schedule_assignments')
-              .update({ 
-                  user_id: substituteId, 
-                  original_user_id: originalUserId, 
-                  substitute_user_id: null, 
-                  status: 'aktif' 
-              })
-              .eq('id', assignmentId);
+          const { error } = await supabase.rpc('approve_swap_secure', {
+              p_caller_id: user.id,
+              p_id: assignmentId
+          });
           if (error) throw error;
           toast.success("Pertukaran jadwal berhasil disetujui!");
       } catch (err: any) { toast.error("Gagal menyetujui: " + err.message); }
   };
 
   const handleRejectSwap = async (assignmentId: number) => {
+      if (!user) return;
       if(!confirm("Tolak penawaran ini dan kembalikan jadwal awal?")) return;
       try {
-          const { error } = await supabase
-              .from('schedule_assignments')
-              .update({ substitute_user_id: null, status: 'mencari_pengganti' })
-              .eq('id', assignmentId);
+          const { error } = await supabase.rpc('update_swap_status_secure', {
+              p_caller_id: user.id,
+              p_id: assignmentId,
+              p_status: 'mencari_pengganti',
+              p_substitute_id: null
+          });
           if (error) throw error;
           toast.info("Penawaran ditolak. Jadwal dikembalikan ke sebelumnya.");
       } catch (err: any) { toast.error("Gagal menolak: " + err.message); }
   };
 
   const handleCancelSwapKoordinator = async (assignmentId: number) => {
+      if (!user) return;
       if(!confirm("Batalkan pencarian dan paksa jadwal kembali aktif ke asisten awal?")) return;
       try {
-          const { error } = await supabase
-              .from('schedule_assignments')
-              .update({ substitute_user_id: null, status: 'aktif' })
-              .eq('id', assignmentId);
+          const { error } = await supabase.rpc('update_swap_status_secure', {
+              p_caller_id: user.id,
+              p_id: assignmentId,
+              p_status: 'aktif'
+          });
           if (error) throw error;
           toast.success("Pencarian dibatalkan. Jadwal kembali aktif.");
+          fetchData();
       } catch (err: any) { toast.error("Gagal membatalkan: " + err.message); }
   };
 
