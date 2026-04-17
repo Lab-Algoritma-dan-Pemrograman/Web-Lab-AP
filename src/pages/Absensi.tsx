@@ -596,6 +596,9 @@ export default function Absensi() {
                               <DialogTitle className="flex items-center gap-2 text-red-600">
                                 <Trash2 className="w-5 h-5"/> Log Riwayat Penghapusan
                               </DialogTitle>
+                              <DialogDescription>
+                                Daftar kehadiran yang telah dihapus oleh tim koordinator untuk keperluan audit.
+                              </DialogDescription>
                             </DialogHeader>
                             <div className="overflow-y-auto flex-1 border rounded-md mt-4">
                               <Table>
