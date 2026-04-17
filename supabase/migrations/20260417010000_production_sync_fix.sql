@@ -1,19 +1,37 @@
 -- =====================================================
--- Migration: Production Sync & Type Correction
+-- Migration: Master Production Sync & Type Alignment
 -- Date: 2026-04-17
--- Resolve: Column Missing (ep.completed_lessons) + RPC 400 Return Type Mismatch
+-- Resolve: RPC 400 (Type Mismatch) + Schema Missing Columns
 -- =====================================================
 
--- 1. FIX SCHEMA INCONSISTENCIES
--- Ensure required columns exist on elearning_progress
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS current_level TEXT;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_levels JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_lessons INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS total_lessons INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completion_percentage NUMERIC(5,2) NOT NULL DEFAULT 0;
+-- 1. SCHEMA REPAIR: Ensure elearning_progress table is up to date
+DO $$ 
+BEGIN
+    -- Add missing columns if they don't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='elearning_progress' AND column_name='current_level') THEN
+        ALTER TABLE public.elearning_progress ADD COLUMN current_level TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='elearning_progress' AND column_name='completed_levels') THEN
+        ALTER TABLE public.elearning_progress ADD COLUMN completed_levels JSONB DEFAULT '[]'::jsonb;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='elearning_progress' AND column_name='completed_lessons') THEN
+        -- Check if it exists as singular version first to migrate it
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='elearning_progress' AND column_name='completed_lesson') THEN
+             ALTER TABLE public.elearning_progress RENAME COLUMN completed_lesson TO completed_lessons;
+        ELSE
+             ALTER TABLE public.elearning_progress ADD COLUMN completed_lessons INTEGER NOT NULL DEFAULT 0;
+        END IF;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='elearning_progress' AND column_name='total_lessons') THEN
+        ALTER TABLE public.elearning_progress ADD COLUMN total_lessons INTEGER NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='elearning_progress' AND column_name='completion_percentage') THEN
+        ALTER TABLE public.elearning_progress ADD COLUMN completion_percentage NUMERIC(5,2) NOT NULL DEFAULT 0;
+    END IF;
+END $$;
 
--- 2. RESTORE OVERLOADS AND ALIGN TYPES
--- We use BIGINT as the primary type, but provide INTEGER wrappers for PostgREST compatibility.
+-- 2. RESET RPCs WITH EXPLICIT TABLE RETURNS (NO SETOF RECORD)
+-- PostgREST requires explicit column definitions for JSON mapping.
 
 -- 2.1: Fetch Attendance Logs Securely
 DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT);
@@ -42,7 +60,7 @@ RETURNS TABLE (
     schedule_time TIME
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-    IF public.is_staff(p_viewer_id::BIGINT) OR public.is_pj_absen_today(p_viewer_id::BIGINT) THEN
+    IF public.is_staff(p_viewer_id) OR public.is_pj_absen_today(p_viewer_id) THEN
         RETURN QUERY 
         SELECT al.id::BIGINT, al.status::TEXT, al.notes::TEXT, al.check_in_time::TIMESTAMP WITH TIME ZONE, al.is_verified::BOOLEAN, al.verification_status::TEXT, al.reschedule_status::TEXT, al.reschedule_schedule_id::UUID,
                u.id::BIGINT as user_id, u.full_name::TEXT as user_full_name, u.role::TEXT as user_role, u.username::TEXT as user_username, u.division::TEXT as user_major, u.class_code::TEXT as user_class_code, u.shift::TEXT as user_shift, u.phone_number::TEXT as user_phone_number,
@@ -65,7 +83,9 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id INTEGER)
-RETURNS SETOF record LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TABLE (
+    id BIGINT, status TEXT, notes TEXT, check_in_time TIMESTAMP WITH TIME ZONE, is_verified BOOLEAN, verification_status TEXT, reschedule_status TEXT, reschedule_schedule_id UUID, user_id BIGINT, user_full_name TEXT, user_role TEXT, user_username TEXT, user_major TEXT, user_class_code TEXT, user_shift TEXT, user_phone_number TEXT, schedule_title TEXT, schedule_day TEXT, schedule_time TIME
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY SELECT * FROM public.get_attendance_logs_secure(p_viewer_id::BIGINT);
 END; $$;
@@ -94,7 +114,7 @@ DECLARE
 BEGIN
     SELECT u.username INTO v_user_nim FROM public.users u WHERE u.id = p_viewer_id;
     
-    IF public.is_staff(p_viewer_id::BIGINT) THEN
+    IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
         SELECT ep.id::UUID, ep.nim::TEXT, u.full_name::TEXT as student_name, ep.completed_lessons::INTEGER, ep.total_lessons::INTEGER, ep.completion_percentage::DECIMAL, ep.is_completed::BOOLEAN, ep.completed_levels::JSONB, ep.current_level::TEXT, ep.last_accessed_at::TIMESTAMP WITH TIME ZONE, ep.created_at::TIMESTAMP WITH TIME ZONE, ep.updated_at::TIMESTAMP WITH TIME ZONE
         FROM public.elearning_progress ep
@@ -109,7 +129,9 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id INTEGER)
-RETURNS SETOF record LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TABLE (
+    id UUID, nim TEXT, student_name TEXT, completed_lessons INTEGER, total_lessons INTEGER, completion_percentage DECIMAL, is_completed BOOLEAN, completed_levels JSONB, current_level TEXT, last_accessed_at TIMESTAMP WITH TIME ZONE, created_at TIMESTAMP WITH TIME ZONE, updated_at TIMESTAMP WITH TIME ZONE
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY SELECT * FROM public.get_elearning_progress_secure(p_viewer_id::BIGINT);
 END; $$;
@@ -139,11 +161,11 @@ RETURNS TABLE (
 DECLARE
     v_role TEXT;
 BEGIN
-    SELECT u.role::TEXT INTO v_role FROM public.users u WHERE u.id = p_viewer_id;
+    SELECT u.role INTO v_role FROM public.users u WHERE u.id = p_viewer_id;
 
     IF v_role = 'praktikan' THEN
         RETURN QUERY
-        SELECT v_role as role, s.id::UUID as schedule_id, s.title::TEXT as schedule_title, s.day_of_week::TEXT as schedule_day, s.start_time::TIME as schedule_start, s.end_time::TIME as schedule_end, s.major::TEXT as schedule_major, s.class_code::TEXT as schedule_class,
+        SELECT v_role::TEXT as role, s.id::UUID as schedule_id, s.title::TEXT as schedule_title, s.day_of_week::TEXT as schedule_day, s.start_time::TIME as schedule_start, s.end_time::TIME as schedule_end, s.major::TEXT as schedule_major, s.class_code::TEXT as schedule_class,
                u.id::BIGINT as student_id, u.full_name::TEXT as student_name, u.username::TEXT as student_nim, u.shift::TEXT as student_shift,
                a.id::BIGINT as assistant_id, a.full_name::TEXT as assistant_name, a.phone_number::TEXT as assistant_phone
         FROM public.group_members gm
@@ -153,7 +175,7 @@ BEGIN
         WHERE gm.student_id = p_viewer_id;
     ELSIF v_role IN ('asisten', 'koordinator', 'sekretaris', 'k3') THEN
         RETURN QUERY
-        SELECT v_role as role, s.id::UUID as schedule_id, s.title::TEXT as schedule_title, s.day_of_week::TEXT as schedule_day, s.start_time::TIME as schedule_start, s.end_time::TIME as schedule_end, s.major::TEXT as schedule_major, s.class_code::TEXT as schedule_class,
+        SELECT v_role::TEXT as role, s.id::UUID as schedule_id, s.title::TEXT as schedule_title, s.day_of_week::TEXT as schedule_day, s.start_time::TIME as schedule_start, s.end_time::TIME as schedule_end, s.major::TEXT as schedule_major, s.class_code::TEXT as schedule_class,
                stu.id::BIGINT as student_id, stu.full_name::TEXT as student_name, stu.username::TEXT as student_nim, stu.shift::TEXT as student_shift,
                asst.id::BIGINT as assistant_id, asst.full_name::TEXT as assistant_name, asst.phone_number::TEXT as assistant_phone
         FROM public.group_assistants ga
@@ -166,12 +188,14 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.get_personal_schedules_secure(p_viewer_id INTEGER)
-RETURNS SETOF record LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TABLE (
+    role TEXT, schedule_id UUID, schedule_title TEXT, schedule_day TEXT, schedule_start TIME, schedule_end TIME, schedule_major TEXT, schedule_class TEXT, student_id BIGINT, student_name TEXT, student_nim TEXT, student_shift TEXT, assistant_id BIGINT, assistant_name TEXT, assistant_phone TEXT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY SELECT * FROM public.get_personal_schedules_secure(p_viewer_id::BIGINT);
 END; $$;
 
--- 2.4: Dashboard Stats
+-- 2.4 Dashboard Stats
 DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(BIGINT);
 DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(INTEGER);
 
@@ -183,7 +207,7 @@ DECLARE
 BEGIN
     SELECT u.phone_number INTO v_phone FROM public.users u WHERE u.id = p_viewer_id;
 
-    IF public.is_staff(p_viewer_id::BIGINT) THEN
+    IF public.is_staff(p_viewer_id) THEN
         SELECT jsonb_build_object(
             'user_phone', v_phone,
             'total_users', (SELECT count(*) FROM public.users),
@@ -213,31 +237,4 @@ CREATE OR REPLACE FUNCTION public.get_dashboard_stats_secure(p_viewer_id INTEGER
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN public.get_dashboard_stats_secure(p_viewer_id::BIGINT);
-END; $$;
-
--- 2.5: Schedules Secure
-DROP FUNCTION IF EXISTS public.get_schedules_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_schedules_secure(INTEGER);
-
-CREATE OR REPLACE FUNCTION public.get_schedules_secure(p_viewer_id BIGINT)
-RETURNS TABLE (
-    id UUID,
-    title TEXT,
-    major TEXT,
-    class_code TEXT,
-    day_of_week TEXT,
-    start_time TIME,
-    end_time TIME,
-    type TEXT,
-    status TEXT
-) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-    RETURN QUERY SELECT s.id::UUID as id, s.title::TEXT as title, s.major::TEXT as major, s.class_code::TEXT as class_code, s.day_of_week::TEXT as day_of_week, s.start_time::TIME as start_time, s.end_time::TIME as end_time, s.type::TEXT as type, s.status::TEXT as status
-    FROM public.schedules s;
-END; $$;
-
-CREATE OR REPLACE FUNCTION public.get_schedules_secure(p_viewer_id INTEGER)
-RETURNS SETOF record LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    RETURN QUERY SELECT * FROM public.get_schedules_secure(p_viewer_id::BIGINT);
 END; $$;
