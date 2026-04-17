@@ -188,7 +188,7 @@ export default function Absensi() {
 
   const fetchAdminContact = async () => {
     if (isStaff || !user) return;
-    const { data } = await supabase.rpc('get_assistant_contact_v2_secure', { p_caller_id: user.id });
+    const { data } = await supabase.rpc('get_smart_validation_contact_secure', { p_student_id: user.id });
     if (data && data.length > 0) {
       setAdminPhone(data[0].phone_number);
       setAdminCode(data[0].assistant_code);
