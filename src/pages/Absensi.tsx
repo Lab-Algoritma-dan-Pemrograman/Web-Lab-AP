@@ -359,6 +359,7 @@ export default function Absensi() {
   };
 
   // --- LOGIKA STAFF ---
+  // Ditambahkan pembungkus async untuk input manual oleh staff
   const handleStaffHelp = async () => {
     setLoading(true);
     try {
