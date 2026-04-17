@@ -108,13 +108,19 @@ export default function Absensi() {
   // --- FETCH DATA ---
   const fetchMyLogs = async () => {
     if (isStaff || !user) return;
-    const { data } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
+    const { data } = await supabase.rpc('get_attendance_logs_secure', { 
+        p_viewer_id: user.id,
+        p_date_filter: filterDate || null 
+    });
     setMyLogs(data || []);
   };
 
   const fetchAttendanceData = async () => {
     if (!user) return;
-    const { data } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
+    const { data } = await supabase.rpc('get_attendance_logs_secure', { 
+        p_viewer_id: user.id,
+        p_date_filter: filterDate || null
+    });
 
     // Map to the structure expected by the UI (nesting users)
     const formatted = (data || []).map((log: any) => ({

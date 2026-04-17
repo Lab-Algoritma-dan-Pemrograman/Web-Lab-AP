@@ -156,8 +156,8 @@ export default function LaporanKeuangan() {
                             ) : (
                                 records.map(r => (
                                     <TableRow key={r.id}>
-                                        <TableCell>{new Date(r.date).toLocaleDateString('id-ID')}</TableCell>
-                                        <TableCell className="font-medium">{r.title}</TableCell>
+                                        <TableCell>{r.date ? new Date(r.date).toLocaleDateString('id-ID') : (r.created_at ? new Date(r.created_at).toLocaleDateString('id-ID') : '-')}</TableCell>
+                                        <TableCell className="font-medium">{r.title || "Tanpa Keterangan"}</TableCell>
                                         <TableCell>{r.category}</TableCell>
                                         <TableCell>
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${r.type === 'pemasukan' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>

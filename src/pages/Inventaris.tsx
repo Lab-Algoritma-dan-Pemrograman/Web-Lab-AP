@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Box, Plus, Pencil, Trash2, Search } from "lucide-react";
 
 export default function Inventaris() {
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
