@@ -45,17 +45,21 @@ export default function ValidasiAbsensi() {
     }));
 
     // Filter into Pending and History
+    // Pending: Only License requests (status !== Hadir && no reschedule intent)
     const pending = formatted.filter((l: any) => 
       l.verification_status === 'pending' && 
       l.user_role === 'praktikan' && 
+      !l.reschedule_schedule_id &&
       l.status !== 'Hadir'
     );
 
+    // History & Reschedule Pool: Needs to include logs with pending reschedules
     const history = formatted.filter((l: any) => 
-      ['approved', 'rejected'].includes(l.verification_status) && 
-      l.user_role === 'praktikan' && 
-      l.status !== 'Hadir'
-    ).slice(0, 20);
+      l.user_role === 'praktikan' && (
+        (['approved', 'rejected'].includes(l.verification_status)) ||
+        (l.reschedule_status === 'pending')
+      )
+    ).slice(0, 50);
 
     setPendingLogs(pending);
     setHistoryLogs(history);

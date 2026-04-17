@@ -246,20 +246,19 @@ export default function Absensi() {
     if (!selectedSchedule) return toast.error("Pilih jadwal pengganti!");
     setLoading(true);
     try {
-      const { error } = await supabase.rpc('upsert_attendance_log_secure', {
-        p_caller_id: user.id,
-        p_target_user_id: user.id,
-        p_status: "Hadir", // Re-verified as hadir usually
-        p_notes: logId.toString(), // Carry log ID in notes for reschedule type
-        p_check_in: new Date().toISOString(),
-        p_is_verified: true,
-        p_type: 'reschedule',
-        p_schedule_id: selectedSchedule
+      const { error } = await supabase.rpc('request_reschedule_secure', {
+        p_log_id: logId,
+        p_new_schedule_id: parseInt(selectedSchedule)
       });
 
       if (error) throw error;
       toast.success("Jadwal diajukan. Tunggu persetujuan Asisten.");
-    } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
+      setSelectedSchedule("");
+    } catch (err: any) { 
+      toast.error(err.message); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   // --- LOGIKA SCAN SEAMLESS & ANTI-SPAM ---
