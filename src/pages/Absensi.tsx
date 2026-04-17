@@ -215,7 +215,14 @@ export default function Absensi() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Listen for custom toast errors from WA link
+    const handleToastError = (e: any) => toast.error(e.detail);
+    window.addEventListener('toast-error', handleToastError);
+
+    return () => { 
+      supabase.removeChannel(channel); 
+      window.removeEventListener('toast-error', handleToastError);
+    };
   }, [filterDate, isStaff]);
 
   // --- EXPORT EXCEL ---
@@ -246,7 +253,10 @@ export default function Absensi() {
 
   // --- HELPER KEMBALI: WA & RESCHEDULE ---
   const getWaProofLink = (targetPhone: string | null, type: string, notes: string) => {
-    if (!targetPhone) return '#';
+    if (!targetPhone) {
+      // Return a dummy link that triggers a toast when clicked if phone is missing
+      return "javascript:window.dispatchEvent(new CustomEvent('toast-error', {detail: 'Nomor WhatsApp Admin belum diset. Harap hubungi Asisten secara langsung.'}));";
+    }
     let cleanPhone = targetPhone.replace(/\D/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
     const text = `Halo Kak, saya ${user?.full_name} (${user?.username}) ingin mengirimkan bukti izin: ${type} - ${notes}`;
