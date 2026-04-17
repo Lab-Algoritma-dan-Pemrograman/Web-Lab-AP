@@ -112,7 +112,7 @@ export default function Absensi() {
     if (isStaff || !user) return;
     const { data } = await supabase.rpc('get_attendance_logs_secure', { 
         p_viewer_id: user.id,
-        p_date_filter: filterDate || null 
+        p_date_filter: null // Always fetch all logs for the student's personal history
     });
     
     // Map to include nested schedules for "Riwayat & Status Pengajuan Saya"
