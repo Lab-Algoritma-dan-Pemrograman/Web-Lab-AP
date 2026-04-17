@@ -31,6 +31,7 @@ export default function JadwalJaga() {
 
   const [hasEditAccess, setHasEditAccess] = useState(false);
   const [coordPhone, setCoordPhone] = useState<string | null>(null);
+  const [waTemplates, setWaTemplates] = useState<any>(null);
 
   const [filterType, setFilterType] = useState("all"); 
   const [customStartDate, setCustomStartDate] = useState("");
@@ -67,9 +68,12 @@ export default function JadwalJaga() {
     if (!user) return;
     setLoading(true);
     
-    // 1. Get Dashboard Stats (to get basic info)
     const { data: statsData } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
     if (statsData?.user_phone) setCoordPhone(statsData.user_phone);
+    
+    // 1b. Fetch WA Templates
+    const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
+    if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
     
     // 2. Fetch Assignments via Secure RPC
     const { data: assignData } = await supabase.rpc('get_schedule_assignments_secure', { p_viewer_id: user.id });
@@ -423,7 +427,20 @@ export default function JadwalJaga() {
         if (coordPhone) {
             let cleanPhone = coordPhone.replace(/\D/g, '');
             if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Halo Koordinator, saya *${user?.full_name}* izin tidak dapat jaga dan sedang mencari pengganti (Swap).\nAlasan: ${leaveReason}`)}`, '_blank');
+            
+            const targetAssignment = assignments.find(a => a.id.toString() === leaveAssignmentId);
+            const scheduleInfo = targetAssignment ? `${targetAssignment.schedule?.day_of_week}, ${targetAssignment.schedule?.start_time?.slice(0,5)} (${targetAssignment.activity_name})` : "Jadwal Jaga";
+
+            let text = `Halo Koordinator, saya *${user?.full_name}* izin tidak dapat jaga dan sedang mencari pengganti (Swap).\nAlasan: ${leaveReason}`;
+            
+            if (waTemplates?.asisten_swap) {
+                text = waTemplates.asisten_swap
+                    .replace(/{{nama}}/g, user?.full_name || "")
+                    .replace(/{{jadwal}}/g, scheduleInfo)
+                    .replace(/{{alasan}}/g, leaveReason);
+            }
+
+            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
             toast.success("Jadwal dilempar ke Bursa! Mengalihkan ke WhatsApp...");
         } else {
             toast.success("Berhasil! Jadwal sekarang masuk ke bursa pengganti."); 

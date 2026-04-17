@@ -14,6 +14,7 @@ export default function JadwalSaya() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [schedulesData, setSchedulesData] = useState<any[]>([]);
+  const [waTemplates, setWaTemplates] = useState<any>(null);
 
   // --- STATE FILTER ---
   const [filterDay, setFilterDay] = useState("all");
@@ -73,6 +74,10 @@ export default function JadwalSaya() {
     try {
       const { data, error } = await supabase.rpc('get_personal_schedules_secure', { p_viewer_id: user.id });
       if (error) throw error;
+      
+      // Fetch WA Templates
+      const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
+      if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
 
       if (user.role === 'praktikan') {
         const transformed = (data || []).map((row: any) => ({
@@ -213,11 +218,22 @@ export default function JadwalSaya() {
             </CardContent>
             {item.assistant?.phone_number && (
               <CardFooter className="bg-gray-50 pt-4 rounded-b-lg">
-                <a href={getWaLink(item.assistant.phone_number, `Halo Kak ${item.assistant.full_name}, saya ${user?.full_name} dari kelompok praktikum kakak.`)} target="_blank" rel="noreferrer" className="w-full">
-                  <Button className="w-full bg-[#25D366] hover:bg-[#1ebd5c] text-white">
-                    <MessageCircle className="w-4 h-4 mr-2" /> Chat Asisten via WA
-                  </Button>
-                </a>
+                {(() => {
+                  let chatText = `Halo Kak ${item.assistant.full_name}, saya ${user?.full_name} dari kelompok praktikum kakak.`;
+                  if (waTemplates?.chat_asisten) {
+                    chatText = waTemplates.chat_asisten
+                      .replace(/{{nama_asisten}}/g, item.assistant.full_name || "")
+                      .replace(/{{nama_praktikan}}/g, user?.full_name || "")
+                      .replace(/{{kelas}}/g, item.schedule?.class_code || "");
+                  }
+                  return (
+                    <a href={getWaLink(item.assistant.phone_number, chatText)} target="_blank" rel="noreferrer" className="w-full">
+                      <Button className="w-full bg-[#25D366] hover:bg-[#1ebd5c] text-white">
+                        <MessageCircle className="w-4 h-4 mr-2" /> Chat Asisten via WA
+                      </Button>
+                    </a>
+                  );
+                })()}
               </CardFooter>
             )}
           </Card>

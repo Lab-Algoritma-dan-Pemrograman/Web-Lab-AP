@@ -56,6 +56,7 @@ export default function Absensi() {
   const [adminPhone, setAdminPhone] = useState<string | null>(null);
   const [availableSchedules, setAvailableSchedules] = useState<any[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState("");
+  const [waTemplates, setWaTemplates] = useState<any>(null);
 
   // --- CEK HAK AKSES EXPORT ---
   useEffect(() => {
@@ -197,6 +198,14 @@ export default function Absensi() {
     fetchMyOwnSchedules();
     fetchAdminContact();
     fetchDeletionHistory();
+    
+    // Fetch WA Templates
+    const fetchSettings = async () => {
+        if (!user) return;
+        const { data } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
+        if (data && data.length > 0) setWaTemplates(data[0].wa_templates);
+    };
+    fetchSettings();
   }, [user, isStaff, hasFullAccess]);
 
   useEffect(() => {
@@ -259,7 +268,19 @@ export default function Absensi() {
     }
     let cleanPhone = targetPhone.replace(/\D/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-    const text = `Halo Kak, saya ${user?.full_name} (${user?.username}) ingin mengirimkan bukti izin: ${type} - ${notes}`;
+    
+    let text = `Halo Kak, saya ${user?.full_name} (${user?.username}) ingin mengirimkan bukti izin: ${type} - ${notes}`;
+    
+    if (waTemplates?.absen_izin) {
+        text = waTemplates.absen_izin
+            .replace(/{{nama}}/g, user?.full_name || "")
+            .replace(/{{nim}}/g, user?.username || "")
+            .replace(/{{tipe}}/g, type)
+            .replace(/{{alasan}}/g, notes)
+            .replace(/{{kelas}}/g, user?.class_code || "")
+            .replace(/{{jurusan}}/g, user?.division || "");
+    }
+    
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 

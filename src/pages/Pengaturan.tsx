@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Save, Settings } from "lucide-react";
+import { Save, Settings, Smartphone, Info } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+
+import { Badge } from "@/components/ui/badge";
 
 export default function Pengaturan() {
   const { user } = useAuth();
@@ -37,7 +39,8 @@ export default function Pengaturan() {
         p_caller_id: user.id,
         p_semester_active: settings.semester_active,
         p_announcement: settings.announcement,
-        p_is_recruitment_open: settings.is_recruitment_open
+        p_is_recruitment_open: settings.is_recruitment_open,
+        p_wa_templates: settings.wa_templates
     });
 
     if (error) toast.error("Gagal menyimpan pengaturan: " + error.message);
@@ -50,35 +53,100 @@ export default function Pengaturan() {
        <div className="max-w-2xl mx-auto space-y-6">
           <h1 className="text-2xl font-bold flex items-center gap-2"><Settings className="text-primary"/> Pengaturan Sistem</h1>
           
-          <Card>
-             <CardHeader>
-                <CardTitle>Konfigurasi Umum</CardTitle>
-                <CardDescription>Pengaturan ini akan berdampak pada seluruh pengguna aplikasi.</CardDescription>
-             </CardHeader>
-             <CardContent className="space-y-4">
-                <div className="space-y-2">
-                   <Label>Semester Aktif</Label>
-                   <Input value={settings.semester_active || ""} onChange={e => setSettings({...settings, semester_active: e.target.value})} placeholder="Contoh: Genap 2025/2026" />
-                </div>
-                
-                <div className="space-y-2">
-                   <Label>Pengumuman (Tampil di Login & Beranda)</Label>
-                   <Textarea rows={4} value={settings.announcement || ""} onChange={e => setSettings({...settings, announcement: e.target.value})} placeholder="Tulis pengumuman..." />
-                </div>
+           <Card>
+              <CardHeader>
+                 <CardTitle>Konfigurasi Umum</CardTitle>
+                 <CardDescription>Pengaturan ini akan berdampak pada seluruh pengguna aplikasi.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                 <div className="space-y-2">
+                    <Label>Semester Aktif</Label>
+                    <Input value={settings.semester_active || ""} onChange={e => setSettings({...settings, semester_active: e.target.value})} placeholder="Contoh: Genap 2025/2026" />
+                 </div>
+                 
+                 <div className="space-y-2">
+                    <Label>Pengumuman (Tampil di Login & Beranda)</Label>
+                    <Textarea rows={4} value={settings.announcement || ""} onChange={e => setSettings({...settings, announcement: e.target.value})} placeholder="Tulis pengumuman..." />
+                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                   <div className="space-y-0.5">
-                      <Label className="text-base">Buka Pendaftaran Asisten?</Label>
-                      <p className="text-sm text-muted-foreground">Aktifkan jika sedang masa Open Recruitment.</p>
-                   </div>
-                   <Switch checked={settings.is_recruitment_open || false} onCheckedChange={checked => setSettings({...settings, is_recruitment_open: checked})} />
-                </div>
+                 <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-0.5">
+                       <Label className="text-base">Buka Pendaftaran Asisten?</Label>
+                       <p className="text-sm text-muted-foreground">Aktifkan jika sedang masa Open Recruitment.</p>
+                    </div>
+                    <Switch checked={settings.is_recruitment_open || false} onCheckedChange={checked => setSettings({...settings, is_recruitment_open: checked})} />
+                 </div>
+              </CardContent>
+           </Card>
 
-                <Button onClick={handleSave} disabled={loading} className="w-full">
-                    <Save className="w-4 h-4 mr-2"/> {loading ? "Menyimpan..." : "Simpan Perubahan"}
-                </Button>
-             </CardContent>
-          </Card>
+           <Card>
+              <CardHeader>
+                 <CardTitle className="flex items-center gap-2 text-green-700">
+                    <Smartphone className="w-5 h-5"/> Templat Pesan WhatsApp
+                 </CardTitle>
+                 <CardDescription>
+                    Sesuaikan isi pesan otomatis yang akan dikirim melalui WhatsApp. Gunakan placeholder (nama dalam kurung kurawal) untuk data dinamis.
+                 </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                 <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <Label>Pesan Izin Praktikan (ke Asisten)</Label>
+                        <Badge variant="outline" className="text-[10px]">Untuk Praktikan</Badge>
+                    </div>
+                    <Textarea 
+                        rows={3} 
+                        value={settings.wa_templates?.absen_izin || ""} 
+                        onChange={e => setSettings({...settings, wa_templates: {...settings.wa_templates, absen_izin: e.target.value}})} 
+                        placeholder="Contoh: Halo Kak, saya {{nama}} ({{nim}}) ingin izin..."
+                    />
+                    <div className="flex items-start gap-1 p-2 bg-blue-50 rounded text-[10px] text-blue-700">
+                        <Info className="w-3 h-3 mt-0.5 shrink-0"/>
+                        <span>Placeholder: <b>{"{{nama}}, {{nim}}, {{kelas}}, {{jurusan}}, {{alasan}}"}</b></span>
+                    </div>
+                 </div>
+
+                 <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <Label>Pesan Swap Jadwal (ke Koordinator)</Label>
+                        <Badge variant="outline" className="text-[10px] border-orange-200 text-orange-700 bg-orange-50">Untuk Asisten</Badge>
+                    </div>
+                    <Textarea 
+                        rows={3} 
+                        value={settings.wa_templates?.asisten_swap || ""} 
+                        onChange={e => setSettings({...settings, wa_templates: {...settings.wa_templates, asisten_swap: e.target.value}})} 
+                        placeholder="Contoh: Halo Koordinator, saya {{nama}} ingin swap..."
+                    />
+                    <div className="flex items-start gap-1 p-2 bg-blue-50 rounded text-[10px] text-blue-700">
+                        <Info className="w-3 h-3 mt-0.5 shrink-0"/>
+                        <span>Placeholder: <b>{"{{nama}}, {{jadwal}}, {{alasan}}"}</b></span>
+                    </div>
+                 </div>
+
+                 <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <Label>Pesan Chat Asisten (dari Jadwal Saya)</Label>
+                        <Badge variant="outline" className="text-[10px]">Untuk Praktikan</Badge>
+                    </div>
+                    <Textarea 
+                        rows={2} 
+                        value={settings.wa_templates?.chat_asisten || ""} 
+                        onChange={e => setSettings({...settings, wa_templates: {...settings.wa_templates, chat_asisten: e.target.value}})} 
+                        placeholder="Contoh: Halo Kak {{nama_asisten}}, saya {{nama_praktikan}}..."
+                    />
+                    <div className="flex items-start gap-1 p-2 bg-blue-50 rounded text-[10px] text-blue-700">
+                        <Info className="w-3 h-3 mt-0.5 shrink-0"/>
+                        <span>Placeholder: <b>{"{{nama_asisten}}, {{nama_praktikan}}, {{kelas}}"}</b></span>
+                    </div>
+                 </div>
+              </CardContent>
+           </Card>
+
+           <div className="pt-2">
+              <Button onClick={handleSave} disabled={loading} className="w-full h-12 text-lg shadow-lg">
+                  <Save className="w-5 h-5 mr-2"/> {loading ? "Menyimpan..." : "Simpan Semua Pengaturan"}
+              </Button>
+           </div>
        </div>
     </DashboardLayout>
   );
