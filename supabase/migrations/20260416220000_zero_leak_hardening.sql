@@ -310,6 +310,7 @@ BEGIN
 END; $$;
 
 -- 3.6.b: Fetch QR Session Securely (For Scan)
+DROP FUNCTION IF EXISTS public.get_qr_session_secure(TEXT);
 CREATE OR REPLACE FUNCTION public.get_qr_session_secure(p_token TEXT)
 RETURNS TABLE (
     id UUID,
@@ -368,6 +369,7 @@ BEGIN
 END; $$;
 
 -- 3.8.b: Fetch ALL Availability for a specific user
+DROP FUNCTION IF EXISTS public.get_all_availability_for_user_secure(BIGINT, BIGINT);
 CREATE OR REPLACE FUNCTION public.get_all_availability_for_user_secure(p_viewer_id BIGINT, p_target_user_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -454,40 +456,9 @@ BEGIN
     END IF;
 END; $$;
 
--- 3.11: Fetch Schedule Assignments Securely
-DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(BIGINT);
-CREATE OR REPLACE FUNCTION public.get_schedule_assignments_secure(p_viewer_id BIGINT)
-RETURNS TABLE (
-    id BIGINT,
-    task_role TEXT,
-    activity_name TEXT,
-    activity_date DATE,
-    status TEXT,
-    substitute_user_id BIGINT,
-    original_user_id BIGINT,
-    schedule_id UUID,
-    schedule_title TEXT,
-    schedule_day TEXT,
-    schedule_start TIME,
-    schedule_end TIME,
-    schedule_major TEXT,
-    schedule_class_code TEXT,
-    user_id BIGINT,
-    user_full_name TEXT,
-    original_user_full_name TEXT
-) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-    RETURN QUERY 
-    SELECT sa.id, sa.task_role, sa.activity_name, sa.activity_date, sa.status, sa.substitute_user_id, sa.original_user_id,
-           s.id as schedule_id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
-           u.id as user_id, u.full_name, u_orig.full_name
-    FROM public.schedule_assignments sa
-    LEFT JOIN public.schedules s ON sa.schedule_id = s.id
-    LEFT JOIN public.users u ON sa.user_id = u.id
-    LEFT JOIN public.users u_orig ON sa.original_user_id = u_orig.id
     ORDER BY sa.activity_date ASC;
 END; $$;
+*/
 
 -- 3.12: Check Menu Access Securely
 DROP FUNCTION IF EXISTS public.check_menu_access_secure(INTEGER, TEXT);
@@ -668,6 +639,7 @@ BEGIN
 END; $$;
 
 -- 5.0: Equipment Management
+DROP FUNCTION IF EXISTS public.get_equipment_secure();
 CREATE OR REPLACE FUNCTION public.get_equipment_secure()
 RETURNS TABLE (
     id BIGINT,
@@ -807,6 +779,8 @@ BEGIN
     DELETE FROM public.attendance_logs WHERE id = p_log_id;
 END; $$;
 
+-- Deletion History
+DROP FUNCTION IF EXISTS public.get_deletion_history_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_deletion_history_secure(p_caller_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -906,6 +880,7 @@ CREATE POLICY "Public read availability" ON public.assistant_availability FOR SE
 DROP TABLE IF EXISTS public.submissions;
 
 -- 9.0: Jadwal Jaga Secure Management
+DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_schedule_assignments_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -978,6 +953,7 @@ BEGIN
 END; $$;
 
 -- 10.0: Manajemen Kelas / Plotting Secure
+DROP FUNCTION IF EXISTS public.get_schedules_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_schedules_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id UUID,
@@ -1067,6 +1043,7 @@ BEGIN
 END; $$;
 
 -- 11.0: Bulk Data Operations
+DROP FUNCTION IF EXISTS public.get_all_group_members_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_all_group_members_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -1267,6 +1244,7 @@ END;
 $$;
 
 -- 4.8: Upsert QR Session Secure (Staff Only)
+DROP FUNCTION IF EXISTS public.upsert_qr_session_secure(BIGINT, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION public.upsert_qr_session_secure(
     p_caller_id BIGINT,
     p_title TEXT,
