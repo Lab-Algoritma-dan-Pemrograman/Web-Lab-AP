@@ -409,6 +409,14 @@ export default function JadwalJaga() {
   };
 
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 11) return "Pagi";
+    if (hour < 15) return "Siang";
+    if (hour < 19) return "Sore";
+    return "Malam";
+  };
+
   // --- LOGIKA SWAP ---
   const handleRequestLeave = async () => {
     if(!leaveAssignmentId) return toast.error("Pilih jadwal yang mau di-swap!");
@@ -431,10 +439,11 @@ export default function JadwalJaga() {
             const targetAssignment = assignments.find(a => a.id.toString() === leaveAssignmentId);
             const scheduleInfo = targetAssignment ? `${targetAssignment.schedule?.day_of_week}, ${targetAssignment.schedule?.start_time?.slice(0,5)} (${targetAssignment.activity_name})` : "Jadwal Jaga";
 
-            let text = `Halo Koordinator, saya *${user?.full_name}* izin tidak dapat jaga dan sedang mencari pengganti (Swap).\nAlasan: ${leaveReason}`;
+            let text = `Selamat ${getGreeting()} mas, saya *${user?.full_name}* izin tidak dapat jaga dan sedang mencari pengganti (Swap).\nAlasan: ${leaveReason}`;
             
             if (waTemplates?.asisten_swap) {
                 text = waTemplates.asisten_swap
+                    .replace(/{{waktu}}/g, getGreeting())
                     .replace(/{{nama}}/g, user?.full_name || "")
                     .replace(/{{jadwal}}/g, scheduleInfo)
                     .replace(/{{alasan}}/g, leaveReason);

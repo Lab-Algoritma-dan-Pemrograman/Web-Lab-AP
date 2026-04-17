@@ -54,6 +54,7 @@ export default function Absensi() {
   const [selectedMySchedule, setSelectedMySchedule] = useState("");
   const [myLogs, setMyLogs] = useState<any[]>([]);
   const [adminPhone, setAdminPhone] = useState<string | null>(null);
+  const [adminCode, setAdminCode] = useState<string | null>(null);
   const [availableSchedules, setAvailableSchedules] = useState<any[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState("");
   const [waTemplates, setWaTemplates] = useState<any>(null);
@@ -187,8 +188,11 @@ export default function Absensi() {
 
   const fetchAdminContact = async () => {
     if (isStaff || !user) return;
-    const { data } = await supabase.rpc('get_assistant_contact_secure', { p_caller_id: user.id });
-    if (data) setAdminPhone(data as string);
+    const { data } = await supabase.rpc('get_assistant_contact_v2_secure', { p_caller_id: user.id });
+    if (data && data.length > 0) {
+      setAdminPhone(data[0].phone_number);
+      setAdminCode(data[0].assistant_code);
+    }
   };
 
   // --- EFEK UTAMA & SUPABASE REALTIME ---
@@ -261,18 +265,33 @@ export default function Absensi() {
 
 
   // --- HELPER KEMBALI: WA & RESCHEDULE ---
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 11) return "Pagi";
+    if (hour < 15) return "Siang";
+    if (hour < 19) return "Sore";
+    return "Malam";
+  };
+
+  const getHonorific = (code: string | null) => {
+    if (!code) return "Kak";
+    return code.startsWith('P') ? "Kak" : "Bang";
+  };
+
   const getWaProofLink = (targetPhone: string | null, type: string, notes: string) => {
     if (!targetPhone) {
-      // Return a dummy link that triggers a toast when clicked if phone is missing
       return "javascript:window.dispatchEvent(new CustomEvent('toast-error', {detail: 'Nomor WhatsApp Admin belum diset. Harap hubungi Asisten secara langsung.'}));";
     }
     let cleanPhone = targetPhone.replace(/\D/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
     
-    let text = `Halo Kak, saya ${user?.full_name} (${user?.username}) ingin mengirimkan bukti izin: ${type} - ${notes}`;
+    // Default fallback text
+    let text = `Selamat ${getGreeting()} ${getHonorific(adminCode)}, saya ${user?.full_name} (${user?.username}) ingin mengirimkan bukti izin: ${type} - ${notes}`;
     
     if (waTemplates?.absen_izin) {
         text = waTemplates.absen_izin
+            .replace(/{{waktu}}/g, getGreeting())
+            .replace(/{{panggilan}}/g, getHonorific(adminCode))
             .replace(/{{nama}}/g, user?.full_name || "")
             .replace(/{{nim}}/g, user?.username || "")
             .replace(/{{tipe}}/g, type)

@@ -229,16 +229,15 @@ export default function JadwalSaya() {
 
                   const getHonorific = () => {
                     const code = item.assistant?.assistant_code || "";
-                    const gender = item.assistant?.gender || "";
-                    if (code.startsWith('P') || gender === 'P') return "Kak";
-                    if (code.startsWith('L') || gender === 'L') return "Bang";
+                    if (code.startsWith('P')) return "Kak";
+                    if (code.startsWith('L')) return "Bang";
                     return "Kak"; // Default fallback
                   };
 
                   const greeting = getGreeting();
                   const honorific = getHonorific();
                   
-                  let chatText = `Selamat ${greeting} ${honorific} ${item.assistant?.full_name}, saya ${user?.full_name} dari kelompok praktikum ${honorific}.`;
+                  let chatText = `Selamat ${greeting} ${honorific} ${item.assistant?.full_name}, saya ${user?.full_name} dengan NIM ${user?.username} dari jurusan ${item.schedule?.major} kelas ${item.schedule?.class_code}.`;
                   
                   if (waTemplates?.chat_asisten) {
                     chatText = waTemplates.chat_asisten
@@ -246,8 +245,8 @@ export default function JadwalSaya() {
                       .replace(/{{panggilan}}/g, honorific)
                       .replace(/{{nama_asisten}}/g, item.assistant?.full_name || "")
                       .replace(/{{nama_praktikan}}/g, user?.full_name || "")
-                      .replace(/{{nim}}/g, user?.username || user?.nim || "")
-                      .replace(/{{jurusan}}/g, user?.division || "")
+                      .replace(/{{nim}}/g, user?.username || "")
+                      .replace(/{{jurusan}}/g, item.schedule?.major || "")
                       .replace(/{{kelas}}/g, item.schedule?.class_code || "");
                   }
                   
