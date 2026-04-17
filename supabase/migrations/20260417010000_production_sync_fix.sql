@@ -13,26 +13,26 @@ END $$;
 -- 2. RESET ALL FUNCTIONS TO PREVENT AMBIGUITY
 -- We drop both BIGINT and INTEGER versions to ensure a clean state.
 
-DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_schedules_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_schedules_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_deletion_history_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_deletion_history_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_system_settings_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_system_settings_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.get_assistant_contact_secure(BIGINT);
-DROP FUNCTION IF EXISTS public.get_assistant_contact_secure(INTEGER);
-DROP FUNCTION IF EXISTS public.check_menu_access_secure(BIGINT, TEXT);
-DROP FUNCTION IF EXISTS public.check_menu_access_secure(INTEGER, TEXT);
+DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_dashboard_stats_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_schedules_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_schedules_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_deletion_history_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_deletion_history_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_system_settings_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_system_settings_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_assistant_contact_secure(BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_assistant_contact_secure(INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.check_menu_access_secure(BIGINT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.check_menu_access_secure(INTEGER, TEXT) CASCADE;
 
 -- 3. RE-IMPLEMENT WITH SINGLE BIGINT SIGNATURE
 
@@ -58,16 +58,16 @@ END; $$;
 -- 3.2: E-Learning Progress (p_viewer_id)
 CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id UUID, nim TEXT, student_name TEXT, completed_lessons INTEGER, total_lessons INTEGER, completion_percentage DECIMAL, is_completed BOOLEAN, completed_levels JSONB, current_level TEXT, last_accessed_at TIMESTAMP WITH TIME ZONE, created_at TIMESTAMP WITH TIME ZONE, updated_at TIMESTAMP WITH TIME ZONE
+    id UUID, nim TEXT, student_name TEXT, completed_lessons INTEGER, total_lessons INTEGER, completion_percentage DECIMAL, is_completed BOOLEAN, completed_levels JSONB, current_level TEXT, last_accessed_at TIMESTAMP WITH TIME ZONE, updated_at TIMESTAMP WITH TIME ZONE
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_nim TEXT;
 BEGIN
     SELECT u.username INTO v_nim FROM public.users u WHERE u.id = p_viewer_id;
     IF public.is_staff(p_viewer_id) THEN
-        RETURN QUERY SELECT ep.id::UUID, ep.nim::TEXT, u.full_name::TEXT, ep.completed_lessons::INTEGER, ep.total_lessons::INTEGER, ep.completion_percentage::DECIMAL, ep.is_completed::BOOLEAN, ep.completed_levels::JSONB, ep.current_level::TEXT, ep.last_accessed_at::TIMESTAMP WITH TIME ZONE, ep.created_at::TIMESTAMP WITH TIME ZONE, ep.updated_at::TIMESTAMP WITH TIME ZONE
+        RETURN QUERY SELECT ep.id::UUID, ep.nim::TEXT, u.full_name::TEXT, ep.completed_lessons::INTEGER, ep.total_lessons::INTEGER, ep.completion_percentage::DECIMAL, ep.is_completed::BOOLEAN, ep.completed_levels::JSONB, ep.current_level::TEXT, ep.last_accessed_at::TIMESTAMP WITH TIME ZONE, ep.updated_at::TIMESTAMP WITH TIME ZONE
         FROM public.elearning_progress ep LEFT JOIN public.users u ON ep.nim = u.username;
     ELSE
-        RETURN QUERY SELECT ep.id::UUID, ep.nim::TEXT, u.full_name::TEXT, ep.completed_lessons::INTEGER, ep.total_lessons::INTEGER, ep.completion_percentage::DECIMAL, ep.is_completed::BOOLEAN, ep.completed_levels::JSONB, ep.current_level::TEXT, ep.last_accessed_at::TIMESTAMP WITH TIME ZONE, ep.created_at::TIMESTAMP WITH TIME ZONE, ep.updated_at::TIMESTAMP WITH TIME ZONE
+        RETURN QUERY SELECT ep.id::UUID, ep.nim::TEXT, u.full_name::TEXT, ep.completed_lessons::INTEGER, ep.total_lessons::INTEGER, ep.completion_percentage::DECIMAL, ep.is_completed::BOOLEAN, ep.completed_levels::JSONB, ep.current_level::TEXT, ep.last_accessed_at::TIMESTAMP WITH TIME ZONE, ep.updated_at::TIMESTAMP WITH TIME ZONE
         FROM public.elearning_progress ep LEFT JOIN public.users u ON ep.nim = u.username WHERE ep.nim = v_nim;
     END IF;
 END; $$;
