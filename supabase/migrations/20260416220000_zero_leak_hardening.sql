@@ -66,6 +66,13 @@ CREATE POLICY "Block direct select" ON public.financial_records FOR SELECT TO an
 DROP POLICY IF EXISTS "Block direct select" ON public.elearning_progress;
 CREATE POLICY "Block direct select" ON public.elearning_progress FOR SELECT TO anon USING (false);
 
+-- Ensure table has new columns for E-Learning
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS current_level TEXT;
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_levels JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_lessons INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS total_lessons INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completion_percentage NUMERIC(5,2) NOT NULL DEFAULT 0;
+
 DROP POLICY IF EXISTS "Block direct select" ON public.group_members;
 CREATE POLICY "Block direct select" ON public.group_members FOR SELECT TO anon USING (false);
 
@@ -99,6 +106,7 @@ CREATE POLICY "Public read access" ON public.inventory_items FOR SELECT TO anon 
 -- ==========================================
 
 -- 3.1: Fetch Attendance Logs Securely
+DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(INTEGER);
 DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
@@ -817,6 +825,7 @@ BEGIN
 END; $$;
 
 -- 8.0: Personal Schedule Management (Including Shift)
+DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(INTEGER);
 DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_personal_schedules_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
