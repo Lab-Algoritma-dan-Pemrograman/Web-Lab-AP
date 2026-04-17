@@ -640,14 +640,14 @@ export default function Absensi() {
                                   {deletionHistory.length === 0 ? (
                                     <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground">Tidak ada riwayat penghapusan.</TableCell></TableRow>
                                   ) : (
-                                    deletionHistory.map(h => (
-                                      <TableRow key={h.id}>
-                                        <TableCell className="text-[11px] font-mono">{new Date(h.deleted_at).toLocaleString('id-ID')}</TableCell>
-                                        <TableCell className="text-xs font-bold">{h.target_user_id}</TableCell>
-                                        <TableCell className="text-xs">{(h.users as any)?.full_name || "-"}</TableCell>
-                                        <TableCell className="text-[10px] text-muted-foreground leading-tight">{h.reason}</TableCell>
-                                      </TableRow>
-                                    ))
+                                      deletionHistory.map(h => (
+                                        <TableRow key={h.id}>
+                                          <TableCell className="text-[11px] font-mono">{new Date(h.deleted_at).toLocaleString('id-ID')}</TableCell>
+                                          <TableCell className="text-xs font-bold">{h.target_user_id}</TableCell>
+                                          <TableCell className="text-xs">{h.deleted_by_name || "-"}</TableCell>
+                                          <TableCell className="text-[10px] text-muted-foreground leading-tight">{h.reason}</TableCell>
+                                        </TableRow>
+                                      ))
                                   )}
                                 </TableBody>
                               </Table>
