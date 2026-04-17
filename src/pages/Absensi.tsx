@@ -168,13 +168,6 @@ export default function Absensi() {
     setDeletionHistory(data || []);
   };
 
-  const fetchAssistantContact = async () => {
-    if (!user) return;
-    const { data } = await supabase.rpc('get_assistant_contact_secure', { p_viewer_id: user.id });
-    const me = (data || []).find((u: any) => u.role === 'koordinator');
-    if (me) setAdminPhone(me.phone_number);
-  };
-
   const fetchMyOwnSchedules = async () => {
     if (isStaff || !user) return;
     const { data } = await supabase.rpc('get_personal_schedules_secure', { p_viewer_id: user.id });
@@ -192,9 +185,9 @@ export default function Absensi() {
   };
 
   const fetchAdminContact = async () => {
-    if (isStaff) return;
+    if (isStaff || !user) return;
     const { data } = await supabase.rpc('get_assistant_contact_secure', { p_caller_id: user.id });
-    if (data) setAdminPhone(data);
+    if (data) setAdminPhone(data as string);
   };
 
   // --- EFEK UTAMA & SUPABASE REALTIME ---
