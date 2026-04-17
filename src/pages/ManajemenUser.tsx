@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import * as XLSX from "xlsx"; 
+import * as XLSX from "xlsx";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
@@ -19,8 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { 
-  Plus, Pencil, Trash2, Search, UserCog, Loader2, Filter, 
+import {
+  Plus, Pencil, Trash2, Search, UserCog, Loader2, Filter,
   GraduationCap, Briefcase, FileSpreadsheet, Eye, EyeOff, ShieldCheck, Lock, Save, Phone, UserCheck, Download
 } from "lucide-react";
 
@@ -85,12 +85,12 @@ export default function ManajemenUser() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // State Filter & UI
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // State Dialog & Form
   const [isOpen, setIsOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
@@ -119,7 +119,7 @@ export default function ManajemenUser() {
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('get_users_secure', { p_viewer_id: currentUser.id });
-      
+
       if (error) throw error;
       setUsers(data as UserData[]);
 
@@ -163,9 +163,9 @@ export default function ManajemenUser() {
     // Kita lakukan secara serial agar tidak membani database dan memastikan pembersihan benar
     for (const id of selectedIds) {
       try {
-        const { error } = await supabase.rpc('admin_delete_user', { 
-            p_caller_id: currentUser?.id,
-            p_target_id: id 
+        const { error } = await supabase.rpc('admin_delete_user', {
+          p_caller_id: currentUser?.id,
+          p_target_id: id
         });
         if (error) throw error;
         successCount++;
@@ -181,8 +181,8 @@ export default function ManajemenUser() {
     setLoading(false);
   };
 
-  useEffect(() => { 
-    fetchUsers(); 
+  useEffect(() => {
+    fetchUsers();
     fetchGlobalActiveShift();
   }, []);
 
@@ -201,9 +201,9 @@ export default function ManajemenUser() {
     setIsUpdatingShift(true);
     try {
       const { error } = await supabase
-        .rpc('admin_update_system_setting', { 
-            p_caller_id: currentUser.id,
-            p_active_shift: val 
+        .rpc('admin_update_system_setting', {
+          p_caller_id: currentUser.id,
+          p_active_shift: val
         });
 
       if (error) throw error;
@@ -220,9 +220,9 @@ export default function ManajemenUser() {
   const fetchDivisionAccess = async (divName: string) => {
     if (!currentUser) return;
     setLoadingAccess(true);
-    const { data } = await supabase.rpc('get_division_access_secure', { 
-        p_viewer_id: currentUser.id,
-        p_division: divName 
+    const { data } = await supabase.rpc('get_division_access_secure', {
+      p_viewer_id: currentUser.id,
+      p_division: divName
     });
     setAccessList(data ? data.map((d: any) => d.menu_key) : []);
     setLoadingAccess(false);
@@ -240,15 +240,15 @@ export default function ManajemenUser() {
     }
     setLoadingAccess(true);
     try {
-        // Simpan akses via RPC aman (SECURITY DEFINER, bypass RLS)
-        const { error: accessError } = await supabase.rpc('admin_save_division_access', {
-            p_caller_id: currentUser.id,
-            p_division: selectedDivision,
-            p_menu_keys: accessList.length > 0 ? accessList : []
-        });
-        if (accessError) throw accessError;
-        toast.success("Hak akses disimpan!");
-    } catch (err: any) { toast.error(err.message); } 
+      // Simpan akses via RPC aman (SECURITY DEFINER, bypass RLS)
+      const { error: accessError } = await supabase.rpc('admin_save_division_access', {
+        p_caller_id: currentUser.id,
+        p_division: selectedDivision,
+        p_menu_keys: accessList.length > 0 ? accessList : []
+      });
+      if (accessError) throw accessError;
+      toast.success("Hak akses disimpan!");
+    } catch (err: any) { toast.error(err.message); }
     finally { setLoadingAccess(false); }
   };
 
@@ -259,7 +259,7 @@ export default function ManajemenUser() {
   // --- LOGIC CRUD USER ---
   const filteredUsers = users.filter(u => {
     const jurusan = getJurusanByNIM(u.nim);
-    const matchesSearch = 
+    const matchesSearch =
       u.full_name.toLowerCase().includes(search.toLowerCase()) ||
       u.username.toLowerCase().includes(search.toLowerCase()) ||
       (u.nim && u.nim.includes(search)) ||
@@ -301,43 +301,43 @@ export default function ManajemenUser() {
         // Update user via RPC aman (SECURITY DEFINER, bypass RLS)
         const { password } = payload;
         const { error: updateError } = await supabase.rpc('admin_update_user', {
-            p_caller_id: currentUser?.id,
-            p_target_id: formData.id,
-            p_username: payload.username,
-            p_full_name: payload.full_name,
-            p_phone_number: payload.phone_number || null,
-            p_role: payload.role,
-            p_is_active: payload.is_active,
-            p_shift: payload.shift || null,
-            p_nim: payload.nim || null,
-            p_class_code: payload.class_code || null,
-            p_division: payload.division || null,
-            p_assistant_code: payload.assistant_code || null
+          p_caller_id: currentUser?.id,
+          p_target_id: formData.id,
+          p_username: payload.username,
+          p_full_name: payload.full_name,
+          p_phone_number: payload.phone_number || null,
+          p_role: payload.role,
+          p_is_active: payload.is_active,
+          p_shift: payload.shift || null,
+          p_nim: payload.nim || null,
+          p_class_code: payload.class_code || null,
+          p_division: payload.division || null,
+          p_assistant_code: payload.assistant_code || null
         });
         if (updateError) throw updateError;
 
         // Jika isian password tidak kosong, maka update password
         if (password && password.length > 0) {
-            const { error: pwdError } = await supabase.rpc('update_password', {
-                p_user_id: formData.id,
-                p_new_password: password
-            });
-            if (pwdError) throw pwdError;
+          const { error: pwdError } = await supabase.rpc('update_password', {
+            p_user_id: formData.id,
+            p_new_password: password
+          });
+          if (pwdError) throw pwdError;
         }
       } else {
         // Tambah user baru pakai RPC agar di-hash
         const { error: insertError } = await supabase.rpc('register_user', {
-            p_username: payload.username,
-            p_password: payload.password || "123456", // default
-            p_full_name: payload.full_name,
-            p_role: payload.role,
-            p_nim: payload.nim,
-            p_assistant_code: payload.assistant_code,
-            p_division: payload.division,
-            p_phone_number: payload.phone_number,
-            p_class_code: payload.class_code,
-            p_shift: payload.shift,
-            p_is_active: payload.is_active
+          p_username: payload.username,
+          p_password: payload.password || "123456", // default
+          p_full_name: payload.full_name,
+          p_role: payload.role,
+          p_nim: payload.nim,
+          p_assistant_code: payload.assistant_code,
+          p_division: payload.division,
+          p_phone_number: payload.phone_number,
+          p_class_code: payload.class_code,
+          p_shift: payload.shift,
+          p_is_active: payload.is_active
         });
         if (insertError) throw insertError;
       }
@@ -359,26 +359,26 @@ export default function ManajemenUser() {
     }
 
     if (!confirm(`Hapus user "${name}"? Seluruh riwayat absensi, bimbingan, dan jadwal yang berkaitan dengan orang ini akan ikut terhapus secara permanen.`)) return;
-    
+
     setLoading(true);
     try {
-        // Hapus user beserta seluruh data terkait via RPC aman (SECURITY DEFINER)
-        const { error } = await supabase.rpc('admin_delete_user', { 
-            p_caller_id: currentUser?.id,
-            p_target_id: id 
-        });
+      // Hapus user beserta seluruh data terkait via RPC aman (SECURITY DEFINER)
+      const { error } = await supabase.rpc('admin_delete_user', {
+        p_caller_id: currentUser?.id,
+        p_target_id: id
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast.success("User dan seluruh data terkait berhasil dihapus.");
-        fetchUsers();
+      toast.success("User dan seluruh data terkait berhasil dihapus.");
+      fetchUsers();
     } catch (err: any) {
-        console.error("Delete error:", err);
-        toast.error("Gagal menghapus user", { 
-            description: err.message || "Terjadi kesalahan saat mencoba menghapus data terkait." 
-        });
+      console.error("Delete error:", err);
+      toast.error("Gagal menghapus user", {
+        description: err.message || "Terjadi kesalahan saat mencoba menghapus data terkait."
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -390,19 +390,19 @@ export default function ManajemenUser() {
     }
 
     try {
-        const { error } = await supabase
-            .rpc('admin_toggle_user_status', { 
-                p_caller_id: currentUser?.id,
-                p_target_id: id, 
-                p_is_active: !currentStatus 
-            });
+      const { error } = await supabase
+        .rpc('admin_toggle_user_status', {
+          p_caller_id: currentUser?.id,
+          p_target_id: id,
+          p_is_active: !currentStatus
+        });
 
-        if (error) throw error;
-        
-        setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: !currentStatus } : u));
-        toast.success(`Status user berhasil ${!currentStatus ? 'diaktifkan' : 'dinonaktifkan'}.`);
+      if (error) throw error;
+
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: !currentStatus } : u));
+      toast.success(`Status user berhasil ${!currentStatus ? 'diaktifkan' : 'dinonaktifkan'}.`);
     } catch (err: any) {
-        toast.error("Gagal mengubah status: " + err.message);
+      toast.error("Gagal mengubah status: " + err.message);
     }
   };
 
@@ -427,44 +427,44 @@ export default function ManajemenUser() {
         if (rawData.length === 0) return toast.error("File kosong!");
 
         const cleanData = rawData.map((row: any) => {
-            const clean: any = {};
-            Object.keys(row).forEach(k => clean[k.trim().toLowerCase()] = row[k]);
-            return clean;
+          const clean: any = {};
+          Object.keys(row).forEach(k => clean[k.trim().toLowerCase()] = row[k]);
+          return clean;
         });
 
         const formatted = cleanData.map((row: any) => {
-            const u = row['username'] || row['nim'];
-            if(!u) return null;
-            return {
-                username: String(u),
-                password: String(u),
-                full_name: row['nama'] || row['nama lengkap'],
-                phone_number: row['no hp'] || row['telepon'] || row['whatsapp'] ? String(row['no hp'] || row['telepon'] || row['whatsapp']) : null,
-                role: 'praktikan',
-                nim: String(u),
-                class_code: row['kelas'],
-                shift: row['shift'] ? String(row['shift']) : null,
-                is_active: true,
-                assistant_code: null,
-                division: null
-            };
+          const u = row['username'] || row['nim'];
+          if (!u) return null;
+          return {
+            username: String(u),
+            password: String(u),
+            full_name: row['nama'] || row['nama lengkap'],
+            phone_number: row['no hp'] || row['telepon'] || row['whatsapp'] ? String(row['no hp'] || row['telepon'] || row['whatsapp']) : null,
+            role: 'praktikan',
+            nim: String(u),
+            class_code: row['kelas'],
+            shift: row['shift'] ? String(row['shift']) : null,
+            is_active: true,
+            assistant_code: null,
+            division: null
+          };
         }).filter(Boolean);
 
         // Hapus duplikat
-        const unique = Array.from(new Map(formatted.map((item:any) => [item.username, item])).values());
-        
+        const unique = Array.from(new Map(formatted.map((item: any) => [item.username, item])).values());
+
         setLoading(true);
         // Menggunakan RPC agar password di-hash secara aman di database
         const { error } = await supabase.rpc('register_users_batch', { p_users: unique });
-        
-        if(error) throw error;
+
+        if (error) throw error;
         toast.success(`Import berhasil: ${unique.length} data.`);
         fetchUsers();
-      } catch(e:any) { toast.error(e.message); } 
-      finally { setLoading(false); if(fileInputRef.current) fileInputRef.current.value=""; }
+      } catch (e: any) { toast.error(e.message); }
+      finally { setLoading(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
     };
   };
-  
+
   // Download Template User
   const handleDownloadTemplateUser = () => {
     const templateData = [
@@ -516,44 +516,43 @@ export default function ManajemenUser() {
           {/* GLOBAL SHIFT CONTROL - KHUSUS KOORDINATOR */}
           {currentUser?.role === 'koordinator' && (
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex flex-col sm:flex-row items-center gap-3">
-               <div className="flex items-center gap-2 text-primary font-semibold text-sm">
-                  <UserCheck className="w-4 h-4" />
-                  <span>Akses Praktikan:</span>
-               </div>
-               <div className="flex bg-white rounded-md border p-1 shadow-sm">
-                  {[
-                    { val: '1', label: 'S1' },
-                    { val: '2', label: 'S2' },
-                    { val: 'all', label: 'SEMUA' },
-                    { val: 'none', label: 'TUTUP' }
-                  ].map((opt) => (
-                    <button
-                      key={opt.val}
-                      disabled={isUpdatingShift}
-                      onClick={() => handleUpdateActiveShift(opt.val)}
-                      className={`px-3 py-1 text-xs font-bold rounded transition-all ${
-                        globalActiveShift === opt.val 
-                        ? 'bg-primary text-white shadow-sm' 
+              <div className="flex items-center gap-2 text-primary font-semibold text-sm">
+                <UserCheck className="w-4 h-4" />
+                <span>Akses Praktikan:</span>
+              </div>
+              <div className="flex bg-white rounded-md border p-1 shadow-sm">
+                {[
+                  { val: '1', label: 'S1' },
+                  { val: '2', label: 'S2' },
+                  { val: 'all', label: 'SEMUA' },
+                  { val: 'none', label: 'TUTUP' }
+                ].map((opt) => (
+                  <button
+                    key={opt.val}
+                    disabled={isUpdatingShift}
+                    onClick={() => handleUpdateActiveShift(opt.val)}
+                    className={`px-3 py-1 text-xs font-bold rounded transition-all ${globalActiveShift === opt.val
+                        ? 'bg-primary text-white shadow-sm'
                         : 'text-muted-foreground hover:bg-muted'
                       }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-               </div>
-               {isUpdatingShift && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {isUpdatingShift && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
             </div>
           )}
-          
+
           <div className="flex gap-2">
             <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-            
+
             {(currentUser?.role === 'koordinator' || currentUser?.role === 'asisten') && (
               <>
                 {currentUser?.role === 'koordinator' && (
-                    <Button variant="secondary" onClick={() => { setSelectedDivision(""); setIsAccessOpen(true); }}>
-                        <ShieldCheck className="w-4 h-4 mr-2" /> Kelola Akses Divisi
-                    </Button>
+                  <Button variant="secondary" onClick={() => { setSelectedDivision(""); setIsAccessOpen(true); }}>
+                    <ShieldCheck className="w-4 h-4 mr-2" /> Kelola Akses Divisi
+                  </Button>
                 )}
 
                 <div className="flex gap-1">
@@ -561,7 +560,7 @@ export default function ManajemenUser() {
                     <FileSpreadsheet className="w-4 h-4 mr-2" /> Import Excel
                   </Button>
                   <Button variant="ghost" size="icon" className="text-muted-foreground" title="Download Template Excel" onClick={handleDownloadTemplateUser}>
-                      <Download className="w-4 h-4"/>
+                    <Download className="w-4 h-4" />
                   </Button>
                 </div>
                 {selectedIds.length > 0 && (
@@ -578,7 +577,7 @@ export default function ManajemenUser() {
         {/* TABEL USER */}
         <Card>
           <CardHeader className="pb-3">
-             <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Cari Nama, NIM, No HP, Kelas..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -613,8 +612,8 @@ export default function ManajemenUser() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px] text-center">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           className="w-4 h-4 rounded border-gray-300"
                           checked={filteredUsers.length > 0 && selectedIds.length === filteredUsers.length}
                           onChange={toggleSelectAll}
@@ -622,21 +621,21 @@ export default function ManajemenUser() {
                       </TableHead>
                       <TableHead>Nama Lengkap</TableHead>
                       <TableHead>NIM / Username</TableHead>
-                       <TableHead>Kontak (No HP)</TableHead>
-                       <TableHead>Shift</TableHead>
-                       <TableHead>Detail</TableHead>
-                       <TableHead>Role</TableHead>
-                       <TableHead className="text-center">Status</TableHead>
-                       <TableHead className="text-right">Aksi</TableHead>
+                      <TableHead>Kontak (No HP)</TableHead>
+                      <TableHead>Shift</TableHead>
+                      <TableHead>Detail</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Data tidak ditemukan.</TableCell></TableRow> : 
+                    {filteredUsers.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Data tidak ditemukan.</TableCell></TableRow> :
                       filteredUsers.map((u) => (
                         <TableRow key={u.id} className={selectedIds.includes(u.id) ? "bg-muted/50" : ""}>
                           <TableCell className="text-center">
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               className="w-4 h-4 rounded border-gray-300"
                               checked={selectedIds.includes(u.id)}
                               onChange={() => toggleSelect(u.id)}
@@ -646,22 +645,22 @@ export default function ManajemenUser() {
                           <TableCell className="font-mono text-xs">{u.username}</TableCell>
                           <TableCell>
                             {u.phone_number ? (
-                                <div className="flex items-center gap-1 text-sm text-gray-600">
-                                    <Phone className="w-3 h-3" /> {u.phone_number}
-                                </div>
+                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <Phone className="w-3 h-3" /> {u.phone_number}
+                              </div>
                             ) : (
-                                <span className="text-xs text-muted-foreground italic">-</span>
+                              <span className="text-xs text-muted-foreground italic">-</span>
                             )}
                           </TableCell>
-                           <TableCell>
-                             {u.role === 'praktikan' ? (
-                               <Badge variant="outline" className={`font-bold ${u.shift === '1' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-purple-200 text-purple-700 bg-purple-50'}`}>
-                                 Shift {u.shift || "-"}
-                               </Badge>
-                             ) : (
-                               <span className="text-xs text-muted-foreground italic">-</span>
-                             )}
-                           </TableCell>
+                          <TableCell>
+                            {u.role === 'praktikan' ? (
+                              <Badge variant="outline" className={`font-bold ${u.shift === '1' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-purple-200 text-purple-700 bg-purple-50'}`}>
+                                Shift {u.shift || "-"}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">-</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-sm">
                             {u.role === 'praktikan' ? (
                               <div className="flex flex-col gap-0.5">
@@ -675,17 +674,17 @@ export default function ManajemenUser() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell><Badge variant={u.role==='koordinator'?'destructive':u.role==='asisten'?'default':'secondary'}>{u.role.toUpperCase()}</Badge></TableCell>
+                          <TableCell><Badge variant={u.role === 'koordinator' ? 'destructive' : u.role === 'asisten' ? 'default' : 'secondary'}>{u.role.toUpperCase()}</Badge></TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center items-center gap-2">
-                                <Switch 
-                                    checked={u.is_active} 
-                                    onCheckedChange={() => handleToggleStatus(u.id, u.is_active)}
-                                    disabled={!canEdit(u) || (u.id === currentUser?.id && u.role === 'koordinator')} 
-                                />
-                                <span className={`text-[10px] font-bold uppercase w-12 ${u.is_active ? 'text-green-600' : 'text-red-500'}`}>
-                                    {u.is_active ? 'Aktif' : 'Non-Aktif'}
-                                </span>
+                              <Switch
+                                checked={u.is_active}
+                                onCheckedChange={() => handleToggleStatus(u.id, u.is_active)}
+                                disabled={!canEdit(u) || (u.id === currentUser?.id && u.role === 'koordinator')}
+                              />
+                              <span className={`text-[10px] font-bold uppercase w-12 ${u.is_active ? 'text-green-600' : 'text-red-500'}`}>
+                                {u.is_active ? 'Aktif' : 'Non-Aktif'}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
@@ -715,55 +714,68 @@ export default function ManajemenUser() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Username / NIM</Label><Input value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} placeholder="202314..." required disabled={isEdit && currentUser?.role !== 'koordinator'} /></div>
-                <div className="space-y-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val: any) => setFormData({...formData, role: val})} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="praktikan">Praktikan</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Username / NIM</Label><Input value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="202314..." required disabled={isEdit && currentUser?.role !== 'koordinator'} /></div>
+                <div className="space-y-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val: any) => setFormData({ ...formData, role: val })} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="praktikan">Praktikan</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
               </div>
-              
+
               {/* Row: Nama & No HP */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label>Nama Lengkap</Label>
-                    <Input value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} required />
+                  <Label>Nama Lengkap</Label>
+                  <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                    <Label>No. WhatsApp / HP</Label>
-                    <Input value={formData.phone_number || ""} onChange={(e) => setFormData({...formData, phone_number: e.target.value})} placeholder="Contoh: 08123456..." />
+                  <Label>No. WhatsApp / HP</Label>
+                  <Input value={formData.phone_number || ""} onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })} placeholder="Contoh: 08123456..." />
                 </div>
               </div>
 
-              <div className="space-y-2"><Label>Password</Label><div className="relative"><Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Masukkan password" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
-              
-               {formData.role === 'praktikan' && (
-                  <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-md">
-                    <div className="space-y-2">
-                      <Label>Kelas</Label>
-                      <Input value={formData.class_code || ""} onChange={(e) => setFormData({...formData, class_code: e.target.value})} placeholder="Contoh: IF-A-2024" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Shift</Label>
-                      <Select value={formData.shift || ""} onValueChange={(val) => setFormData({...formData, shift: val})}>
-                        <SelectTrigger><SelectValue placeholder="Pilih Shift" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">Shift 1</SelectItem>
-                          <SelectItem value="2">Shift 2</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+              <div className="space-y-2"><Label>Password</Label><div className="relative"><Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Masukkan password" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+
+              {formData.role === 'praktikan' && (
+                <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-md">
+                  <div className="space-y-2">
+                    <Label>Kelas</Label>
+                    <Input value={formData.class_code || ""} onChange={(e) => setFormData({ ...formData, class_code: e.target.value })} placeholder="Contoh: IF-A-2024" />
                   </div>
-               )}
-              {(formData.role === 'asisten' || formData.role === 'koordinator') && <div className={`grid ${formData.role === 'asisten' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-3 bg-muted/50 rounded-md`}><div className="space-y-2"><Label>Divisi</Label><Input value={formData.division || ""} onChange={(e) => setFormData({...formData, division: e.target.value})} placeholder="Divisi" /></div>{formData.role === 'asisten' && <div className="space-y-2"><Label>Kode Asisten</Label><Input value={formData.assistant_code || ""} onChange={(e) => setFormData({...formData, assistant_code: e.target.value})} placeholder="SA" /></div>}</div>}
-              
+                  <div className="space-y-2">
+                    <Label>Shift</Label>
+                    <Select value={formData.shift || ""} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Shift" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Shift 1</SelectItem>
+                        <SelectItem value="2">Shift 2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              {(formData.role === 'asisten' || formData.role === 'koordinator') && (
+                <div className={`grid ${formData.role === 'asisten' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-3 bg-muted/50 rounded-md`}>
+                  <div className="space-y-2">
+                    <Label>Divisi</Label>
+                    <Input value={formData.division || ""} onChange={(e) => setFormData({ ...formData, division: e.target.value })} placeholder="Divisi" />
+                  </div>
+                  {formData.role === 'asisten' && (
+                    <div className="space-y-2">
+                      <Label>Kode Asisten</Label>
+                      <Input value={formData.assistant_code || ""} onChange={(e) => setFormData({ ...formData, assistant_code: e.target.value.toUpperCase() })} placeholder="Contoh: SA" />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-between p-3 border rounded-md bg-primary/5">
                 <div className="space-y-0.5">
                   <Label>Status Akun</Label>
                   <p className="text-xs text-muted-foreground">Aktifkan atau nonaktifkan akses login user ini.</p>
                 </div>
-                <Switch 
-                    checked={formData.is_active} 
-                    onCheckedChange={(val) => setFormData({ ...formData, is_active: val })}
+                <Switch
+                  checked={formData.is_active}
+                  onCheckedChange={(val) => setFormData({ ...formData, is_active: val })}
                 />
               </div>
-              
+
               <DialogFooter className="pt-4"><Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Batal</Button><Button type="submit" disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Simpan</Button></DialogFooter>
             </form>
           </DialogContent>
@@ -771,57 +783,57 @@ export default function ManajemenUser() {
 
         {/* DIALOG 2: HAK AKSES DIVISI */}
         <Dialog open={isAccessOpen} onOpenChange={setIsAccessOpen}>
-            <DialogContent className="sm:max-w-[600px]">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary"/> Kelola Hak Akses Divisi</DialogTitle>
-                    <DialogDescription>Tentukan menu apa saja yang dapat diakses oleh divisi tertentu.</DialogDescription>
-                </DialogHeader>
-                
-                <div className="space-y-4 py-2">
-                    <div className="space-y-2">
-                        <Label>Pilih Divisi</Label>
-                        <Select value={selectedDivision} onValueChange={setSelectedDivision}>
-                            <SelectTrigger><SelectValue placeholder="-- Pilih Divisi --" /></SelectTrigger>
-                            <SelectContent>
-                                {divisions.length === 0 ? <SelectItem value="empty" disabled>Belum ada divisi terdaftar</SelectItem> : 
-                                    divisions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)
-                                }
-                            </SelectContent>
-                        </Select>
-                    </div>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary" /> Kelola Hak Akses Divisi</DialogTitle>
+              <DialogDescription>Tentukan menu apa saja yang dapat diakses oleh divisi tertentu.</DialogDescription>
+            </DialogHeader>
 
-                    <div className="border rounded-md p-4 min-h-[200px]">
-                        {!selectedDivision ? (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                                <Lock className="w-8 h-8 opacity-20"/>
-                                <span className="text-sm">Pilih divisi di atas terlebih dahulu.</span>
-                            </div>
-                        ) : loadingAccess ? (
-                            <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-primary"/></div>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-3">
-                                {MASTER_MENUS.map((menu) => (
-                                    <div key={menu.key} className="flex items-center space-x-2 border p-2 rounded hover:bg-muted cursor-pointer" onClick={() => toggleMenuAccess(menu.key)}>
-                                        <input 
-                                            type="checkbox" 
-                                            className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
-                                            checked={accessList.includes(menu.key)}
-                                            onChange={() => {}} 
-                                        />
-                                        <label className="text-sm font-medium cursor-pointer flex-1">{menu.label}</label>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Pilih Divisi</Label>
+                <Select value={selectedDivision} onValueChange={setSelectedDivision}>
+                  <SelectTrigger><SelectValue placeholder="-- Pilih Divisi --" /></SelectTrigger>
+                  <SelectContent>
+                    {divisions.length === 0 ? <SelectItem value="empty" disabled>Belum ada divisi terdaftar</SelectItem> :
+                      divisions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <DialogFooter>
-                    <Button onClick={handleSaveAccess} disabled={!selectedDivision || loadingAccess}>
-                        {loadingAccess ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>} Simpan Perubahan
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
+              <div className="border rounded-md p-4 min-h-[200px]">
+                {!selectedDivision ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                    <Lock className="w-8 h-8 opacity-20" />
+                    <span className="text-sm">Pilih divisi di atas terlebih dahulu.</span>
+                  </div>
+                ) : loadingAccess ? (
+                  <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-primary" /></div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {MASTER_MENUS.map((menu) => (
+                      <div key={menu.key} className="flex items-center space-x-2 border p-2 rounded hover:bg-muted cursor-pointer" onClick={() => toggleMenuAccess(menu.key)}>
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                          checked={accessList.includes(menu.key)}
+                          onChange={() => { }}
+                        />
+                        <label className="text-sm font-medium cursor-pointer flex-1">{menu.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button onClick={handleSaveAccess} disabled={!selectedDivision || loadingAccess}>
+                {loadingAccess ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} Simpan Perubahan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
 
       </div>

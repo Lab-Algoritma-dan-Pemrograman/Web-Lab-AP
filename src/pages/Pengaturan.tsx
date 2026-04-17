@@ -129,14 +129,17 @@ export default function Pengaturan() {
                         <Badge variant="outline" className="text-[10px]">Untuk Praktikan</Badge>
                     </div>
                     <Textarea 
-                        rows={2} 
+                        rows={3} 
                         value={settings.wa_templates?.chat_asisten || ""} 
                         onChange={e => setSettings({...settings, wa_templates: {...settings.wa_templates, chat_asisten: e.target.value}})} 
-                        placeholder="Contoh: Halo Kak {{nama_asisten}}, saya {{nama_praktikan}}..."
+                        placeholder="Contoh: Selamat {{waktu}} {{panggilan}} {{nama_asisten}}, saya {{nama_praktikan}}..."
                     />
-                    <div className="flex items-start gap-1 p-2 bg-blue-50 rounded text-[10px] text-blue-700">
+                    <div className="flex items-start gap-1 p-2 bg-green-50 rounded text-[10px] text-green-700 border border-green-100">
                         <Info className="w-3 h-3 mt-0.5 shrink-0"/>
-                        <span>Placeholder: <b>{"{{nama_asisten}}, {{nama_praktikan}}, {{kelas}}"}</b></span>
+                        <div className="flex flex-col gap-1">
+                          <span>Placeholder: <b>{"{{waktu}}, {{panggilan}}, {{nama_asisten}}, {{nama_praktikan}}, {{nim}}, {{jurusan}}, {{kelas}}"}</b></span>
+                          <span className="opacity-70 text-[9px]">* waktu: Pagi/Siang/Sore/Malam otomatis. panggilan: Bang/Kak berdasarkan asisten.</span>
+                        </div>
                     </div>
                  </div>
               </CardContent>
