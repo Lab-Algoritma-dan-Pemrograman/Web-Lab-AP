@@ -359,6 +359,8 @@ export default function Absensi() {
   };
 
   // --- LOGIKA STAFF ---
+  const handleStaffHelp = async () => {
+    setLoading(true);
     try {
       const { data: allUsers } = await supabase.rpc('get_users_secure', { p_viewer_id: user.id });
       const usr = (allUsers || []).find((u: any) => u.username === targetNim);

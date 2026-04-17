@@ -99,7 +99,6 @@ CREATE POLICY "Public read access" ON public.inventory_items FOR SELECT TO anon 
 -- ==========================================
 
 -- 3.1: Fetch Attendance Logs Securely
-DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(INTEGER);
 DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
@@ -127,8 +126,8 @@ BEGIN
     IF public.is_staff(p_viewer_id) OR public.is_pj_absen_today(p_viewer_id) THEN
         RETURN QUERY 
         SELECT al.id, al.status, al.notes, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id,
-               u.id as user_id, u.full_name, u.role, u.username, u.division as major, u.class_code, u.shift, u.phone_number,
-               s.title, s.day_of_week, s.start_time
+               u.id as user_id, u.full_name as user_full_name, u.role as user_role, u.username as user_username, u.division as user_major, u.class_code as user_class_code, u.shift as user_shift, u.phone_number as user_phone_number,
+               s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
         LEFT JOIN public.schedules s ON al.reschedule_schedule_id = s.id
@@ -136,8 +135,8 @@ BEGIN
     ELSE
         RETURN QUERY 
         SELECT al.id, al.status, al.notes, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id,
-               u.id as user_id, u.full_name, u.role, u.username, u.division as major, u.class_code, u.shift, u.phone_number,
-               s.title, s.day_of_week, s.start_time
+               u.id as user_id, u.full_name as user_full_name, u.role as user_role, u.username as user_username, u.division as user_major, u.class_code as user_class_code, u.shift as user_shift, u.phone_number as user_phone_number,
+               s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
         LEFT JOIN public.schedules s ON al.reschedule_schedule_id = s.id
@@ -818,7 +817,6 @@ BEGIN
 END; $$;
 
 -- 8.0: Personal Schedule Management (Including Shift)
-DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(INTEGER);
 DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_personal_schedules_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
@@ -845,9 +843,9 @@ BEGIN
 
     IF v_role = 'praktikan' THEN
         RETURN QUERY
-        SELECT v_role, s.id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
-               u.id::BIGINT, u.full_name, u.username, u.shift,
-               a.id::BIGINT, a.full_name, a.phone_number
+        SELECT v_role as role, s.id as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class,
+               u.id::BIGINT as student_id, u.full_name as student_name, u.username as student_nim, u.shift as student_shift,
+               a.id::BIGINT as assistant_id, a.full_name as assistant_name, a.phone_number as assistant_phone
         FROM public.group_members gm
         JOIN public.schedules s ON gm.schedule_id = s.id
         JOIN public.users u ON gm.student_id = u.id
@@ -855,9 +853,9 @@ BEGIN
         WHERE gm.student_id = p_viewer_id;
     ELSIF v_role IN ('asisten', 'koordinator', 'sekretaris', 'k3') THEN
         RETURN QUERY
-        SELECT v_role, s.id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
-               stu.id::BIGINT, stu.full_name, stu.username, stu.shift,
-               asst.id::BIGINT, asst.full_name, asst.phone_number
+        SELECT v_role as role, s.id as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class,
+               stu.id::BIGINT as student_id, stu.full_name as student_name, stu.username as student_nim, stu.shift as student_shift,
+               asst.id::BIGINT as assistant_id, asst.full_name as assistant_name, asst.phone_number as assistant_phone
         FROM public.group_assistants ga
         JOIN public.schedules s ON ga.schedule_id = s.id
         JOIN public.users asst ON ga.assistant_id = asst.id
@@ -899,8 +897,8 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     RETURN QUERY
-    SELECT sa.id::BIGINT, sa.schedule_id, s.title, s.day_of_week, s.start_time, s.end_time, s.major, s.class_code,
-           u.id::BIGINT, u.full_name, ou.id::BIGINT, ou.full_name, sa.substitute_user_id::BIGINT,
+    SELECT sa.id::BIGINT as id, sa.schedule_id as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class_code,
+           u.id::BIGINT as user_id, u.full_name as user_full_name, ou.id::BIGINT as original_user_id, ou.full_name as original_user_full_name, sa.substitute_user_id::BIGINT as substitute_user_id,
            sa.task_role, sa.activity_name, sa.activity_date, sa.status
     FROM public.schedule_assignments sa
     JOIN public.schedules s ON sa.schedule_id = s.id
