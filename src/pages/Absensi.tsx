@@ -139,9 +139,16 @@ export default function Absensi() {
   };
 
   const fetchDeletionHistory = async () => {
-    if (!hasFullAccess) return;
-    const { data } = await supabase.rpc('get_deletion_history_secure', { p_caller_id: user.id });
+    if (!hasFullAccess || !user) return;
+    const { data } = await supabase.rpc('get_deletion_history_secure', { p_viewer_id: user.id });
     setDeletionHistory(data || []);
+  };
+
+  const fetchAssistantContact = async () => {
+    if (!user) return;
+    const { data } = await supabase.rpc('get_assistant_contact_secure', { p_viewer_id: user.id });
+    const me = (data || []).find((u: any) => u.role === 'koordinator');
+    if (me) setAdminPhone(me.phone_number);
   };
 
   const fetchMyOwnSchedules = async () => {
@@ -719,8 +726,13 @@ export default function Absensi() {
                                 </Button>
                               </DialogTrigger>
                               <DialogContent>
-                                <DialogHeader><DialogTitle>Pilih Jadwal Pengganti</DialogTitle></DialogHeader>
-                                <div className="py-4 space-y-4">
+                                <DialogHeader>
+                                  <DialogTitle>Pilih Jadwal Pengganti</DialogTitle>
+                                  <DialogDescription>
+                                    Silakan pilih jadwal pengganti yang tersedia untuk menggantikan kehadiran Anda.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="py-2 space-y-4">
                                   <Label>Jadwal Tersedia:</Label>
                                   <Select value={selectedSchedule} onValueChange={setSelectedSchedule}>
                                     <SelectTrigger><SelectValue placeholder="Pilih Jadwal..." /></SelectTrigger>

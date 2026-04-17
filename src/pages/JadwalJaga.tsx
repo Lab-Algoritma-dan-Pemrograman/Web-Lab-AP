@@ -591,7 +591,12 @@ export default function JadwalJaga() {
                     <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                         <DialogTrigger asChild><Button variant="outline" className="border-green-600 text-green-700 hover:bg-green-50"><FileUp className="w-4 h-4 mr-2"/> Import Excel</Button></DialogTrigger>
                         <DialogContent className="max-w-3xl">
-                            <DialogHeader><DialogTitle>Import Data Plotting Asisten (Excel)</DialogTitle></DialogHeader>
+                            <DialogHeader>
+                              <DialogTitle>Import Data Plotting Asisten (Excel)</DialogTitle>
+                              <DialogDescription>
+                                Gunakan fitur ini untuk mengunggah jadwal jaga asisten secara massal menggunakan file Excel.
+                              </DialogDescription>
+                            </DialogHeader>
                             <div className="space-y-4 py-2">
                                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3">
                                     <Info className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -617,7 +622,12 @@ export default function JadwalJaga() {
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <Button onClick={openAddDialog}><UserPlus className="w-4 h-4 mr-2"/> Tambah Petugas</Button>
                         <DialogContent>
-                            <DialogHeader><DialogTitle>{isEditMode ? "Edit Penugasan Asisten" : "Tugaskan Asisten"}</DialogTitle></DialogHeader>
+                            <DialogHeader>
+                              <DialogTitle>{isEditMode ? "Edit Penugasan Asisten" : "Tugaskan Asisten"}</DialogTitle>
+                              <DialogDescription>
+                                {isEditMode ? "Perbarui detail penugasan asisten untuk kegiatan praktikum." : "Tentukan asisten dan peran mereka untuk jadwal praktikum tertentu."}
+                              </DialogDescription>
+                            </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2"><Label>Tanggal Bertugas</Label><Input type="date" value={activityDate} onChange={(e) => setActivityDate(e.target.value)} /></div>
