@@ -199,7 +199,7 @@ export default function ValidasiAbsensi() {
                         <TableRow key={log.id}>
                             <TableCell>
                               <div className="font-bold">{log.users?.full_name}</div>
-                              <div className="text-xs text-muted-foreground">{new Date(log.check_in_time).toLocaleString('id-ID')}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(log.check_in_time).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</div>
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="mr-2 mb-1 bg-yellow-50">{log.status}</Badge> 
@@ -233,7 +233,7 @@ export default function ValidasiAbsensi() {
                       <TableRow key={log.id} className="bg-gray-50/50">
                           <TableCell>
                               <div className="font-medium">{log.users?.full_name}</div>
-                              <div className="text-xs text-muted-foreground">{new Date(log.check_in_time).toLocaleDateString('id-ID')}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(log.check_in_time).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })}</div>
                           </TableCell>
                           <TableCell>
                               {log.verification_status === 'approved' ? <Badge className="bg-green-100 text-green-800 border-transparent">Izin OK</Badge> : <Badge className="bg-red-100 text-red-800 border-transparent">Ditolak</Badge>}

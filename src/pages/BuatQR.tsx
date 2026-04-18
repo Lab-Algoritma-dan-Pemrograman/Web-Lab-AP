@@ -50,7 +50,7 @@ export default function BuatQR() {
         // Update DB via Secure RPC
         const { error } = await supabase.rpc('update_qr_session_token_secure', {
             p_caller_id: user.id,
-            p_id: parseInt(sessionId),
+            p_id: sessionId,
             p_token: newToken
         });
         if (!error) {
@@ -96,7 +96,7 @@ export default function BuatQR() {
     if (error) {
       toast.error("Gagal: " + error.message);
     } else if (sessionData && sessionData.length > 0) {
-      setSessionId(sessionData[0].id.toString());
+      setSessionId(sessionData[0].id);
       setQrToken(firstToken);
       setTimeLeft(5);
       toast.success(`Sesi Dimulai: ${generatedTitle}`);
@@ -109,7 +109,7 @@ export default function BuatQR() {
     if (!sessionId || !user) return;
     const { error } = await supabase.rpc('stop_qr_session_secure', {
         p_caller_id: user.id,
-        p_id: parseInt(sessionId)
+        p_id: sessionId
     });
     if (error) toast.error("Gagal menghentikan: " + error.message);
     else {

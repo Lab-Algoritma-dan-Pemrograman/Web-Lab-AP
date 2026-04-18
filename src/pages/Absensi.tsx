@@ -731,7 +731,7 @@ export default function Absensi() {
                             <TableCell>
                               <div className="flex flex-col items-start gap-1">
                                 <Badge variant="outline" className={`text-[10px] ${log.status === 'Hadir' ? 'bg-green-50 text-green-700 border-green-200' : log.status === 'Alpha' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                                  {log.status} • {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                  {log.status} • {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                                 </Badge>
                                 {log.status !== 'Hadir' && <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[120px]">{log.notes}</span>}
                               </div>
@@ -767,7 +767,9 @@ export default function Absensi() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1.5">
                         <Badge variant={log.status === 'Hadir' ? "default" : "destructive"}>{log.status}</Badge>
-                        <span className="text-xs font-medium text-gray-500">{new Date(log.check_in_time).toLocaleDateString('id-ID')}</span>
+                        <span className="text-xs font-medium text-gray-500">
+                          {new Date(log.check_in_time).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })} {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
+                        </span>
                       </div>
                       <p className="text-sm font-medium text-gray-800">{log.notes}</p>
 
