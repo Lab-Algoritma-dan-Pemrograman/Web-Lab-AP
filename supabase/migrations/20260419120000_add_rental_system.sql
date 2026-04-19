@@ -122,24 +122,25 @@ DECLARE
     v_rental_days INTEGER;
     v_calculated_total NUMERIC;
 BEGIN
-    -- Use text casting for ID comparison to avoid UUID vs BIGINT issues
-    SELECT price_per_day INTO v_item_price 
-    FROM public.inventory_items 
-    WHERE id::TEXT = p_item_id::TEXT;
+    -- AMBIL HARGA PER HARI (Gunakan subquery untuk menghindari ambiguitas SELECT INTO)
+    v_item_price := (SELECT price_per_day FROM public.inventory_items WHERE id::TEXT = p_item_id::TEXT LIMIT 1);
     
+    -- HITUNG JUMLAH HARI
     v_rental_days := EXTRACT(DAY FROM (p_end_date - p_start_date))::INTEGER;
     IF v_rental_days <= 0 THEN v_rental_days := 1; END IF;
     
+    -- HITUNG TOTAL BIAYA
     IF p_type = 'sewa' THEN
         v_calculated_total := COALESCE(v_item_price, 0) * v_rental_days * p_quantity;
     ELSE
         v_calculated_total := 0;
     END IF;
 
+    -- SIMPAN KE TABEL
     INSERT INTO public.inventory_rentals (
         user_id, item_id, quantity, start_date, end_date, type, total_price, status, notes
     ) VALUES (
-        p_user_id, p_item_id, p_quantity, p_start_date, p_end_date, p_type, v_calculated_total, 'pending', p_notes
+        p_user_id, p_item_id, p_quantity, p_start_date, p_end_date, p_type, COALESCE(v_calculated_total, 0), 'pending', p_notes
     );
 END; $$;
 
