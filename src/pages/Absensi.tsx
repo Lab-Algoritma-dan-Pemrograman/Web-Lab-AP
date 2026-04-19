@@ -701,7 +701,7 @@ export default function Absensi() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto max-h-[500px] overflow-y-auto relative scrollbar-thin">
-                  <Table className="min-w-[700px] md:min-w-full">
+                  <Table>
                     <TableHeader className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
                         <TableHead className="text-xs">Mahasiswa</TableHead>

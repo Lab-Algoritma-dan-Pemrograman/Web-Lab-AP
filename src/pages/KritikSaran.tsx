@@ -340,7 +340,7 @@ export default function KritikSaran() {
                     )}
                   </CardHeader>
                   <CardContent className="pt-0 px-0">
-                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto scrollbar-thin">
                         <Table>
                           <TableHeader className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                             <TableRow>
@@ -369,7 +369,7 @@ export default function KritikSaran() {
                                   </TableCell>
                                   
                                   {(user?.role === 'koordinator' || user?.role === 'asisten') && (
-                                    <TableCell className="align-top pt-3">
+                                    <TableCell className="align-top pt-3 whitespace-nowrap">
                                       <div className="font-medium text-sm flex items-center gap-1.5 text-gray-800">
                                         <User className="w-3.5 h-3.5 text-muted-foreground" />
                                         {fb.users?.full_name || "Anonim"}

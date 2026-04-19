@@ -607,7 +607,7 @@ export default function ManajemenUser() {
           </CardHeader>
           <CardContent>
             {loading ? <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" /></div> : (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto scrollbar-thin">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -641,9 +641,9 @@ export default function ManajemenUser() {
                               onChange={() => toggleSelect(u.id)}
                             />
                           </TableCell>
-                          <TableCell className="font-medium">{u.full_name}</TableCell>
-                          <TableCell className="font-mono text-xs">{u.username}</TableCell>
-                          <TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">{u.full_name}</TableCell>
+                          <TableCell className="font-mono text-xs whitespace-nowrap">{u.username}</TableCell>
+                          <TableCell className="whitespace-nowrap">
                             {u.phone_number ? (
                               <div className="flex items-center gap-1 text-sm text-gray-600">
                                 <Phone className="w-3 h-3" /> {u.phone_number}

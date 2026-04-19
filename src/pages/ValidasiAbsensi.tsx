@@ -190,7 +190,7 @@ export default function ValidasiAbsensi() {
           <CardContent>
              {loading && pendingLogs.length === 0 ? <div className="flex justify-center p-4"><Loader2 className="animate-spin text-muted-foreground w-6 h-6"/></div> :
               <div className="overflow-x-auto">
-                <Table className="min-w-[600px] md:min-w-full">
+                <Table>
                   <TableHeader>
                   <TableRow><TableHead>Nama</TableHead><TableHead>Alasan</TableHead><TableHead>Kontak</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow>
                 </TableHeader>
@@ -226,7 +226,7 @@ export default function ValidasiAbsensi() {
           <CardHeader><CardTitle className="flex items-center gap-2 text-blue-700"><History className="w-5 h-5"/> Status Jadwal Pengganti</CardTitle></CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table className="min-w-[800px] md:min-w-full">
+              <Table>
                 <TableHeader>
                 <TableRow><TableHead>Nama</TableHead><TableHead>Status Izin</TableHead><TableHead>Jadwal Dipilih</TableHead><TableHead className="text-right">Aksi Jadwal</TableHead></TableRow>
               </TableHeader>

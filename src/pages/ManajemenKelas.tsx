@@ -489,7 +489,7 @@ export default function ManajemenKelas() {
                                         )}
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto border rounded-md">
+                                    <div className="flex-1 overflow-y-auto border rounded-md overflow-x-auto scrollbar-thin">
                                         <table className="w-full text-sm text-left">
                                             <thead className="bg-gray-100 sticky top-0 z-10">
                                                 <tr><th className="p-3 font-semibold text-xs uppercase text-gray-500">Nama Mahasiswa</th><th className="p-3 font-semibold text-xs uppercase text-gray-500">Pembimbing (Edit)</th></tr>

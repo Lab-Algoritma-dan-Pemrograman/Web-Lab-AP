@@ -71,7 +71,8 @@ export default function Inventaris() {
              </div>
           </CardHeader>
           <CardContent>
-             <Table>
+            <div className="overflow-x-auto scrollbar-thin">
+              <Table>
                 <TableHeader><TableRow><TableHead>Nama Barang</TableHead><TableHead>Kondisi</TableHead><TableHead>Jml</TableHead><TableHead>Lokasi</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
                 <TableBody>
                    {filtered.map(item => (
@@ -87,7 +88,8 @@ export default function Inventaris() {
                       </TableRow>
                    ))}
                 </TableBody>
-             </Table>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
