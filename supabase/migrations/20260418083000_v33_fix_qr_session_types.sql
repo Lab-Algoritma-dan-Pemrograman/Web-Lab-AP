@@ -68,5 +68,22 @@ BEGIN
 END;
 $$;
 
+-- 4. Redefine get_qr_session_secure
+-- Use is_active = true as the source of truth instead of expires_at
+DROP FUNCTION IF EXISTS public.get_qr_session_secure(TEXT);
+
+CREATE OR REPLACE FUNCTION public.get_qr_session_secure(
+    p_token TEXT
+) RETURNS TABLE (id UUID, title TEXT, is_active BOOLEAN) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT qs.id, qs.title, qs.is_active
+    FROM public.qr_sessions qs
+    WHERE qs.token = p_token AND qs.is_active = true
+    LIMIT 1;
+END;
+$$;
+
+
 -- Grant permissions to keep RPCs accessible
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO authenticated, service_role, anon;

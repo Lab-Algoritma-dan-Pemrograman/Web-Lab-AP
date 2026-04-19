@@ -700,8 +700,8 @@ export default function Absensi() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto max-h-[500px] overflow-y-auto relative">
-                  <Table>
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto relative scrollbar-thin">
+                  <Table className="min-w-[700px] md:min-w-full">
                     <TableHeader className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
                         <TableHead className="text-xs">Mahasiswa</TableHead>
@@ -720,11 +720,11 @@ export default function Absensi() {
                       ) : (
                         displayAttendance.map((log) => (
                           <TableRow key={log.id} className="hover:bg-gray-50 transition-colors">
-                            <TableCell>
+                            <TableCell className="whitespace-nowrap">
                               <div className="font-bold text-sm">{log.users?.full_name || "Unknown"}</div>
                               <div className="text-[11px] text-muted-foreground font-mono">{log.users?.username}</div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="whitespace-nowrap">
                               <div className="text-[11px] font-semibold">{log.users?.class_code} - {log.users?.major}</div>
                               <div className="text-[11px] text-muted-foreground">Shift: {log.users?.shift || "-"}</div>
                             </TableCell>

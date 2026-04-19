@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, Megaphone, PartyPopper, Zap } from "lucide-react"; 
+import { FloatingIcons } from "@/components/FloatingIcons";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -168,15 +169,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
-      <div className="w-full max-w-md animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 relative overflow-hidden">
+      <FloatingIcons />
+      <div className="w-full max-w-md animate-fade-in relative z-10">
         {/* Header Logo */}
-        <div className="text-center mb-8 flex flex-col items-center">
+        <div className="text-center mb-6 sm:mb-8 flex flex-col items-center">
           {/* Kotak Putih untuk Logo */}
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-sm border border-slate-100 mb-4">
-            <img src="/logo.png" alt="Logo Lab Algoritma" className="w-12 h-12 object-contain" />
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl shadow-sm border border-slate-100 mb-4">
+            <img src="/logo.png" alt="Logo Lab Algoritma" className="w-10 h-10 sm:w-12 sm:h-12 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground px-4">
             Laboratorium Algoritma Pemrograman
           </h1>
           <p className="text-muted-foreground mt-1">
