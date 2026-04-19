@@ -224,10 +224,6 @@ BEGIN
 END; $$;
 
 -- 8. RPC: update_rental_status_secure
-CREATE OR REPLACE FUNCTION public.update_rental_status_secure(
-    p_caller_id BIGINT,
-    p_rental_id BIGINT,
--- 8. RPC: update_rental_status_secure
 DROP FUNCTION IF EXISTS public.update_rental_status_secure(BIGINT, BIGINT, TEXT);
 CREATE OR REPLACE FUNCTION public.update_rental_status_secure(
     p_caller_id BIGINT,
