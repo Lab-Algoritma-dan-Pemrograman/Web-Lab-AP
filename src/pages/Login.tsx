@@ -119,7 +119,7 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (signupPassword.length < 3) {
+    if (signupPassword.length < 6) {
       toast.error("Password terlalu pendek", { description: "Minimal 6 karakter." });
       setIsLoading(false);
       return;
@@ -318,7 +318,7 @@ export default function Login() {
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="Minimal 3 karakter"
+                      placeholder="Minimal 6 karakter"
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       required
