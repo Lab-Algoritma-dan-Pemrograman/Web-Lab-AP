@@ -7,6 +7,10 @@
 -- 1. PATCH INVENTORY ITEMS
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS "is_rentable" BOOLEAN DEFAULT false;
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS "price_per_day" NUMERIC DEFAULT 0;
+ 
+ -- 1b. PATCH USERS ROLE CHECK
+ ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+ ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK (role IN ('koordinator', 'asisten', 'praktikan', 'penyewa'));
 
 -- 2. CREATE RENTALS TABLE
 CREATE TABLE IF NOT EXISTS public.inventory_rentals (
