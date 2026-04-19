@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth"; 
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Megaphone, PartyPopper, Zap } from "lucide-react"; 
+import { Loader2, Megaphone, PartyPopper, Zap } from "lucide-react";
 import { FloatingIcons } from "@/components/FloatingIcons";
 
 export default function Login() {
@@ -37,7 +37,7 @@ export default function Login() {
   const [signupName, setSignupName] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
-  
+
   // UPDATE: Role hanya dibatasi untuk Praktikan atau Penyewa
   const [signupRole, setSignupRole] = useState<"praktikan" | "penyewa">("praktikan");
 
@@ -49,9 +49,9 @@ export default function Login() {
     try {
       // 1. Verifikasi kredensial menggunakan fungsi RPC (Aman dengan Hash)
       const { data, error } = await supabase
-        .rpc('login_user', { 
-            p_username: loginUsername, 
-            p_password: loginPassword
+        .rpc('login_user', {
+          p_username: loginUsername,
+          p_password: loginPassword
         })
         .maybeSingle();
 
@@ -70,24 +70,24 @@ export default function Login() {
             .from('system_settings')
             .select('active_shift')
             .maybeSingle();
-          
+
           const activeShift = settings?.active_shift || 'all';
-          
+
           if (activeShift !== 'all') {
             if (activeShift === 'none') {
-               toast.error("Akses Ditutup", { description: "Maaf, akses login saat ini sedang ditutup untuk semua praktikan." });
-               setIsLoading(false);
-               return;
+              toast.error("Akses Ditutup", { description: "Maaf, akses login saat ini sedang ditutup untuk semua praktikan." });
+              setIsLoading(false);
+              return;
             }
             if (!data.shift || data.shift === '?') {
-               toast.error("Akun Belum Aktif", { description: "Mohon tunggu plotting shift dari Koordinator sebelum Anda bisa login." });
-               setIsLoading(false);
-               return;
+              toast.error("Akun Belum Aktif", { description: "Mohon tunggu plotting shift dari Koordinator sebelum Anda bisa login." });
+              setIsLoading(false);
+              return;
             }
             if (data.shift !== activeShift) {
-               toast.error("Akses Ditolak", { description: `Maaf, akun Anda terdaftar di Shift ${data.shift}. Saat ini hanya Shift ${activeShift} yang diizinkan masuk.` });
-               setIsLoading(false);
-               return;
+              toast.error("Akses Ditolak", { description: `Maaf, akun Anda terdaftar di Shift ${data.shift}. Saat ini hanya Shift ${activeShift} yang diizinkan masuk.` });
+              setIsLoading(false);
+              return;
             }
           }
         }
@@ -95,15 +95,15 @@ export default function Login() {
         // 4. Login Sukses
         // Hapus field sensitif agar tidak tersimpan di localStorage browser
         const { password: _, ...safeData } = data as any;
-        
-        login(safeData as any); 
+
+        login(safeData as any);
         toast.success("Login Berhasil!", { description: `Selamat datang, ${data.full_name}` });
-        
+
         // Redirect cerdas berdasarkan role
         if (data.role === 'koordinator' || data.role === 'asisten') {
-            navigate("/beranda");
+          navigate("/beranda");
         } else {
-            navigate("/beranda"); 
+          navigate("/beranda");
         }
       }
     } catch (err: any) {
@@ -120,7 +120,7 @@ export default function Login() {
     setIsLoading(true);
 
     if (signupPassword.length < 3) {
-      toast.error("Password terlalu pendek", { description: "Minimal 3 karakter." });
+      toast.error("Password terlalu pendek", { description: "Minimal 6 karakter." });
       setIsLoading(false);
       return;
     }
@@ -153,7 +153,7 @@ export default function Login() {
       if (error) throw error;
 
       toast.success("Pendaftaran Berhasil!", { description: "Silakan login dengan akun baru Anda." });
-      
+
       // Reset Form
       setSignupUsername("");
       setSignupPassword("");
@@ -188,25 +188,25 @@ export default function Login() {
 
         {/* MARQUEE PENGUMUMAN */}
         {sysSettings && (
-            <div className="mb-6 overflow-hidden rounded-lg bg-white border border-primary/20 shadow-sm p-3 relative flex items-center">
-                <div className="flex-shrink-0 z-10 bg-white pr-2 flex items-center gap-2 text-primary font-bold">
-                    {sysSettings.is_recruitment_open ? <PartyPopper className="w-5 h-5 text-pink-500 animate-bounce" /> : <Megaphone className="w-5 h-5 animate-pulse" />}
-                    Info:
-                </div>
-                <div className="flex-1 overflow-hidden whitespace-nowrap relative">
-                    <div className="animate-marquee inline-block whitespace-nowrap text-sm font-medium text-slate-700">
-                        <div className="inline-flex items-center gap-2 mr-10 relative">
-                            <Zap className="w-4 h-4 text-yellow-500 fill-yellow-500 animate-pulse" />
-                            {sysSettings.is_recruitment_open && <span className="text-pink-600 font-bold">🔥 OPEN RECRUITMENT ASISTEN SEDANG DIBUKA! DAFTAR SEKARANG! 🔥</span>}
-                            {sysSettings.active_shift && sysSettings.active_shift !== 'all' && sysSettings.active_shift !== 'none' && (
-                                <span className="text-blue-600 font-bold">🔔 PERHATIAN: Akses Login Praktikum Saat Ini Hanya Dibuka Untuk SHIFT {sysSettings.active_shift}. 🔔</span>
-                            )}
-                            <span>{sysSettings.announcement || "Selamat datang di sistem informasi Laboratorium Algoritma Pemrograman."}</span>
-                        </div>
-                        {/* Duplicate for seamless loop if needed, but animate-marquee with single long text usually works with transform -100% */}
-                    </div>
-                </div>
+          <div className="mb-6 overflow-hidden rounded-lg bg-white border border-primary/20 shadow-sm p-3 relative flex items-center">
+            <div className="flex-shrink-0 z-10 bg-white pr-2 flex items-center gap-2 text-primary font-bold">
+              {sysSettings.is_recruitment_open ? <PartyPopper className="w-5 h-5 text-pink-500 animate-bounce" /> : <Megaphone className="w-5 h-5 animate-pulse" />}
+              Info:
             </div>
+            <div className="flex-1 overflow-hidden whitespace-nowrap relative">
+              <div className="animate-marquee inline-block whitespace-nowrap text-sm font-medium text-slate-700">
+                <div className="inline-flex items-center gap-2 mr-10 relative">
+                  <Zap className="w-4 h-4 text-yellow-500 fill-yellow-500 animate-pulse" />
+                  {sysSettings.is_recruitment_open && <span className="text-pink-600 font-bold">🔥 OPEN RECRUITMENT ASISTEN SEDANG DIBUKA! DAFTAR SEKARANG! 🔥</span>}
+                  {sysSettings.active_shift && sysSettings.active_shift !== 'all' && sysSettings.active_shift !== 'none' && (
+                    <span className="text-blue-600 font-bold">🔔 PERHATIAN: Akses Login Praktikum Saat Ini Hanya Dibuka Untuk SHIFT {sysSettings.active_shift}. 🔔</span>
+                  )}
+                  <span>{sysSettings.announcement || "Selamat datang di sistem informasi Laboratorium Algoritma Pemrograman."}</span>
+                </div>
+                {/* Duplicate for seamless loop if needed, but animate-marquee with single long text usually works with transform -100% */}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Card Form */}
@@ -265,7 +265,7 @@ export default function Login() {
               {/* --- TAB DAFTAR (Hanya Praktikan & Penyewa) --- */}
               <TabsContent value="daftar" className="mt-0">
                 <form onSubmit={handleSignup} className="space-y-4">
-                  
+
                   {/* Pilihan Role Ditaruh Paling Atas agar Label di bawahnya menyesuaikan */}
                   <div className="space-y-2">
                     <Label htmlFor="signup-role">Daftar Sebagai</Label>
@@ -304,7 +304,7 @@ export default function Login() {
                     </Label>
                     <Input
                       id="signup-username"
-                      type="text" 
+                      type="text"
                       placeholder={signupRole === 'praktikan' ? "Contoh: 202511090" : "Masukkan NIM"}
                       value={signupUsername}
                       onChange={(e) => setSignupUsername(e.target.value)}
