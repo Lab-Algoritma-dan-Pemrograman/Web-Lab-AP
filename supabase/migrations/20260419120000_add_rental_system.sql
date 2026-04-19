@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_rentals (
 ALTER TABLE public.inventory_rentals ENABLE ROW LEVEL SECURITY;
 
 -- 4. RPC: get_inventory_items_secure (Updated to include rental info)
+DROP FUNCTION IF EXISTS public.get_inventory_items_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_inventory_items_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -54,6 +55,7 @@ BEGIN
 END; $$;
 
 -- 5. RPC: upsert_inventory_item_secure (Updated)
+DROP FUNCTION IF EXISTS public.upsert_inventory_item_secure(BIGINT, TEXT, TEXT, TEXT, INTEGER, TEXT, BOOLEAN, NUMERIC);
 CREATE OR REPLACE FUNCTION public.upsert_inventory_item_secure(
     p_caller_id BIGINT, 
     p_id TEXT, 
@@ -116,25 +118,28 @@ CREATE OR REPLACE FUNCTION public.submit_rental_request_secure(
     p_notes TEXT
 ) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-    v_price_per_day NUMERIC;
-    v_days INTEGER;
-    v_total_price NUMERIC;
+    v_item_price NUMERIC;
+    v_rental_days INTEGER;
+    v_calculated_total NUMERIC;
 BEGIN
-    SELECT price_per_day INTO v_price_per_day FROM public.inventory_items WHERE id = p_item_id;
+    -- Use text casting for ID comparison to avoid UUID vs BIGINT issues
+    SELECT price_per_day INTO v_item_price 
+    FROM public.inventory_items 
+    WHERE id::TEXT = p_item_id::TEXT;
     
-    v_days := EXTRACT(DAY FROM (p_end_date - p_start_date))::INTEGER;
-    IF v_days <= 0 THEN v_days := 1; END IF;
+    v_rental_days := EXTRACT(DAY FROM (p_end_date - p_start_date))::INTEGER;
+    IF v_rental_days <= 0 THEN v_rental_days := 1; END IF;
     
     IF p_type = 'sewa' THEN
-        v_total_price := v_price_per_day * v_days * p_quantity;
+        v_calculated_total := COALESCE(v_item_price, 0) * v_rental_days * p_quantity;
     ELSE
-        v_total_price := 0;
+        v_calculated_total := 0;
     END IF;
 
     INSERT INTO public.inventory_rentals (
         user_id, item_id, quantity, start_date, end_date, type, total_price, status, notes
     ) VALUES (
-        p_user_id, p_item_id, p_quantity, p_start_date, p_end_date, p_type, v_total_price, 'pending', p_notes
+        p_user_id, p_item_id, p_quantity, p_start_date, p_end_date, p_type, v_calculated_total, 'pending', p_notes
     );
 END; $$;
 
