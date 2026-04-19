@@ -30,7 +30,8 @@ const RESTRICTED_MENUS = [
   "/laporan-keuangan",
   "/penunjang-praktikum",
   "/e-learning",
-  "/ketersediaan"
+  "/ketersediaan",
+  "/manajemen-sewa"
 ];
 
 export function AppSidebar() {
@@ -91,7 +92,7 @@ export function AppSidebar() {
     { title: "Beranda", url: "/beranda", icon: Home, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
     { title: "Profil Saya", url: "/profil", icon: User, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
     
-    { title: "Sewa & Pinjam", url: "/sewa-barang", icon: PackageSearch, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
+    { title: "Sewa & Pinjam", url: "/sewa-barang", icon: PackageSearch, roles: ["penyewa"] },
     { title: "Manajemen Sewa", url: "/manajemen-sewa", icon: ListChecks, roles: ["asisten", "koordinator"] },
 
     { title: "Absensi", url: "/absensi", icon: CalendarCheck, roles: ["praktikan", "asisten", "koordinator"] },
