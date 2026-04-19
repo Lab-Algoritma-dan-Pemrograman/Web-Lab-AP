@@ -85,6 +85,7 @@ BEGIN
 END; $$;
 
 -- 5b. RPC: get_renter_items_secure (For Renter Catalog)
+DROP FUNCTION IF EXISTS public.get_renter_items_secure();
 CREATE OR REPLACE FUNCTION public.get_renter_items_secure()
 RETURNS TABLE (
     id BIGINT,
@@ -108,6 +109,7 @@ BEGIN
 END; $$;
 
 -- 5c. RPC: submit_rental_request_secure
+DROP FUNCTION IF EXISTS public.submit_rental_request_secure(BIGINT, BIGINT, INTEGER, TIMESTAMP WITH TIME ZONE, TIMESTAMP WITH TIME ZONE, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION public.submit_rental_request_secure(
     p_user_id BIGINT,
     p_item_id BIGINT,
@@ -145,6 +147,7 @@ BEGIN
 END; $$;
 
 -- 6. RPC: get_my_rentals_secure
+DROP FUNCTION IF EXISTS public.get_my_rentals_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_my_rentals_secure(p_user_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -177,6 +180,7 @@ BEGIN
 END; $$;
 
 -- 7. RPC: get_admin_rentals_secure
+DROP FUNCTION IF EXISTS public.get_admin_rentals_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_admin_rentals_secure(p_caller_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -223,6 +227,11 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.update_rental_status_secure(
     p_caller_id BIGINT,
     p_rental_id BIGINT,
+-- 8. RPC: update_rental_status_secure
+DROP FUNCTION IF EXISTS public.update_rental_status_secure(BIGINT, BIGINT, TEXT);
+CREATE OR REPLACE FUNCTION public.update_rental_status_secure(
+    p_caller_id BIGINT,
+    p_rental_id BIGINT,
     p_new_status TEXT
 ) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -232,26 +241,29 @@ DECLARE
 BEGIN
     IF NOT public.is_staff(p_caller_id) THEN RAISE EXCEPTION 'Akses Ditolak'; END IF;
 
-    SELECT item_id, quantity, status INTO v_item_id, v_qty, v_old_status 
-    FROM public.inventory_rentals WHERE id = p_rental_id;
+    -- AMBIL DATA SEWA (Gunakan baris tunggal untuk menghindari ambiguitas penugasan)
+    SELECT item_id, quantity, status 
+    INTO v_item_id, v_qty, v_old_status 
+    FROM public.inventory_rentals 
+    WHERE id::TEXT = p_rental_id::TEXT;
 
     -- Handle Inventory Stock changes
     -- 1. Marking as ACTIVE (Taken) -> Reduce stock
-    IF p_new_status = 'active' AND v_old_status != 'active' THEN
-        UPDATE public.inventory_items SET quantity = quantity - v_qty WHERE id = v_item_id;
+    IF p_new_status = 'active' AND COALESCE(v_old_status, '') != 'active' THEN
+        UPDATE public.inventory_items SET quantity = quantity - COALESCE(v_qty, 0) WHERE id::TEXT = v_item_id::TEXT;
     END IF;
 
     -- 2. Marking as RETURNED (Back) -> Restore stock
-    IF p_new_status = 'returned' AND v_old_status = 'active' THEN
-        UPDATE public.inventory_items SET quantity = quantity + v_qty WHERE id = v_item_id;
+    IF p_new_status = 'returned' AND COALESCE(v_old_status, '') = 'active' THEN
+        UPDATE public.inventory_items SET quantity = quantity + COALESCE(v_qty, 0) WHERE id::TEXT = v_item_id::TEXT;
     END IF;
 
     -- 3. Marking as REJECTED from previously being ACTIVE (Edge case) -> Restore stock
-    IF p_new_status = 'rejected' AND v_old_status = 'active' THEN
-        UPDATE public.inventory_items SET quantity = quantity + v_qty WHERE id = v_item_id;
+    IF p_new_status = 'rejected' AND COALESCE(v_old_status, '') = 'active' THEN
+        UPDATE public.inventory_items SET quantity = quantity + COALESCE(v_qty, 0) WHERE id::TEXT = v_item_id::TEXT;
     END IF;
 
-    UPDATE public.inventory_rentals SET status = p_new_status, updated_at = now() WHERE id = p_rental_id;
+    UPDATE public.inventory_rentals SET status = p_new_status, updated_at = now() WHERE id::TEXT = p_rental_id::TEXT;
 END; $$;
 
 -- 9. GRANTS
