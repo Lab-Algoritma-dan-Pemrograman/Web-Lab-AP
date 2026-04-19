@@ -192,12 +192,17 @@ export default function ValidasiAbsensi() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                  <TableRow><TableHead>Nama</TableHead><TableHead>Alasan</TableHead><TableHead>Kontak</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow>
-                </TableHeader>
-                <TableBody>
-                   {pendingLogs.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground italic">Tidak ada permintaan izin baru.</TableCell></TableRow> : 
-                     pendingLogs.map(log => (
-                        <TableRow key={log.id}>
+                    <TableRow>
+                      <TableHead className="w-[1%] whitespace-nowrap pr-6">Nama</TableHead>
+                      <TableHead className="w-[1%] whitespace-nowrap pr-6">Alasan</TableHead>
+                      <TableHead className="w-[1%] whitespace-nowrap pr-6">Kontak</TableHead>
+                      <TableHead className="text-center w-[160px]">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingLogs.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground italic">Tidak ada permintaan izin baru.</TableCell></TableRow> : 
+                      pendingLogs.map(log => (
+                         <TableRow key={log.id}>
                             <TableCell>
                               <div className="font-bold">{log.users?.full_name}</div>
                               <div className="text-xs text-muted-foreground">{new Date(log.check_in_time).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</div>

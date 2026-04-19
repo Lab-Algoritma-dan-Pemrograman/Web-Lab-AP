@@ -619,14 +619,14 @@ export default function ManajemenUser() {
                           onChange={toggleSelectAll}
                         />
                       </TableHead>
-                      <TableHead>Nama Lengkap</TableHead>
-                      <TableHead>NIM / Username</TableHead>
-                      <TableHead>Kontak (No HP)</TableHead>
-                      <TableHead>Shift</TableHead>
-                      <TableHead>Detail</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
+                      <TableHead className="w-[1%] whitespace-nowrap pr-6">Nama Lengkap</TableHead>
+                      <TableHead className="w-[1%] whitespace-nowrap pr-6">NIM / Username</TableHead>
+                      <TableHead className="w-[1%] whitespace-nowrap pr-6">Kontak</TableHead>
+                      <TableHead className="w-[100px]">Shift</TableHead>
+                      <TableHead className="min-w-[150px]">Detail (Kelas)</TableHead>
+                      <TableHead className="w-[100px]">Role</TableHead>
+                      <TableHead className="text-center w-[120px]">Status</TableHead>
+                      <TableHead className="text-center w-[120px]">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -687,8 +687,8 @@ export default function ManajemenUser() {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
+                          <TableCell className="text-center">
+                            <div className="flex justify-center gap-2">
                               {canEdit(u) && <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="w-4 h-4 text-blue-500" /></Button>}
                               {currentUser?.role === 'koordinator' && u.id !== currentUser.id && <Button variant="ghost" size="icon" onClick={() => handleDelete(u.id, u.full_name)}><Trash2 className="w-4 h-4 text-red-500" /></Button>}
                             </div>

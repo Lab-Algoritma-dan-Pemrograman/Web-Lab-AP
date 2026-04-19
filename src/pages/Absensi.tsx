@@ -704,10 +704,10 @@ export default function Absensi() {
                   <Table>
                     <TableHeader className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="text-xs">Mahasiswa</TableHead>
-                        <TableHead className="text-xs">Info</TableHead>
-                        <TableHead className="text-xs">Waktu & Status</TableHead>
-                        {isStaffTableMode && <TableHead className="text-xs text-right">Aksi</TableHead>}
+                        <TableHead className="text-xs w-[35%] whitespace-nowrap">Mahasiswa</TableHead>
+                        <TableHead className="text-xs w-[20%] whitespace-nowrap">Info</TableHead>
+                        <TableHead className="text-xs w-[35%]">Waktu & Status</TableHead>
+                        {isStaffTableMode && <TableHead className="text-xs text-center w-[10%]">Aksi</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -737,7 +737,7 @@ export default function Absensi() {
                               </div>
                             </TableCell>
                             {hasDeletePower && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-center">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteLog(log.id, log)}>
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
