@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Home, BookOpen, PenTool, Calendar, Users, Settings, LogOut, 
   Box, FileText, User, CalendarCheck, CheckCircle, ClipboardCheck,
-  MessageSquare, QrCode, CalendarDays, GraduationCap 
+  MessageSquare, QrCode, CalendarDays, GraduationCap, PackageSearch, ListChecks
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -88,9 +88,12 @@ export function AppSidebar() {
 
   // Definisi Menu Lengkap
   const menuItems = [
-    { title: "Beranda", url: "/beranda", icon: Home, roles: ["praktikan", "asisten", "koordinator"] },
-    { title: "Profil Saya", url: "/profil", icon: User, roles: ["praktikan", "asisten", "koordinator"] },
+    { title: "Beranda", url: "/beranda", icon: Home, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
+    { title: "Profil Saya", url: "/profil", icon: User, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
     
+    { title: "Sewa & Pinjam", url: "/sewa-barang", icon: PackageSearch, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
+    { title: "Manajemen Sewa", url: "/manajemen-sewa", icon: ListChecks, roles: ["asisten", "koordinator"] },
+
     { title: "Absensi", url: "/absensi", icon: CalendarCheck, roles: ["praktikan", "asisten", "koordinator"] },
     { title: "Buat QR Absen", url: "/buat-qr", icon: QrCode, roles: ["asisten", "koordinator"] },
     { title: "Kritik & Saran", url: "/kritik-saran", icon: MessageSquare, roles: ["praktikan", "koordinator"] },
@@ -116,6 +119,7 @@ export function AppSidebar() {
     if (!user || !item.roles.includes(user.role)) return false;
     if (user.role === 'koordinator') return true;
     if (user.role === 'praktikan') return true;
+    if (user.role === 'penyewa') return true; // Penyewa can access everything in their roles list
     if (user.role === 'asisten') {
         // /absensi & /buat-qr selalu tampil untuk semua asisten
         if (item.url === '/absensi' || item.url === '/buat-qr') return true;

@@ -29,6 +29,8 @@ import JadwalJaga from "./pages/JadwalJaga";
 // Tahap Akhir
 import LaporanKeuangan from "./pages/LaporanKeuangan";
 import ELearning from "./pages/ELearning";
+import SewaBarang from "./pages/SewaBarang";
+import ManajemenSewa from "./pages/ManajemenSewa";
 
 import Pengaturan from "./pages/Pengaturan";
 
@@ -56,6 +58,7 @@ function AppRoutes() {
       {/* UMUM (Semua User Login) */}
       <Route path="/profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
       <Route path="/absensi" element={<ProtectedRoute><Absensi /></ProtectedRoute>} />
+      <Route path="/sewa-barang" element={<ProtectedRoute><SewaBarang /></ProtectedRoute>} />
       
       {/* KRITIK SARAN: Diakses Praktikan (Kirim) & Koordinator (Baca) */}
       <Route path="/kritik-saran" element={<ProtectedRoute allowedRoles={["praktikan", "koordinator"]}><KritikSaran /></ProtectedRoute>} />
@@ -73,6 +76,7 @@ function AppRoutes() {
       <Route path="/manajemen-kelas" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]} requiredMenuKey="/manajemen-kelas"><ManajemenKelas /></ProtectedRoute>} />
       <Route path="/ketersediaan" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]} requiredMenuKey="/ketersediaan"><KetersediaanAsisten /></ProtectedRoute>} />
       <Route path="/laporan-keuangan" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/laporan-keuangan"><LaporanKeuangan /></ProtectedRoute>} />
+      <Route path="/manajemen-sewa" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/inventaris"><ManajemenSewa /></ProtectedRoute>} />
       
       {/* KHUSUS KOORDINATOR (ADMINISTRASI) */}
       <Route path="/pengaturan" element={<ProtectedRoute allowedRoles={["koordinator"]}><Pengaturan /></ProtectedRoute>} />

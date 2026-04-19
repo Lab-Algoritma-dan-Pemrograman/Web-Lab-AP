@@ -6,7 +6,7 @@ export interface LabUser {
   id: number;
   username: string;
   full_name: string;
-  role: "praktikan" | "asisten" | "koordinator";
+  role: "praktikan" | "asisten" | "koordinator" | "penyewa";
   nim?: string;
   assistant_code?: string;
   division?: string;
