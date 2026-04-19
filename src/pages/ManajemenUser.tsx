@@ -45,7 +45,7 @@ interface UserData {
   password?: string;
   full_name: string;
   phone_number?: string; // TAMBAHAN: Kolom No HP
-  role: "koordinator" | "asisten" | "praktikan";
+  role: "koordinator" | "asisten" | "praktikan" | "penyewa";
   nim?: string;
   assistant_code?: string;
   division?: string;
@@ -588,6 +588,7 @@ export default function ManajemenUser() {
                   <SelectContent>
                     <SelectItem value="all">Semua Peran</SelectItem>
                     <SelectItem value="praktikan">Praktikan</SelectItem>
+                    <SelectItem value="penyewa">Penyewa Umum</SelectItem>
                     <SelectItem value="asisten">Asisten</SelectItem>
                     <SelectItem value="koordinator">Koordinator</SelectItem>
                   </SelectContent>
@@ -667,6 +668,11 @@ export default function ManajemenUser() {
                                 <span className="font-semibold text-xs border border-blue-200 bg-blue-50 px-2 py-0.5 rounded-md w-fit">Kelas: {u.class_code || "-"}</span>
                                 <div className="flex items-center gap-1 text-muted-foreground text-xs mt-1"><GraduationCap className="w-3 h-3" /><span>{getJurusanByNIM(u.nim)}</span></div>
                               </div>
+                            ) : u.role === 'penyewa' ? (
+                               <div className="flex flex-col gap-1">
+                                 <Badge variant="outline" className="w-fit text-[10px] bg-slate-50 text-slate-500 border-slate-200">PENYEWA UMUM</Badge>
+                                 <span className="text-[10px] text-muted-foreground italic ml-1">Katalog Publik Aktif</span>
+                               </div>
                             ) : (
                               <div className="flex flex-col gap-0.5">
                                 <div className="flex items-center gap-1.5 font-medium text-foreground"><Briefcase className="w-3 h-3 text-muted-foreground" /><span>Divisi: {u.division || "-"}</span></div>
@@ -674,7 +680,7 @@ export default function ManajemenUser() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell><Badge variant={u.role === 'koordinator' ? 'destructive' : u.role === 'asisten' ? 'default' : 'secondary'}>{u.role.toUpperCase()}</Badge></TableCell>
+                          <TableCell><Badge variant={u.role === 'koordinator' ? 'destructive' : u.role === 'asisten' ? 'default' : u.role === 'penyewa' ? 'outline' : 'secondary'}>{u.role.toUpperCase()}</Badge></TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center items-center gap-2">
                               <Switch
@@ -715,7 +721,7 @@ export default function ManajemenUser() {
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Username / NIM</Label><Input value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="202314..." required disabled={isEdit && currentUser?.role !== 'koordinator'} /></div>
-                <div className="space-y-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val: any) => setFormData({ ...formData, role: val })} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="praktikan">Praktikan</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val: any) => setFormData({ ...formData, role: val })} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="praktikan">Praktikan</SelectItem><SelectItem value="penyewa">Penyewa Umum</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
               </div>
 
               {/* Row: Nama & No HP */}

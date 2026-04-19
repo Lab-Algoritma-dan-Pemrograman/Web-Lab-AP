@@ -224,11 +224,11 @@ export default function Login() {
               <TabsContent value="masuk" className="mt-0">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-username">NIM</Label>
+                    <Label htmlFor="login-username">NIM / Username</Label>
                     <Input
                       id="login-username"
                       type="text"
-                      placeholder="Masukkan NIM"
+                      placeholder="Masukkan NIM atau Username"
                       value={loginUsername}
                       onChange={(e) => setLoginUsername(e.target.value)}
                       required
@@ -300,12 +300,12 @@ export default function Login() {
                   <div className="space-y-2">
                     {/* Label Dinamis: NIM atau Username/NIK */}
                     <Label htmlFor="signup-username">
-                      {signupRole === 'praktikan' ? 'NIM' : 'NIK / Username'}
+                      {signupRole === 'praktikan' ? 'NIM' : 'Username'}
                     </Label>
                     <Input
                       id="signup-username"
                       type="text"
-                      placeholder={signupRole === 'praktikan' ? "Contoh: 202511090" : "Masukkan NIM"}
+                      placeholder={signupRole === 'praktikan' ? "Contoh: 202511090" : "Masukkan Username"}
                       value={signupUsername}
                       onChange={(e) => setSignupUsername(e.target.value)}
                       required
