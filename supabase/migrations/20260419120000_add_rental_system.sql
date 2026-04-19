@@ -247,9 +247,22 @@ BEGIN
     v_old_status := (SELECT status FROM public.inventory_rentals WHERE id::TEXT = p_rental_id::TEXT LIMIT 1);
 
     -- Handle Inventory Stock changes
-    -- 1. Marking as ACTIVE (Taken) -> Reduce stock
+    -- 1. Marking as ACTIVE (Taken) -> Reduce stock & Record Finance if SEWA
     IF p_new_status = 'active' AND COALESCE(v_old_status, '') != 'active' THEN
         UPDATE public.inventory_items SET quantity = quantity - COALESCE(v_qty, 0) WHERE id::TEXT = v_item_id::TEXT;
+
+        -- Otomasi Laporan Keuangan (Hanya untuk tipe sewa yang ada biayanya)
+        INSERT INTO public.financial_records (title, amount, type, category, date)
+        SELECT 
+            'Sewa ' || ii.name || ' (' || u.full_name || ')',
+            ir.total_price,
+            'pemasukan',
+            'Sewa Barang',
+            CURRENT_DATE
+        FROM public.inventory_rentals ir
+        JOIN public.inventory_items ii ON ir.item_id = ii.id
+        JOIN public.users u ON ir.user_id = u.id
+        WHERE ir.id::TEXT = p_rental_id::TEXT AND ir.type = 'sewa' AND ir.total_price > 0;
     END IF;
 
     -- 2. Marking as RETURNED (Back) -> Restore stock

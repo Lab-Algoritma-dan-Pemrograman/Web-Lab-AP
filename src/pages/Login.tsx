@@ -37,6 +37,7 @@ export default function Login() {
   const [signupName, setSignupName] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
 
   // UPDATE: Role hanya dibatasi untuk Praktikan atau Penyewa
   const [signupRole, setSignupRole] = useState<"praktikan" | "penyewa">("praktikan");
@@ -124,6 +125,12 @@ export default function Login() {
       setIsLoading(false);
       return;
     }
+ 
+    if (signupRole === 'penyewa' && !signupPhone) {
+      toast.error("Mohon Isi WhatsApp!", { description: "Nomor WA wajib diisi agar asisten bisa menghubungi Anda untuk verifikasi identitas." });
+      setIsLoading(false);
+      return;
+    }
 
     try {
       // 1. Cek apakah username sudah dipakai?
@@ -147,6 +154,7 @@ export default function Login() {
         p_role: signupRole,
         p_nim: signupRole === 'praktikan' ? signupUsername : null,
         p_assistant_code: null,
+        p_phone_number: signupPhone || null,
         p_is_active: true
       });
 
@@ -158,6 +166,7 @@ export default function Login() {
       setSignupUsername("");
       setSignupPassword("");
       setSignupName("");
+      setSignupPhone("");
       // Kembalikan ke tab Login (Opsional, manual user klik tab Login)
 
     } catch (err: any) {
@@ -293,6 +302,19 @@ export default function Login() {
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
                       required
+                      disabled={isLoading}
+                    />
+                  </div>
+ 
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone">Nomor WhatsApp {signupRole === 'penyewa' && <span className="text-red-500">*</span>}</Label>
+                    <Input
+                      id="signup-phone"
+                      type="text"
+                      placeholder="Contoh: 081234567890"
+                      value={signupPhone}
+                      onChange={(e) => setSignupPhone(e.target.value)}
+                      required={signupRole === 'penyewa'}
                       disabled={isLoading}
                     />
                   </div>
