@@ -237,11 +237,10 @@ DECLARE
 BEGIN
     IF NOT public.is_staff(p_caller_id) THEN RAISE EXCEPTION 'Akses Ditolak'; END IF;
 
-    -- AMBIL DATA SEWA (Gunakan baris tunggal untuk menghindari ambiguitas penugasan)
-    SELECT item_id, quantity, status 
-    INTO v_item_id, v_qty, v_old_status 
-    FROM public.inventory_rentals 
-    WHERE id::TEXT = p_rental_id::TEXT;
+    -- AMBIL DATA SECARA INDIVIDUAL (Gunakan penugasan eksplisit untuk menghindari bug relasi/tabel)
+    v_item_id := (SELECT item_id FROM public.inventory_rentals WHERE id::TEXT = p_rental_id::TEXT LIMIT 1);
+    v_qty := (SELECT quantity FROM public.inventory_rentals WHERE id::TEXT = p_rental_id::TEXT LIMIT 1);
+    v_old_status := (SELECT status FROM public.inventory_rentals WHERE id::TEXT = p_rental_id::TEXT LIMIT 1);
 
     -- Handle Inventory Stock changes
     -- 1. Marking as ACTIVE (Taken) -> Reduce stock
