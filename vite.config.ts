@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import basicSsl from '@vitejs/plugin-basic-ssl'; // <-- Import SSL
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -16,7 +15,6 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(), 
     basicSsl(), // <-- Tambahkan di sini (di dalam array)
-    mode === "development" && componentTagger()
   ].filter(Boolean),
   resolve: {
     alias: {
