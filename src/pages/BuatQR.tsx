@@ -180,15 +180,12 @@ export default function BuatQR() {
           <Card className="border-4 border-green-500 animate-pulse-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-xl text-green-600 animate-pulse">{title}</CardTitle>
-              <CardDescription>Refresh dalam: <span className="font-bold text-red-500">{timeLeft}s</span></CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6 pb-8">
               <div className="p-4 bg-white rounded-xl shadow-lg relative">
                 {qrToken && <QRCode value={qrToken} size={256} />}
               </div>
-              <div className="text-sm text-muted-foreground">
-                Pastikan praktikan scan kode ini sekarang.
-              </div>
+
               <Button variant="destructive" size="lg" onClick={handleStopSession} className="w-full">
                 <StopCircle className="mr-2 h-5 w-5"/> Hentikan Sesi
               </Button>
