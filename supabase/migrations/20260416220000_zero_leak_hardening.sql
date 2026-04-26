@@ -53,44 +53,17 @@ BEGIN
     END LOOP;
 END $$;
 
--- Explicitly block sensitive tables for anon SELECT
-DROP POLICY IF EXISTS "Block direct select" ON public.attendance_logs;
-CREATE POLICY "Block direct select" ON public.attendance_logs FOR SELECT TO anon USING (false);
-
-DROP POLICY IF EXISTS "Block direct select" ON public.feedback;
-CREATE POLICY "Block direct select" ON public.feedback FOR SELECT TO anon USING (false);
-
-DROP POLICY IF EXISTS "Block direct select" ON public.financial_records;
-CREATE POLICY "Block direct select" ON public.financial_records FOR SELECT TO anon USING (false);
-
-DROP POLICY IF EXISTS "Block direct select" ON public.elearning_progress;
-CREATE POLICY "Block direct select" ON public.elearning_progress FOR SELECT TO anon USING (false);
-
--- Ensure table has new columns for E-Learning
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS current_level TEXT;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_levels JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_lessons INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS total_lessons INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completion_percentage NUMERIC(5,2) NOT NULL DEFAULT 0;
-
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completion_percentage NUMERIC(5,2) NOT NULL DEFAULT 0;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS lessons_completed INTEGER DEFAULT 0;
-ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_lessons INTEGER DEFAULT 0;
-
-DROP POLICY IF EXISTS "Block direct select" ON public.group_members;
-CREATE POLICY "Block direct select" ON public.group_members FOR SELECT TO anon USING (false);
-
-DROP POLICY IF EXISTS "Block direct select" ON public.group_assistants;
-CREATE POLICY "Block direct select" ON public.group_assistants FOR SELECT TO anon USING (false);
-
-DROP POLICY IF EXISTS "Block direct select" ON public.assistant_availability;
-CREATE POLICY "Block direct select" ON public.assistant_availability FOR SELECT TO anon USING (false);
-
-DROP POLICY IF EXISTS "Block direct select" ON public.qr_sessions;
-CREATE POLICY "Block direct select" ON public.qr_sessions FOR SELECT TO anon USING (false);
-
-DROP POLICY IF EXISTS "Block direct select" ON public.external_links;
-CREATE POLICY "Block direct select" ON public.external_links FOR SELECT TO anon USING (false);
+-- Restore basic access for authenticated users to avoid empty pages
+DO $$ 
+DECLARE 
+    t TEXT;
+BEGIN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' 
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS "Allow authenticated select" ON public.%I', t);
+        EXECUTE format('CREATE POLICY "Allow authenticated select" ON public.%I FOR SELECT TO authenticated USING (true)', t);
+    END LOOP;
+END $$;
 
 -- Keep some tables READABLE for anon (Needed for app initialization/UI)
 DROP POLICY IF EXISTS "Public read access" ON public.system_settings;
@@ -121,7 +94,7 @@ RETURNS TABLE (
     is_verified BOOLEAN,
     verification_status TEXT,
     reschedule_status TEXT,
-    reschedule_schedule_id UUID,
+    reschedule_schedule_id TEXT,
     user_id BIGINT,
     user_full_name TEXT,
     user_role TEXT,
@@ -137,21 +110,21 @@ RETURNS TABLE (
 BEGIN
     IF public.is_staff(p_viewer_id) OR public.is_pj_absen_today(p_viewer_id) THEN
         RETURN QUERY 
-        SELECT al.id, al.status, al.notes, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id,
+        SELECT al.id::BIGINT, al.status::TEXT, al.notes::TEXT, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id::TEXT,
                u.id as user_id, u.full_name as user_full_name, u.role as user_role, u.username as user_username, u.division as user_major, u.class_code as user_class_code, u.shift as user_shift, u.phone_number as user_phone_number,
                s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
-        LEFT JOIN public.schedules s ON al.reschedule_schedule_id = s.id
+        LEFT JOIN public.schedules s ON al.reschedule_schedule_id::TEXT = s.id::TEXT
         ORDER BY al.check_in_time DESC;
     ELSE
         RETURN QUERY 
-        SELECT al.id, al.status, al.notes, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id,
+        SELECT al.id::BIGINT, al.status::TEXT, al.notes::TEXT, al.check_in_time, al.is_verified, al.verification_status, al.reschedule_status, al.reschedule_schedule_id::TEXT,
                u.id as user_id, u.full_name as user_full_name, u.role as user_role, u.username as user_username, u.division as user_major, u.class_code as user_class_code, u.shift as user_shift, u.phone_number as user_phone_number,
                s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_time
         FROM public.attendance_logs al
         JOIN public.users u ON al.custom_user_id = u.id
-        LEFT JOIN public.schedules s ON al.reschedule_schedule_id = s.id
+        LEFT JOIN public.schedules s ON al.reschedule_schedule_id::TEXT = s.id::TEXT
         WHERE al.custom_user_id = p_viewer_id
         ORDER BY al.check_in_time DESC;
     END IF;
@@ -844,7 +817,7 @@ DROP FUNCTION IF EXISTS public.get_personal_schedules_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_personal_schedules_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     role TEXT,
-    schedule_id UUID,
+    schedule_id TEXT,
     schedule_title TEXT,
     schedule_day TEXT,
     schedule_start TIME,
@@ -866,23 +839,23 @@ BEGIN
 
     IF v_role = 'praktikan' THEN
         RETURN QUERY
-        SELECT v_role as role, s.id as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class,
+        SELECT v_role as role, s.id::TEXT as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class,
                u.id::BIGINT as student_id, u.full_name as student_name, u.username as student_nim, u.shift as student_shift,
                a.id::BIGINT as assistant_id, a.full_name as assistant_name, a.phone_number as assistant_phone
         FROM public.group_members gm
-        JOIN public.schedules s ON gm.schedule_id = s.id
+        JOIN public.schedules s ON gm.schedule_id::TEXT = s.id::TEXT
         JOIN public.users u ON gm.student_id = u.id
         LEFT JOIN public.users a ON gm.assistant_id = a.id
         WHERE gm.student_id = p_viewer_id;
     ELSIF v_role IN ('asisten', 'koordinator', 'sekretaris', 'k3') THEN
         RETURN QUERY
-        SELECT v_role as role, s.id as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class,
+        SELECT v_role as role, s.id::TEXT as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class,
                stu.id::BIGINT as student_id, stu.full_name as student_name, stu.username as student_nim, stu.shift as student_shift,
                asst.id::BIGINT as assistant_id, asst.full_name as assistant_name, asst.phone_number as assistant_phone
         FROM public.group_assistants ga
-        JOIN public.schedules s ON ga.schedule_id = s.id
+        JOIN public.schedules s ON ga.schedule_id::TEXT = s.id::TEXT
         JOIN public.users asst ON ga.assistant_id = asst.id
-        LEFT JOIN public.group_members gm ON ga.schedule_id = gm.schedule_id AND ga.assistant_id = gm.assistant_id
+        LEFT JOIN public.group_members gm ON ga.schedule_id::TEXT = gm.schedule_id::TEXT AND ga.assistant_id = gm.assistant_id
         LEFT JOIN public.users stu ON gm.student_id = stu.id
         WHERE ga.assistant_id = p_viewer_id;
     END IF;
