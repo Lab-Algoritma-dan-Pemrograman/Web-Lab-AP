@@ -73,38 +73,9 @@ ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_lessons
 ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS total_lessons INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completion_percentage NUMERIC(5,2) NOT NULL DEFAULT 0;
 
--- Auto-sync lesson counts from JSON details
-CREATE OR REPLACE FUNCTION public.sync_elearning_lessons_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.lesson_details IS NOT NULL THEN
-        NEW.total_lessons := jsonb_array_length(NEW.lesson_details);
-        NEW.completed_lessons := (SELECT count(*)::int FROM jsonb_array_elements(NEW.lesson_details) WHERE (value->>'completed')::boolean = true);
-        IF NEW.total_lessons > 0 THEN
-            NEW.completion_percentage := (NEW.completed_lessons::DECIMAL / NEW.total_lessons::DECIMAL) * 100;
-        ELSE
-            NEW.completion_percentage := 0;
-        END IF;
-    END IF;
-    RETURN NEW;
-END; $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS sync_elearning_lessons_count_trigger ON public.elearning_progress;
-CREATE TRIGGER sync_elearning_lessons_count_trigger
-    BEFORE INSERT OR UPDATE OF lesson_details ON public.elearning_progress
-    FOR EACH ROW EXECUTE FUNCTION public.sync_elearning_lessons_count();
-
--- One-time sync for existing records
-UPDATE public.elearning_progress 
-SET 
-    total_lessons = jsonb_array_length(lesson_details),
-    completed_lessons = (SELECT count(*)::int FROM jsonb_array_elements(lesson_details) WHERE (value->>'completed')::boolean = true),
-    completion_percentage = CASE 
-        WHEN jsonb_array_length(lesson_details) > 0 
-        THEN ((SELECT count(*)::DECIMAL FROM jsonb_array_elements(lesson_details) WHERE (value->>'completed')::boolean = true) / jsonb_array_length(lesson_details)::DECIMAL) * 100
-        ELSE 0 
-    END
-WHERE lesson_details IS NOT NULL;
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completion_percentage NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS lessons_completed INTEGER DEFAULT 0;
+ALTER TABLE public.elearning_progress ADD COLUMN IF NOT EXISTS completed_lessons INTEGER DEFAULT 0;
 
 DROP POLICY IF EXISTS "Block direct select" ON public.group_members;
 CREATE POLICY "Block direct select" ON public.group_members FOR SELECT TO anon USING (false);
@@ -298,7 +269,7 @@ DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(INTEGER);
 DROP FUNCTION IF EXISTS public.get_elearning_progress_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_elearning_progress_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id UUID,
+    id TEXT,
     nim TEXT,
     student_name TEXT,
     completed_lessons INTEGER,
@@ -320,10 +291,10 @@ BEGIN
     IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
         SELECT 
-            ep.id, ep.nim, u.full_name as student_name, 
-            COALESCE(NULLIF(ep.completed_lessons, 0), (SELECT count(*)::int FROM jsonb_array_elements(ep.lesson_details) WHERE (value->>'completed')::boolean = true)),
-            COALESCE(NULLIF(ep.total_lessons, 0), jsonb_array_length(ep.lesson_details)),
-            ep.completion_percentage, 
+            ep.id::TEXT, ep.nim, COALESCE(ep.student_name, u.full_name) as student_name, 
+            COALESCE(NULLIF(ep.lessons_completed, 0), ep.completed_lessons) as completed_lessons,
+            ep.total_lessons, 
+            ep.completion_percentage::DECIMAL, 
             ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at, ep.created_at, ep.updated_at
         FROM public.elearning_progress ep
         LEFT JOIN public.users u ON (ep.nim = u.nim OR ep.nim = u.username)
@@ -331,10 +302,10 @@ BEGIN
     ELSE
         RETURN QUERY 
         SELECT 
-            ep.id, ep.nim, u.full_name as student_name, 
-            COALESCE(NULLIF(ep.completed_lessons, 0), (SELECT count(*)::int FROM jsonb_array_elements(ep.lesson_details) WHERE (value->>'completed')::boolean = true)),
-            COALESCE(NULLIF(ep.total_lessons, 0), jsonb_array_length(ep.lesson_details)),
-            ep.completion_percentage, 
+            ep.id::TEXT, ep.nim, COALESCE(ep.student_name, u.full_name) as student_name, 
+            COALESCE(NULLIF(ep.lessons_completed, 0), ep.completed_lessons) as completed_lessons,
+            ep.total_lessons, 
+            ep.completion_percentage::DECIMAL, 
             ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at, ep.created_at, ep.updated_at
         FROM public.elearning_progress ep 
         LEFT JOIN public.users u ON (ep.nim = u.nim OR ep.nim = u.username)
