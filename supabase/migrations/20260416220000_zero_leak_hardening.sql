@@ -173,7 +173,6 @@ BEGIN
 END; $$;
 
 -- 3.3: Fetch Financial Records (Staff Only)
-DROP FUNCTION IF EXISTS public.get_financial_records_secure(INTEGER);
 DROP FUNCTION IF EXISTS public.get_financial_records_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_financial_records_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
@@ -182,13 +181,12 @@ RETURNS TABLE (
     amount DECIMAL,
     type TEXT,
     category TEXT,
-    date DATE,
-    created_at TIMESTAMP WITH TIME ZONE
+    date DATE
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
-        SELECT fr.id, fr.title, fr.amount, fr.type, fr.category, fr.date, fr.created_at 
+        SELECT fr.id::BIGINT, fr.title::TEXT, fr.amount::DECIMAL, fr.type::TEXT, fr.category::TEXT, fr.date::DATE
         FROM public.financial_records fr 
         ORDER BY fr.date DESC;
     ELSE
@@ -199,10 +197,11 @@ END; $$;
 -- 3.4: Fetch Group Members Securely
 DROP FUNCTION IF EXISTS public.get_group_members_secure(BIGINT, BIGINT);
 DROP FUNCTION IF EXISTS public.get_group_members_secure(BIGINT, UUID);
-CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id BIGINT, p_schedule_id UUID DEFAULT NULL)
+DROP FUNCTION IF EXISTS public.get_group_members_secure(BIGINT, TEXT);
+CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id BIGINT, p_schedule_id TEXT DEFAULT NULL)
 RETURNS TABLE (
     id BIGINT,
-    schedule_id UUID,
+    schedule_id TEXT,
     student_id BIGINT,
     assistant_id BIGINT,
     student_name TEXT,
@@ -216,24 +215,24 @@ RETURNS TABLE (
 BEGIN
     IF public.is_staff(p_viewer_id) THEN
         RETURN QUERY 
-        SELECT gm.id, gm.schedule_id, gm.student_id, gm.assistant_id, 
-               u_s.full_name, u_s.nim, u_a.full_name,
-               s.title, s.day_of_week, s.start_time, s.class_code
+        SELECT gm.id::BIGINT, gm.schedule_id::TEXT, gm.student_id::BIGINT, gm.assistant_id::BIGINT, 
+               u_s.full_name::TEXT, u_s.nim::TEXT, u_a.full_name::TEXT,
+               s.title::TEXT, s.day_of_week::TEXT, s.start_time::TIME, s.class_code::TEXT
         FROM public.group_members gm
         LEFT JOIN public.users u_s ON gm.student_id = u_s.id
         LEFT JOIN public.users u_a ON gm.assistant_id = u_a.id
-        LEFT JOIN public.schedules s ON gm.schedule_id = s.id
-        WHERE (p_schedule_id IS NULL OR gm.schedule_id = p_schedule_id);
+        LEFT JOIN public.schedules s ON gm.schedule_id::TEXT = s.id::TEXT
+        WHERE (p_schedule_id IS NULL OR gm.schedule_id::TEXT = p_schedule_id);
     ELSE
         RETURN QUERY 
-        SELECT gm.id, gm.schedule_id, gm.student_id, gm.assistant_id, 
-               u_s.full_name, u_s.nim, u_a.full_name,
-               s.title, s.day_of_week, s.start_time, s.class_code
+        SELECT gm.id::BIGINT, gm.schedule_id::TEXT, gm.student_id::BIGINT, gm.assistant_id::BIGINT, 
+               u_s.full_name::TEXT, u_s.nim::TEXT, u_a.full_name::TEXT,
+               s.title::TEXT, s.day_of_week::TEXT, s.start_time::TIME, s.class_code::TEXT
         FROM public.group_members gm
         LEFT JOIN public.users u_s ON gm.student_id = u_s.id
         LEFT JOIN public.users u_a ON gm.assistant_id = u_a.id
-        LEFT JOIN public.schedules s ON gm.schedule_id = s.id
-        WHERE gm.student_id = p_viewer_id AND (p_schedule_id IS NULL OR gm.schedule_id = p_schedule_id);
+        LEFT JOIN public.schedules s ON gm.schedule_id::TEXT = s.id::TEXT
+        WHERE gm.student_id = p_viewer_id AND (p_schedule_id IS NULL OR gm.schedule_id::TEXT = p_schedule_id);
     END IF;
 END; $$;
 
@@ -285,35 +284,32 @@ BEGIN
 END; $$;
 
 -- 3.6: Fetch External Links Securely
-DROP FUNCTION IF EXISTS public.get_external_links_secure(INTEGER);
 DROP FUNCTION IF EXISTS public.get_external_links_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_external_links_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
     title TEXT,
     url TEXT,
-    is_active BOOLEAN,
-    created_at TIMESTAMP WITH TIME ZONE
+    is_active BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     RETURN QUERY 
-    SELECT el.id, el.title, el.url, el.is_active, el.created_at
+    SELECT el.id::BIGINT, el.title::TEXT, el.url::TEXT, el.is_active::BOOLEAN
     FROM public.external_links el
-    WHERE el.is_active = true
-    ORDER BY el.created_at DESC;
+    WHERE el.is_active = true;
 END; $$;
 
 -- 3.6.b: Fetch QR Session Securely (For Scan)
 DROP FUNCTION IF EXISTS public.get_qr_session_secure(TEXT);
 CREATE OR REPLACE FUNCTION public.get_qr_session_secure(p_token TEXT)
 RETURNS TABLE (
-    id UUID,
+    id TEXT,
     title TEXT,
     is_active BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     RETURN QUERY 
-    SELECT qs.id, qs.title, qs.is_active
+    SELECT qs.id::TEXT, qs.title::TEXT, qs.is_active
     FROM public.qr_sessions qs
     WHERE qs.token = p_token AND qs.is_active = true
     LIMIT 1;
@@ -636,11 +632,10 @@ RETURNS TABLE (
     name TEXT,
     type TEXT,
     description TEXT,
-    file_url TEXT,
-    uploaded_at TIMESTAMP WITH TIME ZONE
+    file_url TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-    RETURN QUERY SELECT e.id, e.name, e.type, e.description, e.file_url, e.uploaded_at FROM public.equipment e ORDER BY e.uploaded_at DESC;
+    RETURN QUERY SELECT e.id::BIGINT, e.name::TEXT, e.type::TEXT, e.description::TEXT, e.file_url::TEXT FROM public.equipment e;
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.upsert_equipment_secure(
@@ -874,7 +869,7 @@ DROP FUNCTION IF EXISTS public.get_schedule_assignments_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_schedule_assignments_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
-    schedule_id UUID,
+    schedule_id TEXT,
     schedule_title TEXT,
     schedule_day TEXT,
     schedule_start TIME,
@@ -893,11 +888,11 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     RETURN QUERY
-    SELECT sa.id::BIGINT as id, sa.schedule_id as schedule_id, s.title as schedule_title, s.day_of_week as schedule_day, s.start_time as schedule_start, s.end_time as schedule_end, s.major as schedule_major, s.class_code as schedule_class_code,
-           u.id::BIGINT as user_id, u.full_name as user_full_name, ou.id::BIGINT as original_user_id, ou.full_name as original_user_full_name, sa.substitute_user_id::BIGINT as substitute_user_id,
-           sa.task_role, sa.activity_name, sa.activity_date, sa.status
+    SELECT sa.id::BIGINT, sa.schedule_id::TEXT, s.title::TEXT, s.day_of_week::TEXT, s.start_time::TIME, s.end_time::TIME, s.major::TEXT, s.class_code::TEXT,
+           u.id::BIGINT, u.full_name::TEXT, ou.id::BIGINT, ou.full_name::TEXT, sa.substitute_user_id::BIGINT,
+           sa.task_role::TEXT, sa.activity_name::TEXT, sa.activity_date::DATE, sa.status::TEXT
     FROM public.schedule_assignments sa
-    JOIN public.schedules s ON sa.schedule_id = s.id
+    JOIN public.schedules s ON sa.schedule_id::TEXT = s.id::TEXT
     LEFT JOIN public.users u ON sa.user_id = u.id
     LEFT JOIN public.users ou ON sa.original_user_id = ou.id
     ORDER BY sa.activity_date DESC, s.start_time ASC;
@@ -946,7 +941,7 @@ END; $$;
 DROP FUNCTION IF EXISTS public.get_schedules_secure(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_schedules_secure(p_viewer_id BIGINT)
 RETURNS TABLE (
-    id UUID,
+    id TEXT,
     title TEXT,
     major TEXT,
     class_code TEXT,
@@ -957,7 +952,7 @@ RETURNS TABLE (
     status TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-    RETURN QUERY SELECT s.id, s.title, s.major, s.class_code, s.day_of_week, s.start_time, s.end_time, s.type, s.status
+    RETURN QUERY SELECT s.id::TEXT, s.title::TEXT, s.major::TEXT, s.class_code::TEXT, s.day_of_week::TEXT, s.start_time::TIME, s.end_time::TIME, s.type::TEXT, s.status::TEXT
     FROM public.schedules s;
 END; $$;
 
@@ -1083,11 +1078,10 @@ RETURNS TABLE (
     name TEXT,
     condition TEXT,
     quantity INTEGER,
-    location TEXT,
-    created_at TIMESTAMPTZ
+    location TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-    RETURN QUERY SELECT ii.id, ii.name, ii.condition, ii.quantity, ii.location, ii.created_at FROM public.inventory_items ii ORDER BY ii.name ASC;
+    RETURN QUERY SELECT ii.id::BIGINT, ii.name::TEXT, ii.condition::TEXT, ii.quantity::INTEGER, ii.location::TEXT FROM public.inventory_items ii ORDER BY ii.name ASC;
 END;
 $$;
 
