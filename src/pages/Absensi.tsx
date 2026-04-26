@@ -253,7 +253,8 @@ export default function Absensi() {
       "Shift": log.users?.shift || "-",
       "Waktu Absen": new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       "Status": log.status,
-      "Keterangan": log.notes || "-"
+      "Keterangan": log.notes || "-",
+      "Petugas/Log": log.recorded_by_name || "Mandiri"
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -612,89 +613,110 @@ export default function Absensi() {
           <div className="lg:col-span-8 flex flex-col">
             <Card className="flex-1 shadow-md">
               <CardHeader className="pb-3 border-b bg-gray-50/50">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Users className="w-5 h-5 text-primary" /> Daftar Kehadiran
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="space-y-1">
+                    <CardTitle className="text-xl flex items-center gap-2.5 font-bold text-slate-800">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Users className="w-5 h-5 text-primary" />
+                      </div>
+                      Daftar Kehadiran
                     </CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <CardDescription>Rekap absen praktikan.</CardDescription>
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      <CardDescription className="text-xs font-medium">Rekap harian praktikan</CardDescription>
+                      <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
                       {isStaffTableMode && (
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-                          Total Hadir: {totalHadir}
-                        </Badge>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100 shadow-sm transition-all hover:bg-blue-100">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Hadir: {totalHadir}</span>
+                        </div>
                       )}
-                      <Badge variant="outline" className="text-[9px] bg-green-50 text-green-600 border-green-200 animate-pulse px-1.5 py-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1 inline-block"></span> Live
-                      </Badge>
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 shadow-sm animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Live Tracking</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* BAGIAN FILTER & EXPORT UNTUK STAFF TERTENTU */}
                   {isStaff && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex items-center bg-white border rounded-md px-2 shadow-sm">
-                        <Filter className="w-4 h-4 text-muted-foreground mr-2" />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm hover:border-primary/30 transition-all focus-within:ring-2 focus-within:ring-primary/10">
+                        <Filter className="w-4 h-4 text-slate-400 mr-2.5" />
                         <Input
                           type="date"
-                          className="border-none h-8 shadow-none focus-visible:ring-0 px-0 w-[120px] text-sm"
+                          className="border-none h-6 shadow-none focus-visible:ring-0 p-0 w-[125px] text-sm font-medium text-slate-700 bg-transparent"
                           value={filterDate}
                           onChange={(e) => setFilterDate(e.target.value)}
                         />
                       </div>
-                      {/* TOMBOL EXPORT HANYA MUNCUL JIKA HAS EXPORT ACCESS */}
-                      {hasExportAccess && (
-                        <Button variant="outline" size="sm" className="h-9 border-green-600 text-green-700 hover:bg-green-50" onClick={handleExportExcel}>
-                          <FileDown className="w-4 h-4 mr-2" /> Export Excel
-                        </Button>
-                      )}
+                      
+                      <div className="flex items-center gap-2">
+                        {hasExportAccess && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-9 px-4 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all active:scale-95 flex items-center gap-2 shadow-sm" 
+                            onClick={handleExportExcel}
+                          >
+                            <FileDown className="w-4 h-4" /> 
+                            <span className="font-semibold">Export</span>
+                          </Button>
+                        )}
 
-                      {/* TOMBOL RIWAYAT HAPUS HANYA UNTUK AKSES PENUH */}
-                      {hasFullAccess && (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 border-red-200 text-red-600 hover:bg-red-50">
-                              <Trash2 className="w-4 h-4 mr-2" /> Riwayat Hapus
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
-                            <DialogHeader>
-                              <DialogTitle className="flex items-center gap-2 text-red-600">
-                                <Trash2 className="w-5 h-5"/> Log Riwayat Penghapusan
-                              </DialogTitle>
-                              <DialogDescription>
-                                Daftar kehadiran yang telah dihapus oleh tim koordinator untuk keperluan audit.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="overflow-y-auto flex-1 border rounded-md mt-4">
-                              <Table>
-                                <TableHeader className="bg-gray-50">
-                                  <TableRow>
-                                    <TableHead className="text-xs">Waktu</TableHead>
-                                    <TableHead className="text-xs">NIM Target</TableHead>
-                                    <TableHead className="text-xs">Dihapus Oleh</TableHead>
-                                    <TableHead className="text-xs">Keterangan</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {deletionHistory.length === 0 ? (
-                                    <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground">Tidak ada riwayat penghapusan.</TableCell></TableRow>
-                                  ) : (
-                                      deletionHistory.map(h => (
-                                        <TableRow key={h.id}>
-                                          <TableCell className="text-[11px] font-mono">{new Date(h.deleted_at).toLocaleString('id-ID')}</TableCell>
-                                          <TableCell className="text-xs font-bold">{h.target_user_id}</TableCell>
-                                          <TableCell className="text-xs">{h.deleted_by_name || "-"}</TableCell>
-                                          <TableCell className="text-[10px] text-muted-foreground leading-tight">{h.reason}</TableCell>
-                                        </TableRow>
-                                      ))
-                                  )}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      )}
+                        {hasFullAccess && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-9 px-4 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all active:scale-95 flex items-center gap-2 shadow-sm"
+                              >
+                                <Trash2 className="w-4 h-4" /> 
+                                <span className="font-semibold">Audit Hapus</span>
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col rounded-2xl shadow-2xl border-rose-100">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-3 text-rose-600 text-xl font-bold">
+                                  <div className="p-2 bg-rose-50 rounded-lg">
+                                    <Trash2 className="w-5 h-5"/>
+                                  </div>
+                                  Log Riwayat Penghapusan
+                                </DialogTitle>
+                                <DialogDescription className="text-slate-500 font-medium">
+                                  Daftar kehadiran yang telah dihapus oleh tim koordinator untuk keperluan audit.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="overflow-y-auto flex-1 border border-slate-100 rounded-xl mt-6 bg-slate-50/30">
+                                <Table>
+                                  <TableHeader className="bg-slate-100/80 sticky top-0 z-20 backdrop-blur-sm">
+                                    <TableRow className="hover:bg-transparent">
+                                      <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Waktu</TableHead>
+                                      <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">NIM Target</TableHead>
+                                      <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Dihapus Oleh</TableHead>
+                                      <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Keterangan</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {deletionHistory.length === 0 ? (
+                                      <TableRow><TableCell colSpan={4} className="text-center py-16 text-slate-400 italic font-medium">Tidak ada riwayat penghapusan.</TableCell></TableRow>
+                                    ) : (
+                                        deletionHistory.map(h => (
+                                          <TableRow key={h.id} className="hover:bg-rose-50/30 transition-colors border-rose-50/50">
+                                            <TableCell className="text-[11px] font-mono font-medium text-slate-600">{new Date(h.deleted_at).toLocaleString('id-ID')}</TableCell>
+                                            <TableCell className="text-xs font-bold text-slate-800">{h.target_user_id}</TableCell>
+                                            <TableCell className="text-xs font-semibold text-slate-700">{h.deleted_by_name || "-"}</TableCell>
+                                            <TableCell className="text-[11px] text-slate-500 leading-relaxed italic">{h.reason}</TableCell>
+                                          </TableRow>
+                                        ))
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -702,44 +724,100 @@ export default function Absensi() {
               <CardContent className="p-0">
                 <div className="overflow-x-auto max-h-[500px] overflow-y-auto relative scrollbar-thin">
                   <Table>
-                    <TableHeader className="bg-gray-100 sticky top-0 z-10 shadow-sm">
-                      <TableRow>
-                        <TableHead className="text-xs w-[35%] whitespace-nowrap">Mahasiswa</TableHead>
-                        <TableHead className="text-xs w-[20%] whitespace-nowrap">Info</TableHead>
-                        <TableHead className="text-xs w-[35%]">Waktu & Status</TableHead>
-                        {isStaffTableMode && <TableHead className="text-xs text-center w-[10%]">Aksi</TableHead>}
+                    <TableHeader className="bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md shadow-sm border-b">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-6">Mahasiswa</TableHead>
+                        <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Info Kelas</TableHead>
+                        <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Waktu & Status</TableHead>
+                        {isStaff && <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Petugas</TableHead>}
+                        {isStaffTableMode && <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center pr-6">Aksi</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {displayAttendance.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isStaffTableMode ? 4 : 3} className="h-40 text-center text-muted-foreground italic text-sm">
-                            Belum ada data absensi pada tanggal ini.
+                          <TableCell colSpan={isStaffTableMode ? 5 : 3} className="h-48 text-center text-slate-400 italic text-sm">
+                            <div className="flex flex-col items-center gap-3">
+                              <CalendarCheck className="w-12 h-12 text-slate-100" />
+                              <p className="font-medium">Belum ada data absensi pada tanggal ini.</p>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ) : (
                         displayAttendance.map((log) => (
-                          <TableRow key={log.id} className="hover:bg-gray-50 transition-colors">
-                            <TableCell className="whitespace-nowrap">
-                              <div className="font-bold text-sm">{log.users?.full_name || "Unknown"}</div>
-                              <div className="text-[11px] text-muted-foreground font-mono">{log.users?.username}</div>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <div className="text-[11px] font-semibold">{log.users?.class_code} - {log.users?.major}</div>
-                              <div className="text-[11px] text-muted-foreground">Shift: {log.users?.shift || "-"}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col items-start gap-1">
-                                <Badge variant="outline" className={`text-[10px] ${log.status === 'Hadir' ? 'bg-green-50 text-green-700 border-green-200' : log.status === 'Alpha' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                                  {log.status} • {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
-                                </Badge>
-                                {log.status !== 'Hadir' && <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[120px]">{log.notes}</span>}
+                          <TableRow key={log.id} className="group hover:bg-slate-50/80 transition-all duration-200 border-b border-slate-50">
+                            <TableCell className="pl-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-primary/5 flex items-center justify-center text-primary font-bold text-xs border border-primary/10 group-hover:scale-110 transition-transform">
+                                  {log.users?.full_name?.charAt(0) || "?"}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-sm text-slate-800">{log.users?.full_name || "Unknown"}</div>
+                                  <div className="text-[11px] text-slate-500 font-mono tracking-tighter">{log.users?.username}</div>
+                                </div>
                               </div>
                             </TableCell>
+                            <TableCell className="py-4">
+                              <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-slate-700">{log.users?.class_code}</span>
+                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-tight">{log.users?.major}</span>
+                                <Badge variant="secondary" className="w-fit h-4 text-[9px] px-1.5 mt-1 bg-slate-100 text-slate-600 font-semibold border-none">
+                                  Shift {log.users?.shift || "-"}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-4">
+                              <div className="flex flex-col gap-2 items-start">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    log.status === 'Hadir' ? 'bg-emerald-500 animate-pulse' : 
+                                    log.status === 'Alpha' ? 'bg-rose-500' : 'bg-amber-500'
+                                  }`}></div>
+                                  <span className={`text-[11px] font-bold uppercase tracking-wide ${
+                                    log.status === 'Hadir' ? 'text-emerald-700' : 
+                                    log.status === 'Alpha' ? 'text-rose-700' : 'text-amber-700'
+                                  }`}>
+                                    {log.status}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                  <Clock className="w-3 h-3" />
+                                  {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB
+                                </div>
+                                {log.status !== 'Hadir' && log.notes && (
+                                  <p className="text-[10px] text-slate-400 italic line-clamp-1 max-w-[150px] border-l-2 border-slate-200 pl-2 mt-1">
+                                    "{log.notes}"
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            {isStaff && (
+                              <TableCell className="py-4">
+                                {log.recorded_by_name === log.users?.full_name ? (
+                                  <Badge variant="outline" className="text-[10px] font-medium bg-indigo-50/30 text-indigo-600 border-indigo-100 px-2 py-0">
+                                    Mandiri
+                                  </Badge>
+                                ) : (
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 text-[9px] font-bold uppercase">
+                                      {log.recorded_by_name?.charAt(0) || "-"}
+                                    </div>
+                                    <span className="text-[11px] font-semibold text-slate-600">
+                                      {log.recorded_by_name || "-"}
+                                    </span>
+                                  </div>
+                                )}
+                              </TableCell>
+                            )}
                             {hasDeletePower && (
-                              <TableCell className="text-center">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => deleteLog(log.id, log)}>
-                                  <Trash2 className="w-3.5 h-3.5" />
+                              <TableCell className="text-center pr-6 py-4">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-all active:scale-90" 
+                                  onClick={() => deleteLog(log.id, log)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </TableCell>
                             )}
@@ -747,6 +825,7 @@ export default function Absensi() {
                         ))
                       )}
                     </TableBody>
+>
                   </Table>
                 </div>
               </CardContent>
@@ -754,48 +833,76 @@ export default function Absensi() {
           </div>
         </div>
 
-        {/* --- RIWAYAT PRIBADI (HANYA MUNCUL JIKA PRAKTIKAN) --- */}
         {!isStaff && myLogs.length > 0 && (
-          <div className="space-y-4 pt-6 border-t mt-6">
-            <h3 className="font-bold flex items-center gap-2 text-lg text-gray-800">
-              <Clock className="w-5 h-5 text-primary" /> Riwayat & Status Pengajuan Saya
+          <div className="space-y-5 pt-8 border-t mt-8">
+            <h3 className="font-bold flex items-center gap-3 text-xl text-slate-800">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Clock className="w-5 h-5 text-primary" />
+              </div>
+              Riwayat & Status Pengajuan Saya
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {myLogs.map(log => (
-                <Card key={log.id} className="p-4 shadow-sm border-l-4 border-l-primary/60">
-                  <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <Badge variant={log.status === 'Hadir' ? "default" : "destructive"}>{log.status}</Badge>
-                        <span className="text-xs font-medium text-gray-500">
-                          {new Date(log.check_in_time).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })} {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
-                        </span>
+                <Card key={log.id} className="group overflow-hidden border-none shadow-md hover:shadow-xl transition-all duration-300 bg-white">
+                  <div className={`h-1.5 w-full ${log.status === 'Hadir' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                  <CardContent className="p-5">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-1">
+                          <Badge className={`${
+                            log.status === 'Hadir' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-600'
+                          } text-[10px] font-bold uppercase tracking-wider w-fit`}>
+                            {log.status}
+                          </Badge>
+                          <span className="text-[10px] font-mono text-slate-400 mt-1">
+                            {new Date(log.check_in_time).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                          {new Date(log.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                        </div>
                       </div>
-                      <p className="text-sm font-medium text-gray-800">{log.notes}</p>
 
-                      {log.reschedule_status === 'pending' && <Badge variant="outline" className="mt-2 bg-yellow-50 text-yellow-700 border-yellow-200">Menunggu ACC Jadwal</Badge>}
-                      {log.reschedule_status === 'approved' && <Badge variant="outline" className="mt-2 bg-green-50 text-green-700 border-green-200">Jadwal Fix: {log.schedules?.day_of_week} {log.schedules?.start_time?.slice(0, 5)}</Badge>}
-                      {log.reschedule_status === 'rejected' && <Badge variant="outline" className="mt-2 bg-red-50 text-red-700 border-red-200">Jadwal Ditolak, Pilih Lagi</Badge>}
-                    </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-slate-700 leading-snug group-hover:text-primary transition-colors">{log.notes}</p>
+                        
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {log.reschedule_status === 'pending' && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] py-0.5">
+                              Menunggu ACC Jadwal
+                            </Badge>
+                          )}
+                          {log.reschedule_status === 'approved' && (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0.5">
+                              Jadwal Fix: {log.schedules?.day_of_week} {log.schedules?.start_time?.slice(0, 5)}
+                            </Badge>
+                          )}
+                          {log.reschedule_status === 'rejected' && (
+                            <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] py-0.5">
+                              Jadwal Ditolak
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="flex flex-col gap-2 items-end w-full xl:w-auto">
-                      {log.status !== 'Hadir' && adminPhone && (
-                        <a href={getWaProofLink(adminPhone, log.status, log.notes)} target="_blank" rel="noreferrer" className="w-full xl:w-auto">
-                          <Button size="sm" className="bg-[#25D366] hover:bg-[#1ebd5c] text-white h-8 text-xs w-full">
-                            <Send className="w-3 h-3 mr-2" /> Kirim Bukti via WA
-                          </Button>
-                        </a>
-                      )}
+                      <div className="flex flex-col gap-2 pt-2 border-t border-slate-50">
+                        {log.status !== 'Hadir' && adminPhone && (
+                          <a href={getWaProofLink(adminPhone, log.status, log.notes)} target="_blank" rel="noreferrer" className="w-full">
+                            <Button size="sm" className="bg-[#25D366] hover:bg-[#1ebd5c] text-white h-9 text-xs w-full shadow-sm active:scale-95 transition-all">
+                              <Send className="w-3 h-3 mr-2" /> Kirim Bukti WA
+                            </Button>
+                          </a>
+                        )}
 
-                      {log.is_verified && log.status !== 'Hadir' && (
-                        <>
-                          {(!log.reschedule_status || log.reschedule_status === 'rejected') && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10 h-8 text-xs w-full">
-                                  <ArrowRightLeft className="w-3 h-3 mr-2" /> Pilih Jadwal
-                                </Button>
-                              </DialogTrigger>
+                        {log.is_verified && log.status !== 'Hadir' && (
+                          <>
+                            {(!log.reschedule_status || log.reschedule_status === 'rejected') && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" variant="outline" className="border-primary/20 text-primary hover:bg-primary/5 h-9 text-xs w-full active:scale-95 transition-all">
+                                    <ArrowRightLeft className="w-3 h-3 mr-2" /> Pilih Jadwal
+                                  </Button>
+                                </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
                                   <DialogTitle>Pilih Jadwal Pengganti</DialogTitle>

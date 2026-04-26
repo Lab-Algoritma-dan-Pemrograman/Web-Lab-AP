@@ -116,6 +116,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/"; // Refresh ke halaman login
   };
 
+  // 5. AUTO LOGOUT (Inactivity Timer: 15 Minutes)
+  useEffect(() => {
+    if (!user) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 Menit
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log("Inactivity detected, logging out...");
+        logout();
+      }, INACTIVITY_LIMIT);
+    };
+
+    // Event listeners untuk mendeteksi aktivitas
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    // Inisialisasi timer pertama kali
+    resetTimer();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [user]);
+
   return (
     <AuthContext.Provider 
       value={{ 
