@@ -936,8 +936,9 @@ export default function Absensi() {
                           )}
                         </>
                       )}
+                      </div>
                     </div>
-                  </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>
