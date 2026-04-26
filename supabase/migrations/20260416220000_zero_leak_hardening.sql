@@ -278,9 +278,7 @@ RETURNS TABLE (
     is_completed BOOLEAN,
     completed_levels JSONB,
     current_level TEXT,
-    last_accessed_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE,
-    updated_at TIMESTAMP WITH TIME ZONE
+    last_accessed_at TIMESTAMP WITH TIME ZONE
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
     v_user_nim TEXT;
@@ -295,10 +293,10 @@ BEGIN
             COALESCE(NULLIF(ep.lessons_completed, 0), ep.completed_lessons) as completed_lessons,
             ep.total_lessons, 
             ep.completion_percentage::DECIMAL, 
-            ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at, ep.created_at, ep.updated_at
+            ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at
         FROM public.elearning_progress ep
         LEFT JOIN public.users u ON (ep.nim = u.nim OR ep.nim = u.username)
-        ORDER BY ep.updated_at DESC;
+        ORDER BY ep.last_accessed_at DESC NULLS LAST;
     ELSE
         RETURN QUERY 
         SELECT 
@@ -306,7 +304,7 @@ BEGIN
             COALESCE(NULLIF(ep.lessons_completed, 0), ep.completed_lessons) as completed_lessons,
             ep.total_lessons, 
             ep.completion_percentage::DECIMAL, 
-            ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at, ep.created_at, ep.updated_at
+            ep.is_completed, ep.completed_levels, ep.current_level, ep.last_accessed_at
         FROM public.elearning_progress ep 
         LEFT JOIN public.users u ON (ep.nim = u.nim OR ep.nim = u.username)
         WHERE ep.nim = v_user_nim OR ep.nim = v_user_username;
