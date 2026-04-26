@@ -448,7 +448,7 @@ export default function Absensi() {
         p_caller_id: user.id,
         p_target_user_id: usr.id,
         p_status: targetStatus,
-        p_notes: targetNote || "Input Manual Oleh Staff",
+        p_notes: targetNote || "Input manual oleh Aslab",
         p_check_in: targetDateTime,
         p_is_verified: true,
         p_type: 'staff_manual'
@@ -730,13 +730,13 @@ export default function Absensi() {
                         <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Info Kelas</TableHead>
                         <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Waktu & Status</TableHead>
                         {isStaff && <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Petugas</TableHead>}
-                        {isStaffTableMode && <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center pr-6">Aksi</TableHead>}
+                        {hasDeletePower && <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center pr-6">Aksi</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {displayAttendance.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isStaffTableMode ? 5 : 3} className="h-48 text-center text-slate-400 italic text-sm">
+                          <TableCell colSpan={hasDeletePower ? 5 : 3} className="h-48 text-center text-slate-400 italic text-sm">
                             <div className="flex flex-col items-center gap-3">
                               <CalendarCheck className="w-12 h-12 text-slate-100" />
                               <p className="font-medium">Belum ada data absensi pada tanggal ini.</p>
