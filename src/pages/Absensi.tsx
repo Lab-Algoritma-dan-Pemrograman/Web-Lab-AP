@@ -825,7 +825,6 @@ export default function Absensi() {
                         ))
                       )}
                     </TableBody>
->
                   </Table>
                 </div>
               </CardContent>
