@@ -63,6 +63,7 @@ BEGIN
 END; $$;
 
 -- 4. UPDATE GET LOGS RPC (Return recorded_by name)
+DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT);
 DROP FUNCTION IF EXISTS public.get_attendance_logs_secure(BIGINT, DATE);
 CREATE OR REPLACE FUNCTION public.get_attendance_logs_secure(p_viewer_id BIGINT, p_date_filter DATE DEFAULT NULL)
 RETURNS TABLE (
