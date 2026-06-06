@@ -34,13 +34,12 @@ export default function Profil() {
     setLoading(true);
 
     try {
-      // 1. Update Nama ke Supabase
+      // 1. Update Nama ke Supabase (via RPC, tidak akses tabel langsung)
       const { data, error } = await supabase
-        .from('users')
-        .update({ full_name: fullName })
-        .eq('id', currentUser?.id)
-        .select()
-        .single();
+        .rpc('update_user_profile_secure', {
+          p_user_id: currentUser?.id,
+          p_full_name: fullName
+        });
 
       if (error) throw error;
 
@@ -55,9 +54,10 @@ export default function Profil() {
       }
 
       // 3. Update Session di LocalStorage (biar nama di sidebar berubah)
-      if (data) {
+      const updatedData = Array.isArray(data) ? data[0] : data;
+      if (updatedData) {
         // Gabungkan data lama dengan update baru
-        const updatedUser = { ...currentUser!, ...data };
+        const updatedUser = { ...currentUser!, ...updatedData };
         login(updatedUser as any); 
       }
 

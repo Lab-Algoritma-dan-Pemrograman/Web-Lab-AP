@@ -133,14 +133,13 @@ export default function Login() {
     }
 
     try {
-      // 1. Cek apakah username sudah dipakai?
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('username')
-        .eq('username', signupUsername)
-        .maybeSingle();
+      // 1. Cek apakah username sudah dipakai? (via RPC, tidak akses tabel langsung)
+      const { data: usernameExists, error: checkError } = await supabase
+        .rpc('check_username_exists', { p_username: signupUsername });
 
-      if (existingUser) {
+      if (checkError) throw checkError;
+
+      if (usernameExists) {
         toast.error("Gagal Daftar", { description: "ID / NIM sudah terdaftar." });
         setIsLoading(false);
         return;
