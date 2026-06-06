@@ -48,68 +48,45 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // 1. Verifikasi kredensial menggunakan fungsi RPC (Aman dengan Hash)
-      const { data, error } = await supabase
-        .rpc('login_user', {
-          p_username: loginUsername,
-          p_password: loginPassword
+      // 1. Panggil API Login Serverless
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: loginUsername,
+          password: loginPassword
         })
-        .maybeSingle();
+      });
 
-      if (error) throw error;
+      const resData = await res.json();
 
-      // 2. Validasi (Jika data null artinya username salah atau password salah)
-      if (!data) {
-        toast.error("Gagal Masuk", { description: "Username tidak ditemukan atau password salah!" });
-      } else if (!data.is_active) {
-        // CEK STATUS AKTIF
-        toast.error("Gagal Masuk", { description: "Akun Anda sedang dinonaktifkan." });
-      } else {
-        // 3. CEK SHIFT AKTIF (Khusus Praktikan)
-        if (data.role === 'praktikan') {
-          const { data: settings } = await supabase
-            .from('system_settings')
-            .select('active_shift')
-            .maybeSingle();
-
-          const activeShift = settings?.active_shift || 'all';
-
-          if (activeShift !== 'all') {
-            if (activeShift === 'none') {
-              toast.error("Akses Ditutup", { description: "Maaf, akses login saat ini sedang ditutup untuk semua praktikan." });
-              setIsLoading(false);
-              return;
-            }
-            if (!data.shift || data.shift === '?') {
-              toast.error("Akun Belum Aktif", { description: "Mohon tunggu plotting shift dari Koordinator sebelum Anda bisa login." });
-              setIsLoading(false);
-              return;
-            }
-            if (data.shift !== activeShift) {
-              toast.error("Akses Ditolak", { description: `Maaf, akun Anda terdaftar di Shift ${data.shift}. Saat ini hanya Shift ${activeShift} yang diizinkan masuk.` });
-              setIsLoading(false);
-              return;
-            }
-          }
-        }
-
-        // 4. Login Sukses
-        // Hapus field sensitif agar tidak tersimpan di localStorage browser
-        const { password: _, ...safeData } = data as any;
-
-        login(safeData as any);
-        toast.success("Login Berhasil!", { description: `Selamat datang, ${data.full_name}` });
-
-        // Redirect cerdas berdasarkan role
-        if (data.role === 'koordinator' || data.role === 'asisten') {
-          navigate("/beranda");
-        } else {
-          navigate("/beranda");
-        }
+      if (!res.ok) {
+        const errMsg = resData.error || "Gagal melakukan login";
+        const errDetails = resData.details || "";
+        toast.error(errMsg, errDetails ? { description: errDetails } : undefined);
+        setIsLoading(false);
+        return;
       }
+
+      const { user: userData, token } = resData;
+
+      if (!userData || !token) {
+        toast.error("Gagal Masuk", { description: "Respon server tidak valid." });
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Login Sukses
+      login(userData, token);
+      toast.success("Login Berhasil!", { description: `Selamat datang, ${userData.full_name}` });
+
+      // Redirect cerdas berdasarkan role
+      navigate("/beranda");
     } catch (err: any) {
       console.error(err);
-      toast.error("Terjadi Kesalahan", { description: err.message });
+      toast.error("Terjadi Kesalahan", { description: err.message || "Gagal menghubungi server" });
     } finally {
       setIsLoading(false);
     }

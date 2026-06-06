@@ -63,21 +63,12 @@ export function AppSidebar() {
       if (user?.role !== 'asisten') return;
 
       try {
-        const today = new Date().toLocaleDateString('en-CA'); 
-        const { data: pjData } = await supabase
-            .from('schedule_assignments')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('task_role', 'PJ Absen')
-            .eq('activity_date', today)
-            .eq('status', 'aktif')
-            .limit(1);
+        const { data, error } = await supabase.rpc('check_pj_absen_today', {
+          p_user_id: user.id
+        });
 
-        if (pjData && pjData.length > 0) {
-            setIsPJAbsenToday(true);
-        } else {
-            setIsPJAbsenToday(false);
-        }
+        if (error) throw error;
+        setIsPJAbsenToday(!!data);
 
       } catch (err) {
         console.error("Gagal load PJ status:", err);

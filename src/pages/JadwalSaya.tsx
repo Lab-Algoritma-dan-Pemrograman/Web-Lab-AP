@@ -56,9 +56,10 @@ export default function JadwalSaya() {
           }
 
           if (payload.length > 0) {
-              const { error } = await supabase
-                  .from('class_rosters')
-                  .upsert(payload, { onConflict: 'schedule_id, student_id', ignoreDuplicates: true });
+              const { error } = await supabase.rpc('sync_class_rosters_secure', {
+                  p_caller_id: user?.id,
+                  p_payload: payload
+              });
               
               if (error) console.error("Sync Error:", error);
           }

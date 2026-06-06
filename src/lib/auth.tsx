@@ -17,7 +17,7 @@ interface AuthContextType {
   role: string | null;
   allowedPaths: string[];
   loading: boolean;
-  login: (userData: LabUser) => void;
+  login: (userData: LabUser, token: string) => void;
   logout: () => void;
 }
 
@@ -32,32 +32,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 2. Saat website dibuka, cek apakah ada data login tersimpan?
     const checkSession = async () => {
       try {
-        const storedSession = localStorage.getItem("lab_session");
-        if (storedSession) {
-          const parsedUser = JSON.parse(storedSession) as LabUser;
+        const token = localStorage.getItem("lab_jwt_token");
+        if (token) {
+          // Verifikasi token melalui endpoint serverless
+          const res = await fetch("/api/auth/verify", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          });
 
-          // === SERVER-SIDE ROLE VERIFICATION ===
-          // Re-query database menggunakan RPC yang aman agar RLS tidak dilewati.
-          const { data, error } = await supabase
-            .rpc("get_user_profile", { 
-              p_target_id: parsedUser.id 
-            });
-
-          const dbUser = Array.isArray(data) ? data[0] : data;
-
-          if (error || !dbUser) {
-            // User tidak ditemukan di database → session tidak valid
-            console.warn("Session invalid: user not found in database");
+          if (!res.ok) {
+            console.warn("Session invalid or expired");
             localStorage.removeItem("lab_session");
+            localStorage.removeItem("lab_jwt_token");
             setUser(null);
-          } else if (dbUser.role !== parsedUser.role) {
-            // Role di localStorage berbeda dengan database → ada manipulasi!
-            console.warn(
-              `Role mismatch! localStorage: ${parsedUser.role}, DB: ${dbUser.role}. Correcting...`
-            );
-            // Koreksi ke role yang benar dari database
-            const correctedUser: LabUser = {
-              id: dbUser.id,
+            setLoading(false);
+            return;
+          }
+
+          const resData = await res.json();
+          const dbUser = resData.user;
+
+          if (dbUser) {
+            const labUser: LabUser = {
+              id: Number(dbUser.id),
               username: dbUser.username,
               full_name: dbUser.full_name,
               role: dbUser.role,
@@ -65,21 +64,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               assistant_code: dbUser.assistant_code || undefined,
               division: dbUser.division || undefined,
             };
-            localStorage.setItem("lab_session", JSON.stringify(correctedUser));
-            setUser(correctedUser);
-          } else {
-            // Role cocok → session valid
-            setUser({ 
-              ...parsedUser, 
-              division: dbUser.division || undefined 
-            });
-            if (dbUser.role === 'asisten' && dbUser.division) {
-              const { data: divData } = await supabase
-                .from('division_access')
-                .select('menu_key')
-                .eq('division', dbUser.division);
-              if (divData) {
-                setAllowedPaths(divData.map(d => d.menu_key));
+
+            localStorage.setItem("lab_session", JSON.stringify(labUser));
+            setUser(labUser);
+
+            if (labUser.role === 'asisten' && labUser.division) {
+              const { data: divData, error: divError } = await supabase
+                .rpc('get_division_access_secure', {
+                  p_caller_id: labUser.id,
+                  p_division: labUser.division
+                });
+              
+              if (divData && !divError) {
+                const paths = Array.isArray(divData) 
+                  ? divData.map((d: any) => typeof d === 'string' ? d : d.menu_key)
+                  : [];
+                setAllowedPaths(paths);
               }
             }
           }
@@ -87,6 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Gagal membaca sesi:", error);
         localStorage.removeItem("lab_session");
+        localStorage.removeItem("lab_jwt_token");
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -96,22 +98,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 3. Fungsi Login (Dipanggil dari halaman Login)
-  const login = async (userData: LabUser) => {
+  const login = async (userData: LabUser, token: string) => {
+    localStorage.setItem("lab_jwt_token", token);
     localStorage.setItem("lab_session", JSON.stringify(userData));
     setUser(userData);
     
-    if (userData.role === 'asisten' && (userData as any).division) {
-       const { data: divData } = await supabase
-         .from('division_access')
-         .select('menu_key')
-         .eq('division', (userData as any).division);
-       if (divData) setAllowedPaths(divData.map((d: any) => d.menu_key));
+    if (userData.role === 'asisten' && userData.division) {
+       const { data: divData, error: divError } = await supabase
+         .rpc('get_division_access_secure', {
+           p_caller_id: userData.id,
+           p_division: userData.division
+         });
+       
+       if (divData && !divError) {
+         const paths = Array.isArray(divData) 
+           ? divData.map((d: any) => typeof d === 'string' ? d : d.menu_key)
+           : [];
+         setAllowedPaths(paths);
+       }
     }
   };
 
   // 4. Fungsi Logout
   const logout = () => {
     localStorage.removeItem("lab_session");
+    localStorage.removeItem("lab_jwt_token");
     setUser(null);
     window.location.href = "/"; // Refresh ke halaman login
   };
