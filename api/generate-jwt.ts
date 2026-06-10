@@ -105,11 +105,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Data pengguna tidak lengkap di database" });
     }
 
+    // Ambil data jadwal untuk mendapatkan kelas (schedule_class) dan jurusan (schedule_major)
+    let scheduleClass = "";
+    let scheduleMajor = "";
+
+    if (finalRole === 'praktikan') {
+      const { data: scheduleData } = await supabaseServer
+        .from("group_members")
+        .select("schedules(class_code, major)")
+        .eq("student_id", handshake.user_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (scheduleData) {
+        const rawSchedule = (scheduleData as any).schedules;
+        const target = Array.isArray(rawSchedule) ? rawSchedule[0] : rawSchedule;
+        if (target) {
+          scheduleClass = target.class_code || "";
+          scheduleMajor = target.major || "";
+        }
+      }
+    } else if (finalRole === 'asisten' || finalRole === 'koordinator') {
+      const { data: scheduleData } = await supabaseServer
+        .from("group_assistants")
+        .select("schedules(class_code, major)")
+        .eq("assistant_id", handshake.user_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (scheduleData) {
+        const rawSchedule = (scheduleData as any).schedules;
+        const target = Array.isArray(rawSchedule) ? rawSchedule[0] : rawSchedule;
+        if (target) {
+          scheduleClass = target.class_code || "";
+          scheduleMajor = target.major || "";
+        }
+      }
+    }
+
     // 3. Generate SSO Token (STRICT ALIGNMENT)
     const jwt = await signJWT({ 
         nim: finalNim, 
         nama: finalNama, 
-        kelas: "",
+        kelas: scheduleClass,
+        jurusan: scheduleMajor,
         role: finalRole
     }, secret);
     
