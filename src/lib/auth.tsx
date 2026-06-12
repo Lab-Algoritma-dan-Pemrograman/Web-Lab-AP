@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (labUser.role === 'asisten' && labUser.division) {
               const { data: divData, error: divError } = await supabase
                 .rpc('get_division_access_secure', {
-                  p_caller_id: labUser.id,
+                  p_viewer_id: labUser.id,
                   p_division: labUser.division
                 });
               
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userData.role === 'asisten' && userData.division) {
        const { data: divData, error: divError } = await supabase
          .rpc('get_division_access_secure', {
-           p_caller_id: userData.id,
+           p_viewer_id: userData.id,
            p_division: userData.division
          });
        
