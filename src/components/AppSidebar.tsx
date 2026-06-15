@@ -123,24 +123,23 @@ export function AppSidebar() {
   });
 
   return (
-    <Sidebar className="border-r border-white/10 bg-black text-white">
+    <Sidebar className="border-r border-gray-100 bg-white text-dark shadow-[4px_0_24px_rgba(138,21,56,0.05)]">
       {/* Tambahkan ID dan event onScroll di SidebarContent */}
       <SidebarContent 
         id="sidebar-scroll-area" 
         onScroll={handleScroll} 
         className="overflow-y-auto"
       >
-        {/* HEADER / LOGO (Kombinasi Hitam dan Merah, Tulisan Putih) */}
-        <div className="p-6 pb-4 flex items-center gap-3">
-          <div className="bg-black p-2 rounded-lg">
-            {/* Menggunakan logo geometris merah Anda */}
-            <img src="/logo.png" alt="logo" className="w-8 h-8" /> 
+        {/* HEADER / LOGO */}
+        <div className="p-6 pb-4 flex items-center space-x-3 mt-2 shrink-0">
+          <div className="w-10 h-10 bg-maroon rounded-xl flex items-center justify-center text-white font-black text-xl shadow-bubbly-maroon transform -rotate-6">
+            <i className="fa-solid fa-code text-white"></i>
           </div>
-          <span className="font-extrabold text-xl tracking-tight text-white">Lab AP</span>
+          <span className="font-extrabold text-2xl tracking-tight text-dark">Lab AP</span>
         </div>
         
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-bold tracking-wider text-white/60 uppercase mb-2 px-6">
+          <SidebarGroupLabel className="text-xs font-black text-gray-400 tracking-widest uppercase mb-2 px-6">
             Menu Navigasi
           </SidebarGroupLabel>
           <SidebarGroupContent className="px-3">
@@ -154,23 +153,33 @@ export function AppSidebar() {
                         asChild 
                         isActive={isActive}
                         onClick={() => navigate(item.url)}
-                        className={`cursor-pointer rounded-lg transition-all duration-200 ${
-                          isActive 
-                            ? "bg-red-950/20 text-white font-semibold shadow-sm" 
-                            : "text-white hover:bg-white/5"
-                        }`}
+                        className="p-0 bg-transparent hover:bg-transparent h-auto cursor-pointer"
                       >
-                        <div className="flex items-center gap-3 w-full py-1.5 px-1">
-                          <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-red-600" : "text-red-600"}`} />
-                          <span className="text-sm">{item.title}</span>
-                          
-                          {/* BADGE TUGAS */}
-                          {item.url === '/absensi' && isPJAbsenToday && !allowedPaths.includes('/absensi') && (
-                              <span className="ml-auto text-[10px] font-bold bg-red-500/20 text-red-500 border border-red-500/30 px-2 py-0.5 rounded-full">
-                                TUGAS
-                              </span>
-                          )}
-                        </div>
+                        {isActive ? (
+                          <div className="flex items-center space-x-3 px-4 py-3 bg-maroon text-white rounded-2xl shadow-bubbly-maroon font-black w-full transform transition-transform hover:-translate-y-0.5">
+                            <item.icon className="w-5 h-5 text-center" />
+                            <span className="text-sm font-black">{item.title}</span>
+                            
+                            {/* BADGE TUGAS */}
+                            {item.url === '/absensi' && isPJAbsenToday && !allowedPaths.includes('/absensi') && (
+                                <span className="ml-auto text-[10px] font-bold bg-white/20 text-white border border-white/30 px-2 py-0.5 rounded-full">
+                                  TUGAS
+                                </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-3 px-4 py-2.5 text-gray-500 hover:bg-maroon-bg hover:text-maroon rounded-xl transition-colors font-bold text-sm group w-full">
+                            <item.icon className="w-5 h-5 text-center text-gray-400 group-hover:text-maroon transition-colors" />
+                            <span className="text-sm font-bold">{item.title}</span>
+                            
+                            {/* BADGE TUGAS */}
+                            {item.url === '/absensi' && isPJAbsenToday && !allowedPaths.includes('/absensi') && (
+                                <span className="ml-auto text-[10px] font-bold bg-red-500/20 text-red-500 border border-red-500/30 px-2 py-0.5 rounded-full">
+                                  TUGAS
+                                </span>
+                            )}
+                          </div>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
@@ -182,40 +191,43 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* FOOTER / PROFIL PENGGUNA */}
-      <SidebarFooter className="p-4 border-t border-white/10">
+      <SidebarFooter className="p-4 border-t border-gray-100">
         <div 
-          className="p-3 rounded-xl bg-[#1a1a1a] text-white border border-white/10 shadow-sm mb-3 cursor-pointer hover:border-red-500/50 hover:shadow transition-all flex flex-col gap-3 group" 
+          className="bg-dark rounded-2xl p-4 shadow-bubbly-dark relative overflow-hidden group cursor-pointer flex flex-col gap-3" 
           onClick={() => navigate('/profil')}
         >
-          <div className="flex items-center gap-3">
-             <div className="bg-primary/10 p-2.5 rounded-full text-red-600 flex-shrink-0">
-                <User className="w-5 h-5"/>
-             </div>
-             <div className="overflow-hidden">
-                <p className="text-sm font-bold text-white truncate leading-tight">
-                  {user?.full_name || "Pengguna"}
-                </p>
-                <p className="text-xs font-medium text-white opacity-70 capitalize mt-0.5 truncate">
-                  {user?.role || "Guest"}
-                </p>
-             </div>
+          {/* Deco */}
+          <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/5 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+          
+          <div className="flex items-center space-x-3 relative z-10">
+            <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center border border-white/20 flex-shrink-0">
+              <User className="w-5 h-5"/>
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-black text-white uppercase tracking-tight truncate leading-tight">
+                {user?.full_name || "Pengguna"}
+              </p>
+              <p className="text-[10px] font-bold text-gray-400 capitalize mt-0.5 leading-none">
+                {user?.role || "Guest"}
+              </p>
+            </div>
           </div>
 
           {user?.division && (
-             <div className="w-full">
-                <div className="text-[10px] font-bold tracking-widest bg-red-950/10 text-red-500 border border-red-500/20 px-2 py-1.5 rounded-md w-full text-center">
-                   DIVISI {user.division.toUpperCase()}
-                </div>
-             </div>
+            <div className="bg-red-100 rounded-lg py-1.5 text-center shadow-sm relative z-10">
+              <p className="text-[10px] font-black text-maroon tracking-widest uppercase">
+                DIVISI {user.division.toUpperCase()}
+              </p>
+            </div>
           )}
         </div>
 
         <Button 
           variant="ghost"
           onClick={logout} 
-          className="w-full justify-start text-red-500 hover:text-red-500 hover:bg-red-500/10 font-semibold h-10 rounded-lg border border-transparent hover:border-red-500/10 transition-all"
+          className="mt-4 flex items-center justify-center space-x-2 text-maroon hover:text-red-600 font-bold text-sm transition-colors w-full bg-red-50 hover:bg-red-100 py-2.5 h-auto rounded-xl border border-red-100 hover:border-red-200"
         >
-          <LogOut className="w-4 h-4 mr-3" />
+          <LogOut className="w-4 h-4 mr-1" />
           Keluar Aplikasi
         </Button>
       </SidebarFooter>

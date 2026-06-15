@@ -131,8 +131,13 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased font-sans;
+    @apply text-foreground antialiased font-sans;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: #FDFBF7;
+    background-image: 
+        radial-gradient(circle at 5% 5%, rgba(138, 21, 56, 0.03) 0%, transparent 20%),
+        radial-gradient(circle at 95% 95%, rgba(72, 202, 228, 0.04) 0%, transparent 20%);
+    background-attachment: fixed;
   }
 }
 

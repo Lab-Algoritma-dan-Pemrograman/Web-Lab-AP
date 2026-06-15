@@ -56,7 +56,7 @@ function UserContactCard() {
   };
 
   return (
-    <Card className="shadow-sm border-l-4 border-l-fun-green">
+    <Card className="card-hover border-2 border-fun-green shadow-bubbly-green rounded-2xl bg-card">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">Kontak WhatsApp Aktif</CardTitle>
         <Phone className="h-4 w-4 text-green-600" />
@@ -148,7 +148,7 @@ function PraktikanDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <UserContactCard />
-        <Card className="shadow-sm border-l-4 border-l-fun-blue">
+        <Card className="card-hover border-2 border-fun-blue shadow-bubbly-blue rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kelas Diambil</CardTitle>
             <BookOpen className="h-4 w-4 text-blue-600" />
@@ -158,7 +158,7 @@ function PraktikanDashboard() {
             <p className="text-xs text-muted-foreground">Kelompok Praktikum</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-l-4 border-l-fun-purple">
+        <Card className="card-hover border-2 border-fun-purple shadow-bubbly-purple rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kehadiran</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-purple-600" />
@@ -168,7 +168,7 @@ function PraktikanDashboard() {
             <p className="text-xs text-muted-foreground">Rasio Kehadiran</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-l-4 border-l-fun-yellow">
+        <Card className="card-hover border-2 border-fun-yellow shadow-bubbly-yellow rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kritik & Saran</CardTitle>
             <MessageSquare className="h-4 w-4 text-orange-600" />
@@ -261,7 +261,7 @@ function AsistenDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-2"><UserContactCard /></div>
         
-        <Card className="shadow-sm border-l-4 border-l-fun-purple">
+        <Card className="card-hover border-2 border-fun-purple shadow-bubbly-purple rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Jadwal Jaga</CardTitle>
             <Calendar className="h-4 w-4 text-purple-600" />
@@ -272,7 +272,7 @@ function AsistenDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-fun-blue">
+        <Card className="card-hover border-2 border-fun-blue shadow-bubbly-blue rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Praktikan</CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
@@ -283,7 +283,7 @@ function AsistenDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="shadow-sm border-l-4 border-l-fun-yellow">
+        <Card className="card-hover border-2 border-fun-yellow shadow-bubbly-yellow rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Log Kehadiran</CardTitle>
             <QrCode className="h-4 w-4 text-orange-600" />
@@ -344,7 +344,7 @@ function KoordinatorDashboard() {
 
       {/* BARIS 1: METRIK GLOBAL LABORATORIUM (4 Kolom) */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-sm border-l-4 border-l-maroon">
+        <Card className="card-hover border-2 border-maroon shadow-bubbly-maroon rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengguna</CardTitle>
             <Database className="h-4 w-4 text-primary" />
@@ -355,7 +355,7 @@ function KoordinatorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-fun-blue">
+        <Card className="card-hover border-2 border-fun-blue shadow-bubbly-blue rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Asisten</CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
@@ -366,7 +366,7 @@ function KoordinatorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-fun-yellow">
+        <Card className="card-hover border-2 border-fun-yellow shadow-bubbly-yellow rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Praktikan</CardTitle>
             <Users className="h-4 w-4 text-orange-600" />
@@ -377,7 +377,7 @@ function KoordinatorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-fun-purple">
+        <Card className="card-hover border-2 border-fun-purple shadow-bubbly-purple rounded-2xl bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kritik & Saran</CardTitle>
             <MessageSquare className="h-4 w-4 text-purple-600" />
@@ -393,58 +393,58 @@ function KoordinatorDashboard() {
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
         
         {/* KARTU BARU: JADWAL JAGA */}
-        <Card className="shadow-sm border-t-4 border-t-sky-500 bg-sky-50/30">
+        <Card className="card-hover border-2 border-fun-blue shadow-bubbly-blue bg-card rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Jadwal Jaga</CardTitle>
-            <Calendar className="h-4 w-4 text-sky-600" />
+            <Calendar className="h-4 w-4 text-fun-blue" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-sky-900">{stats.jadwalJaga}</div>
-            <p className="text-xs text-sky-600/80 font-medium">Shift mendatang</p>
+            <div className="text-2xl font-bold text-fun-blue">{stats.jadwalJaga}</div>
+            <p className="text-xs text-muted-foreground">Shift mendatang</p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-t-4 border-t-emerald-500 bg-emerald-50/30">
+        <Card className="card-hover border-2 border-fun-green shadow-bubbly-green bg-card rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kelas Bimbingan</CardTitle>
-            <BookOpen className="h-4 w-4 text-emerald-600" />
+            <BookOpen className="h-4 w-4 text-fun-green" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-900">{stats.kelasBimbingan}</div>
-            <p className="text-xs text-emerald-600/80 font-medium">Jadwal kelompok Anda</p>
+            <div className="text-2xl font-bold text-fun-green">{stats.kelasBimbingan}</div>
+            <p className="text-xs text-muted-foreground">Jadwal kelompok Anda</p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-t-4 border-t-green-500 bg-green-50/30">
+        <Card className="card-hover border-2 border-fun-green shadow-bubbly-green bg-card rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Praktikan Bimbingan</CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
+            <Users className="h-4 w-4 text-fun-green" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900">{stats.praktikanBimbingan}</div>
-            <p className="text-xs text-green-600/80 font-medium">Di kelompok Anda</p>
+            <div className="text-2xl font-bold text-fun-green">{stats.praktikanBimbingan}</div>
+            <p className="text-xs text-muted-foreground">Di kelompok Anda</p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-t-4 border-t-rose-500 bg-rose-50/30">
+        <Card className="card-hover border-2 border-maroon shadow-bubbly-maroon bg-card rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Approval Absen</CardTitle>
-            <FileText className="h-4 w-4 text-rose-600" />
+            <FileText className="h-4 w-4 text-maroon" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-900">{stats.pendingAbsenPraktikan}</div>
-            <p className="text-xs text-rose-600/80 font-medium">Praktikan pending</p>
+            <div className="text-2xl font-bold text-maroon">{stats.pendingAbsenPraktikan}</div>
+            <p className="text-xs text-muted-foreground">Praktikan pending</p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-t-4 border-t-indigo-500 bg-indigo-50/30">
+        <Card className="card-hover border-2 border-fun-purple shadow-bubbly-purple bg-card rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Approval Izin</CardTitle>
-            <ClipboardCheck className="h-4 w-4 text-indigo-600" />
+            <ClipboardCheck className="h-4 w-4 text-fun-purple" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-indigo-900">{stats.pendingIzinAsisten}</div>
-            <p className="text-xs text-indigo-600/80 font-medium">Asisten pending</p>
+            <div className="text-2xl font-bold text-fun-purple">{stats.pendingIzinAsisten}</div>
+            <p className="text-xs text-muted-foreground">Asisten pending</p>
           </CardContent>
         </Card>
       </div>

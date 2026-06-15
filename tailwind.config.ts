@@ -94,6 +94,10 @@ export default {
         'card': 'var(--shadow-card)',
         'elevated': 'var(--shadow-md)',
         'bubbly-maroon': '0 6px 0 #5C0E25',
+        'bubbly-blue': '0 6px 0 #1e3a8a',
+        'bubbly-green': '0 6px 0 #064e3b',
+        'bubbly-purple': '0 6px 0 #4c1d95',
+        'bubbly-yellow': '0 6px 0 #78350f',
       },
       keyframes: {
         "accordion-down": {
