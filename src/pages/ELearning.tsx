@@ -11,6 +11,12 @@ import {
   Sparkles, TrendingUp, Zap
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
+
+const ELEARNING_SUPABASE_URL = "https://tvsawtkevzfqobsfkiag.supabase.co";
+const ELEARNING_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2c2F3dGtldnpmcW9ic2ZraWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3Njk3MDQsImV4cCI6MjA4OTM0NTcwNH0.bO8dU2ic4dv4pYWIvHrf9InoTDMdLXnr1ZK1paCu8Zo";
+
+const elearningSupabase = createClient(ELEARNING_SUPABASE_URL, ELEARNING_SUPABASE_ANON_KEY);
 
 const ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
 
@@ -77,14 +83,14 @@ export default function ELearning() {
 
     try {
       // 1. Fetch levels, modules, lessons
-      const { data: levelsData, error: levelsError } = await supabase
+      const { data: levelsData, error: levelsError } = await elearningSupabase
         .from('levels')
         .select('*, modules(*, lessons(*))');
 
       if (levelsError) throw levelsError;
 
       // 2. Fetch student progress
-      const { data: progressData, error: progressError } = await supabase
+      const { data: progressData, error: progressError } = await elearningSupabase
         .from('student_progress')
         .select('*')
         .eq('nim', userNim);
@@ -92,7 +98,7 @@ export default function ELearning() {
       if (progressError) throw progressError;
 
       // 3. Fetch active session
-      const { data: sessionData } = await supabase
+      const { data: sessionData } = await elearningSupabase
         .from('active_sessions')
         .select('*')
         .eq('nim', userNim)
@@ -202,7 +208,7 @@ export default function ELearning() {
   useEffect(() => {
     if (!userNim) return;
 
-    const channelProgress = supabase
+    const channelProgress = elearningSupabase
       .channel("elearning-student-progress-sync")
       .on(
         "postgres_changes",
@@ -226,7 +232,7 @@ export default function ELearning() {
       )
       .subscribe();
 
-    const channelSession = supabase
+    const channelSession = elearningSupabase
       .channel("elearning-session-sync")
       .on(
         "postgres_changes",
@@ -243,8 +249,8 @@ export default function ELearning() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channelProgress);
-      supabase.removeChannel(channelSession);
+      elearningSupabase.removeChannel(channelProgress);
+      elearningSupabase.removeChannel(channelSession);
     };
   }, [userNim, fetchProgress]);
 

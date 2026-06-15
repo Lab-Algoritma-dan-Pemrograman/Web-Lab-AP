@@ -132,9 +132,7 @@ export function AppSidebar() {
       >
         {/* HEADER / LOGO */}
         <div className="p-6 pb-4 flex items-center space-x-3 mt-2 shrink-0">
-          <div className="w-10 h-10 bg-maroon rounded-xl flex items-center justify-center text-white font-black text-xl shadow-bubbly-maroon transform -rotate-6">
-            <i className="fa-solid fa-code text-white"></i>
-          </div>
+          <img src="/logo.png" alt="Logo Lab AP" className="w-10 h-10 object-contain transform -rotate-6" />
           <span className="font-extrabold text-2xl tracking-tight text-dark">Lab AP</span>
         </div>
         
