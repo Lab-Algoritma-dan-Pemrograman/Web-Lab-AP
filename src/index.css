@@ -19,8 +19,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
-    /* Primary: Tech Crimson (Menyatu dengan logo Anda) */
-    --primary: 347 77% 45%;      
+    /* Primary: Tech Maroon (Menyatu dengan logo Anda) */
+    --primary: 0 100% 25%;      
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: Light Slate */
@@ -31,9 +31,9 @@
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
-    /* Accent: Crimson Lighter */
-    --accent: 347 77% 95%;
-    --accent-foreground: 347 77% 40%;
+    /* Accent: Maroon Lighter */
+    --accent: 0 100% 97%;
+    --accent-foreground: 0 100% 20%;
 
     /* Success: Emerald */
     --success: 142 71% 45%;
@@ -53,19 +53,19 @@
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 347 77% 45%; /* Ring focus color is Crimson */
+    --ring: 0 100% 25%; /* Ring focus color is Maroon */
 
     --radius: 0.625rem;
 
     /* Sidebar - Hitam Pekat (Cocok dengan AppSidebar.tsx yang baru) */
     --sidebar-background: 0 0% 0%; 
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 347 77% 50%;
+    --sidebar-primary: 355 71% 37%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 10%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 347 77% 50%;
+    --sidebar-ring: 355 71% 37%;
 
     /* Custom shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -85,8 +85,8 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;
 
-    /* Primary: Crimson yang sedikit lebih terang agar menyala di layar gelap */
-    --primary: 347 80% 55%;
+    /* Primary: Maroon yang sedikit lebih terang agar menyala di layar gelap */
+    --primary: 355 71% 50%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 15%;
@@ -95,8 +95,8 @@
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 65%;
 
-    --accent: 347 50% 20%;
-    --accent-foreground: 347 80% 80%;
+    --accent: 342 74% 15%;
+    --accent-foreground: 355 80% 80%;
 
     --success: 142 70% 40%;
     --success-foreground: 0 0% 100%;
@@ -112,16 +112,16 @@
 
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 347 80% 55%;
+    --ring: 355 71% 50%;
 
     --sidebar-background: 0 0% 0%; /* Sidebar tetap hitam pekat */
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 347 80% 55%;
+    --sidebar-primary: 355 71% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 15%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 347 80% 55%;
+    --sidebar-ring: 355 71% 50%;
   }
 }
 
@@ -131,7 +131,7 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-sans;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }

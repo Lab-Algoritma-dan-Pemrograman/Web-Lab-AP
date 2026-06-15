@@ -56,7 +56,7 @@ function UserContactCard() {
   };
 
   return (
-    <Card className="shadow-sm border-l-4 border-l-green-500">
+    <Card className="shadow-sm border-l-4 border-l-fun-green">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">Kontak WhatsApp Aktif</CardTitle>
         <Phone className="h-4 w-4 text-green-600" />
@@ -148,7 +148,7 @@ function PraktikanDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <UserContactCard />
-        <Card className="shadow-sm border-l-4 border-l-blue-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-blue">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kelas Diambil</CardTitle>
             <BookOpen className="h-4 w-4 text-blue-600" />
@@ -158,7 +158,7 @@ function PraktikanDashboard() {
             <p className="text-xs text-muted-foreground">Kelompok Praktikum</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-l-4 border-l-purple-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-purple">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kehadiran</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-purple-600" />
@@ -168,7 +168,7 @@ function PraktikanDashboard() {
             <p className="text-xs text-muted-foreground">Rasio Kehadiran</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-l-4 border-l-orange-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-yellow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kritik & Saran</CardTitle>
             <MessageSquare className="h-4 w-4 text-orange-600" />
@@ -261,7 +261,7 @@ function AsistenDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-2"><UserContactCard /></div>
         
-        <Card className="shadow-sm border-l-4 border-l-purple-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-purple">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Jadwal Jaga</CardTitle>
             <Calendar className="h-4 w-4 text-purple-600" />
@@ -272,7 +272,7 @@ function AsistenDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-blue-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-blue">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Praktikan</CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
@@ -283,7 +283,7 @@ function AsistenDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="shadow-sm border-l-4 border-l-orange-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-yellow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Log Kehadiran</CardTitle>
             <QrCode className="h-4 w-4 text-orange-600" />
@@ -344,7 +344,7 @@ function KoordinatorDashboard() {
 
       {/* BARIS 1: METRIK GLOBAL LABORATORIUM (4 Kolom) */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-sm border-l-4 border-l-primary">
+        <Card className="shadow-sm border-l-4 border-l-maroon">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengguna</CardTitle>
             <Database className="h-4 w-4 text-primary" />
@@ -355,7 +355,7 @@ function KoordinatorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-blue-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-blue">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Asisten</CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
@@ -366,7 +366,7 @@ function KoordinatorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-orange-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-yellow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Praktikan</CardTitle>
             <Users className="h-4 w-4 text-orange-600" />
@@ -377,7 +377,7 @@ function KoordinatorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-l-purple-500">
+        <Card className="shadow-sm border-l-4 border-l-fun-purple">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kritik & Saran</CardTitle>
             <MessageSquare className="h-4 w-4 text-purple-600" />
