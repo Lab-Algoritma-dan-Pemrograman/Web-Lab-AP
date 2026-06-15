@@ -144,37 +144,39 @@ export function AppSidebar() {
             Menu Navigasi
           </SidebarGroupLabel>
           <SidebarGroupContent className="px-3">
-            <SidebarMenu className="space-y-1">
-              {filteredMenu.map((item) => {
-                const isActive = location.pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={isActive}
-                      onClick={() => navigate(item.url)}
-                      className={`cursor-pointer rounded-lg transition-all duration-200 ${
-                        isActive 
-                          ? "bg-red-950/20 text-white font-semibold shadow-sm" 
-                          : "text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 w-full py-1.5 px-1">
-                        <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-red-600" : "text-red-600"}`} />
-                        <span className="text-sm">{item.title}</span>
-                        
-                        {/* BADGE TUGAS */}
-                        {item.url === '/absensi' && isPJAbsenToday && !allowedPaths.includes('/absensi') && (
-                            <span className="ml-auto text-[10px] font-bold bg-red-500/20 text-red-500 border border-red-500/30 px-2 py-0.5 rounded-full">
-                              TUGAS
-                            </span>
-                        )}
-                      </div>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
+            <nav className="w-full" aria-label="Menu Utama">
+              <SidebarMenu className="space-y-1">
+                {filteredMenu.map((item) => {
+                  const isActive = location.pathname === item.url;
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton 
+                        asChild 
+                        isActive={isActive}
+                        onClick={() => navigate(item.url)}
+                        className={`cursor-pointer rounded-lg transition-all duration-200 ${
+                          isActive 
+                            ? "bg-red-950/20 text-white font-semibold shadow-sm" 
+                            : "text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 w-full py-1.5 px-1">
+                          <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-red-600" : "text-red-600"}`} />
+                          <span className="text-sm">{item.title}</span>
+                          
+                          {/* BADGE TUGAS */}
+                          {item.url === '/absensi' && isPJAbsenToday && !allowedPaths.includes('/absensi') && (
+                              <span className="ml-auto text-[10px] font-bold bg-red-500/20 text-red-500 border border-red-500/30 px-2 py-0.5 rounded-full">
+                                TUGAS
+                              </span>
+                          )}
+                        </div>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

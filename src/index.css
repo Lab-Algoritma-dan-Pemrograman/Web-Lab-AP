@@ -184,4 +184,41 @@
   .upload-zone-active {
     @apply border-primary bg-primary/10;
   }
+
+  /* Custom Checkbox Animasi */
+  .custom-checkbox-container {
+    @apply relative flex items-center cursor-pointer select-none;
+  }
+
+  .custom-checkbox-container input {
+    @apply sr-only;
+  }
+
+  .custom-checkbox-box {
+    @apply w-5 h-5 border-2 border-gray-300 rounded-md flex items-center justify-center transition-all duration-300 bg-white;
+  }
+
+  .custom-checkbox-container input:checked ~ .custom-checkbox-box {
+    @apply bg-maroon border-maroon scale-110 shadow-sm;
+  }
+
+  .custom-checkbox-box::after {
+    content: "\f00c"; /* FontAwesome Checkmark */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    @apply text-white text-xs scale-0 transition-transform duration-300;
+  }
+
+  .custom-checkbox-container input:checked ~ .custom-checkbox-box::after {
+    @apply scale-100;
+  }
+
+  /* Efek Melayang (Hover) */
+  .card-hover {
+    @apply transition-all duration-300 ease-out border-2 border-transparent;
+  }
+
+  .card-hover:hover {
+    @apply shadow-lg border-maroon/20 -translate-y-2;
+  }
 }

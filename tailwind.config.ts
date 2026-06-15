@@ -19,6 +19,18 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        maroon: {
+          DEFAULT: "#800000",
+          light: "#a21c26",
+          dark: "#5c0e25",
+          bg: "#fff5f5",
+        },
+        fun: {
+          yellow: "#fbbf24",
+          blue: "#3b82f6",
+          green: "#10b981",
+          purple: "#8b5cf6",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -70,6 +82,9 @@ export default {
           foreground: "hsl(var(--info-foreground))",
         },
       },
+      fontFamily: {
+        sans: ["Nunito", "sans-serif"],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -78,6 +93,7 @@ export default {
       boxShadow: {
         'card': 'var(--shadow-card)',
         'elevated': 'var(--shadow-md)',
+        'bubbly-maroon': '0 6px 0 #5C0E25',
       },
       keyframes: {
         "accordion-down": {
