@@ -336,117 +336,137 @@ function KoordinatorDashboard() {
   }, [user]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Pusat Kendali Koordinator</h1>
-        <p className="text-muted-foreground mt-1">Rincian data global laboratorium dan daftar tugas validasi Anda.</p>
+        <h1 className="text-3xl font-black text-dark mb-2 tracking-tight">Pusat Kendali Koordinator</h1>
+        <p className="text-gray-500 font-bold text-sm">Rincian data global laboratorium dan daftar tugas validasi Anda.</p>
       </div>
 
       {/* BARIS 1: METRIK GLOBAL LABORATORIUM (4 Kolom) */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="card-hover border-2 border-maroon shadow-bubbly-maroon rounded-2xl bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengguna</CardTitle>
-            <Database className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">Semua akun di sistem</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* Total Pengguna (Maroon) */}
+        <div className="bg-white rounded-3xl p-6 border-2 border-red-100 shadow-bubbly-red card-bubbly relative overflow-hidden group cursor-default">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Pengguna</p>
+              <h3 className="text-4xl font-black text-dark mt-1">{stats.totalUsers}</h3>
+            </div>
+            <div className="w-12 h-12 bg-red-50 text-maroon rounded-2xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-transform">
+              <Database className="w-5 h-5 text-maroon" />
+            </div>
+          </div>
+          <p className="text-xs font-bold text-gray-500">Semua akun di sistem</p>
+          <Users className="absolute -bottom-4 -right-4 w-20 h-20 text-red-50 opacity-50" />
+        </div>
 
-        <Card className="card-hover border-2 border-fun-blue shadow-bubbly-blue rounded-2xl bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Asisten</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalAsisten}</div>
-            <p className="text-xs text-muted-foreground">Asisten lab terdaftar</p>
-          </CardContent>
-        </Card>
+        {/* Total Asisten (Blue) */}
+        <div className="bg-white rounded-3xl p-6 border-2 border-blue-100 shadow-bubbly-blue card-bubbly relative overflow-hidden group cursor-default">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Asisten</p>
+              <h3 className="text-4xl font-black text-dark mt-1">{stats.totalAsisten}</h3>
+            </div>
+            <div className="w-12 h-12 bg-blue-50 text-fun-blue rounded-2xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-transform">
+              <Users className="w-5 h-5 text-fun-blue" />
+            </div>
+          </div>
+          <p className="text-xs font-bold text-gray-500">Asisten lab terdaftar</p>
+          <Users className="absolute -bottom-4 -right-4 w-20 h-20 text-blue-50 opacity-50" />
+        </div>
 
-        <Card className="card-hover border-2 border-fun-yellow shadow-bubbly-yellow rounded-2xl bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Praktikan</CardTitle>
-            <Users className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalPraktikan}</div>
-            <p className="text-xs text-muted-foreground">Praktikan terdaftar</p>
-          </CardContent>
-        </Card>
+        {/* Total Praktikan (Orange) */}
+        <div className="bg-white rounded-3xl p-6 border-2 border-orange-100 shadow-bubbly-orange card-bubbly relative overflow-hidden group cursor-default">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Praktikan</p>
+              <h3 className="text-4xl font-black text-dark mt-1">{stats.totalPraktikan}</h3>
+            </div>
+            <div className="w-12 h-12 bg-orange-50 text-fun-orange rounded-2xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-transform">
+              <Users className="w-5 h-5 text-fun-orange" />
+            </div>
+          </div>
+          <p className="text-xs font-bold text-gray-500">Praktikan terdaftar</p>
+          <GraduationCap className="absolute -bottom-4 -right-4 w-20 h-20 text-orange-50 opacity-50" />
+        </div>
 
-        <Card className="card-hover border-2 border-fun-purple shadow-bubbly-purple rounded-2xl bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Kritik & Saran</CardTitle>
-            <MessageSquare className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalFeedback}</div>
-            <p className="text-xs text-muted-foreground">Total masukan masuk</p>
-          </CardContent>
-        </Card>
+        {/* Kritik & Saran (Purple) */}
+        <div className="bg-white rounded-3xl p-6 border-2 border-purple-100 shadow-bubbly-purple card-bubbly relative overflow-hidden group cursor-pointer hover:border-fun-purple">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kritik & Saran</p>
+              <h3 className={`text-4xl font-black mt-1 ${stats.totalFeedback > 0 ? "text-dark" : "text-gray-300"}`}>{stats.totalFeedback}</h3>
+            </div>
+            <div className="w-12 h-12 bg-purple-50 text-fun-purple rounded-2xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-transform">
+              <MessageSquare className="w-5 h-5 text-fun-purple" />
+            </div>
+          </div>
+          <p className="text-xs font-bold text-gray-500 flex items-center gap-1">
+            <CheckCircle2 className="w-4 h-4 text-fun-green inline shrink-0" /> Kotak masuk bersih
+          </p>
+        </div>
+
       </div>
 
-      {/* BARIS 2: METRIK TUGAS PERSONAL & APPROVAL (Diubah jadi 5 Kolom) */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      {/* BARIS 2: Tugas Validasi / Tertunda */}
+      <div>
+        <h3 className="text-lg font-black text-dark mb-4 flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-maroon animate-pulse" /> Tugas & Validasi Pending
+        </h3>
         
-        {/* KARTU BARU: JADWAL JAGA */}
-        <Card className="card-hover border-2 border-fun-blue shadow-bubbly-blue bg-card rounded-2xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Jadwal Jaga</CardTitle>
-            <Calendar className="h-4 w-4 text-fun-blue" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-fun-blue">{stats.jadwalJaga}</div>
-            <p className="text-xs text-muted-foreground">Shift mendatang</p>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          
+          {/* Jadwal Jaga */}
+          <div className="bg-blue-50/50 p-5 rounded-2xl border-2 border-blue-100 shadow-sm hover:shadow-[0_4px_0_#BFDBFE] hover:-translate-y-1 transition-all cursor-pointer group">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-black text-gray-600">Jadwal Jaga</p>
+              <Calendar className="w-4 h-4 text-fun-blue group-hover:animate-bounce" />
+            </div>
+            <h4 className="text-3xl font-black text-dark mb-1">{stats.jadwalJaga}</h4>
+            <p className="text-[10px] font-bold text-gray-400">Shift mendatang</p>
+          </div>
 
-        <Card className="card-hover border-2 border-fun-green shadow-bubbly-green bg-card rounded-2xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Kelas Bimbingan</CardTitle>
-            <BookOpen className="h-4 w-4 text-fun-green" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-fun-green">{stats.kelasBimbingan}</div>
-            <p className="text-xs text-muted-foreground">Jadwal kelompok Anda</p>
-          </CardContent>
-        </Card>
+          {/* Kelas Bimbingan */}
+          <div className="bg-green-50/50 p-5 rounded-2xl border-2 border-green-100 shadow-sm hover:shadow-[0_4px_0_#BBF7D0] hover:-translate-y-1 transition-all cursor-pointer group">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-black text-gray-600">Kelas Bimbingan</p>
+              <BookOpen className="w-4 h-4 text-fun-green group-hover:animate-bounce" />
+            </div>
+            <h4 className="text-3xl font-black text-dark mb-1">{stats.kelasBimbingan}</h4>
+            <p className="text-[10px] font-bold text-gray-400">Jadwal kelompok Anda</p>
+          </div>
 
-        <Card className="card-hover border-2 border-fun-green shadow-bubbly-green bg-card rounded-2xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Praktikan Bimbingan</CardTitle>
-            <Users className="h-4 w-4 text-fun-green" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-fun-green">{stats.praktikanBimbingan}</div>
-            <p className="text-xs text-muted-foreground">Di kelompok Anda</p>
-          </CardContent>
-        </Card>
+          {/* Praktikan Bimbingan */}
+          <div className="bg-teal-50/50 p-5 rounded-2xl border-2 border-teal-100 shadow-sm hover:shadow-[0_4px_0_#99F6E4] hover:-translate-y-1 transition-all cursor-pointer group">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-black text-gray-600">Praktikan Bimbingan</p>
+              <Users className="w-4 h-4 text-teal-400 group-hover:animate-bounce" />
+            </div>
+            <h4 className="text-3xl font-black text-dark mb-1">{stats.praktikanBimbingan}</h4>
+            <p className="text-[10px] font-bold text-gray-400">Di kelompok Anda</p>
+          </div>
 
-        <Card className="card-hover border-2 border-maroon shadow-bubbly-maroon bg-card rounded-2xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Approval Absen</CardTitle>
-            <FileText className="h-4 w-4 text-maroon" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-maroon">{stats.pendingAbsenPraktikan}</div>
-            <p className="text-xs text-muted-foreground">Praktikan pending</p>
-          </CardContent>
-        </Card>
+          {/* Approval Absen */}
+          <div className="bg-red-50 p-5 rounded-2xl border-2 border-red-200 shadow-sm hover:shadow-[0_4px_0_#FECACA] hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-black text-maroon">Approval Absen</p>
+              <FileText className="w-4 h-4 text-maroon group-hover:animate-bounce" />
+            </div>
+            <h4 className="text-3xl font-black text-maroon mb-1">{stats.pendingAbsenPraktikan}</h4>
+            <p className="text-[10px] font-bold text-red-400">Praktikan pending</p>
+          </div>
 
-        <Card className="card-hover border-2 border-fun-purple shadow-bubbly-purple bg-card rounded-2xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Approval Izin</CardTitle>
-            <ClipboardCheck className="h-4 w-4 text-fun-purple" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-fun-purple">{stats.pendingIzinAsisten}</div>
-            <p className="text-xs text-muted-foreground">Asisten pending</p>
-          </CardContent>
-        </Card>
+          {/* Approval Izin */}
+          <div className="bg-purple-50 p-5 rounded-2xl border-2 border-purple-200 shadow-sm hover:shadow-[0_4px_0_#E9D5FF] hover:-translate-y-1 transition-all cursor-pointer group">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-black text-fun-purple">Approval Izin</p>
+              <ClipboardCheck className="w-4 h-4 text-fun-purple group-hover:animate-bounce" />
+            </div>
+            <h4 className="text-3xl font-black text-fun-purple mb-1">{stats.pendingIzinAsisten}</h4>
+            <p className="text-[10px] font-bold text-purple-400">Asisten pending</p>
+          </div>
+
+        </div>
       </div>
 
     </div>

@@ -57,15 +57,15 @@
 
     --radius: 0.625rem;
 
-    /* Sidebar - Hitam Pekat (Cocok dengan AppSidebar.tsx yang baru) */
-    --sidebar-background: 0 0% 0%; 
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 355 71% 37%;
+    /* Sidebar - Putih Bersih (Match dasbor_koordinator.html) */
+    --sidebar-background: 0 0% 100%; 
+    --sidebar-foreground: 229 19% 22%;
+    --sidebar-primary: 342 74% 31%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 355 71% 37%;
+    --sidebar-accent: 342 74% 97%;
+    --sidebar-accent-foreground: 342 74% 31%;
+    --sidebar-border: 220 13% 95%;
+    --sidebar-ring: 342 74% 31%;
 
     /* Custom shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -225,5 +225,13 @@
 
   .card-hover:hover {
     @apply shadow-lg border-maroon/20 -translate-y-2;
+  }
+
+  /* Bubbly Card Hover Transition from dasbor_koordinator.html */
+  .card-bubbly {
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  .card-bubbly:hover {
+    transform: translateY(-4px) !important;
   }
 }
