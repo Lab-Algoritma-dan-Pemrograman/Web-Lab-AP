@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Calendar, FileText, QrCode, ClipboardCheck, Users, 
   CheckCircle2, Phone, Pencil, Loader2, Save,
-  BookOpen, MessageSquare, Database
+  BookOpen, MessageSquare, Database, GraduationCap
 } from "lucide-react";
 
 // --- KOMPONEN: KARTU KONTAK & EDIT HP ---
