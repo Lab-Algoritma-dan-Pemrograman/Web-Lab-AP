@@ -73,35 +73,125 @@ export default function ELearning() {
 
   // ===== Fetch Progress from Supabase =====
   const fetchProgress = useCallback(async (showToast = false) => {
-    if (!user) return;
+    if (!user || !userNim) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_elearning_progress_secure', { p_viewer_id: user.id });
+      // 1. Fetch levels, modules, lessons
+      const { data: levelsData, error: levelsError } = await supabase
+        .from('levels')
+        .select('*, modules(*, lessons(*))');
 
-      if (error) {
-        console.error("RPC error:", error);
-        if (showToast) toast.error("Gagal sinkronisasi", { description: error.message });
-        return;
+      if (levelsError) throw levelsError;
+
+      // 2. Fetch student progress
+      const { data: progressData, error: progressError } = await supabase
+        .from('student_progress')
+        .select('*')
+        .eq('nim', userNim);
+
+      if (progressError) throw progressError;
+
+      // 3. Fetch active session
+      const { data: sessionData } = await supabase
+        .from('active_sessions')
+        .select('*')
+        .eq('nim', userNim)
+        .maybeSingle();
+
+      const completedLessonIds = (progressData || [])
+        .filter(p => p.completed)
+        .map(p => p.lesson_id);
+
+      let totalLessonsCount = 0;
+      let completedLessonsCount = completedLessonIds.length;
+      const completedLevels: string[] = [];
+      let currentLevelTitle: string | null = null;
+
+      if (levelsData) {
+        // Sort levels by sort_order
+        const sortedLevels = [...levelsData].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        
+        for (const lvl of sortedLevels) {
+          let lvlTotal = 0;
+          let lvlDone = 0;
+          
+          // Sort modules by sort_order
+          const sortedModules = [...(lvl.modules || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          
+          for (const mod of sortedModules) {
+            // Sort lessons by sort_order
+            const sortedLessons = [...(mod.lessons || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            
+            for (const lsn of sortedLessons) {
+              lvlTotal++;
+              totalLessonsCount++;
+              if (completedLessonIds.includes(lsn.id)) {
+                lvlDone++;
+              }
+            }
+          }
+          
+          if (lvlTotal > 0 && lvlDone >= lvlTotal) {
+            completedLevels.push(lvl.title);
+          } else if (lvlDone > 0 && !currentLevelTitle) {
+            currentLevelTitle = lvl.title;
+          }
+        }
+        
+        // Fallback for current level if none is partially completed but some are incomplete
+        if (!currentLevelTitle) {
+          const firstIncomplete = sortedLevels.find(lvl => {
+            const lvlLessons = (lvl.modules || []).flatMap((m: any) => m.lessons || []);
+            const lvlTotal = lvlLessons.length;
+            const lvlDone = lvlLessons.filter((l: any) => completedLessonIds.includes(l.id)).length;
+            return lvlTotal > 0 && lvlDone < lvlTotal;
+          });
+          if (firstIncomplete) {
+            currentLevelTitle = firstIncomplete.title;
+          }
+        }
       }
 
-      // If praktikan, it returns a single row table
-      const studentProgress = Array.isArray(data) ? data[0] : data;
+      const completionPercent = totalLessonsCount > 0 ? (completedLessonsCount / totalLessonsCount) * 105 : 0; // scaled matching completion_percentage formatting
+      const finalPercentage = Math.min(100, Math.round(completionPercent * 100) / 100);
 
-      if (studentProgress) {
-        setProgress(studentProgress as ElearningProgress);
-        setLastSyncTime(new Date());
-        if (showToast) toast.success("Data berhasil disinkronkan!");
-      } else {
-        setProgress(null);
-        if (showToast) toast.info("Belum ada data progress", { description: "Buka E-Learning untuk memulai belajar." });
+      let lastAccessed: string | null = null;
+      if (sessionData?.last_heartbeat) {
+        lastAccessed = sessionData.last_heartbeat;
+      } else if (progressData && progressData.length > 0) {
+        const dates = progressData.map(p => p.completed_at ? new Date(p.completed_at).getTime() : 0);
+        const maxDate = Math.max(...dates);
+        if (maxDate > 0) {
+          lastAccessed = new Date(maxDate).toISOString();
+        }
       }
-    } catch (err) {
+
+      const computedProgress: ElearningProgress = {
+        id: user.id.toString(),
+        nim: userNim,
+        student_name: user.nama || user.full_name || 'Mahasiswa',
+        completed_lessons: completedLessonsCount,
+        total_lessons: totalLessonsCount,
+        completion_percentage: finalPercentage,
+        is_completed: totalLessonsCount > 0 && completedLessonsCount >= totalLessonsCount,
+        completed_levels: completedLevels,
+        current_level: currentLevelTitle || 'Belum Mulai',
+        last_accessed_at: lastAccessed,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      setProgress(computedProgress);
+      setLastSyncTime(new Date());
+      if (showToast) toast.success("Data berhasil disinkronkan!");
+
+    } catch (err: any) {
       console.error("Gagal load progress:", err);
-      if (showToast) toast.error("Gagal memuat data progress");
+      if (showToast) toast.error("Gagal memuat data progress", { description: err.message });
     } finally {
       setLoadingProgress(false);
     }
-  }, [user]);
+  }, [user, userNim]);
 
   // ===== Initial Load =====
   useEffect(() => {
@@ -112,28 +202,23 @@ export default function ELearning() {
   useEffect(() => {
     if (!userNim) return;
 
-    const channel = supabase
-      .channel("elearning-progress-sync")
+    const channelProgress = supabase
+      .channel("elearning-student-progress-sync")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "elearning_progress",
+          table: "student_progress",
           filter: `nim=eq.${userNim}`,
         },
         (payload) => {
-          console.log("Realtime update received:", payload);
-
-          if (payload.eventType === "DELETE") {
-            setProgress(null);
-            toast.info("Data progress dihapus");
-          } else {
-            const data = payload.new as ElearningProgress;
-            setProgress(data);
-            setLastSyncTime(new Date());
+          console.log("Realtime progress update received:", payload);
+          fetchProgress();
+          
+          if (payload.eventType === "INSERT") {
             toast.success("Progress terupdate!", {
-              description: `${data.completed_lessons}/${data.total_lessons} materi selesai`,
+              description: "Materi baru diselesaikan!",
               icon: <Sparkles className="h-4 w-4" />
             });
           }
@@ -141,10 +226,27 @@ export default function ELearning() {
       )
       .subscribe();
 
+    const channelSession = supabase
+      .channel("elearning-session-sync")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "active_sessions",
+          filter: `nim=eq.${userNim}`,
+        },
+        () => {
+          fetchProgress();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelProgress);
+      supabase.removeChannel(channelSession);
     };
-  }, [userNim]);
+  }, [userNim, fetchProgress]);
 
   // ===== Refresh Handler =====
   const handleRefresh = async () => {
