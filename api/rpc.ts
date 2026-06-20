@@ -77,7 +77,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'upsert_qr_session_secure',
     'stop_qr_session_secure',
     'verify_attendance_secure',
-    'get_system_settings_full_secure'
+    'get_system_settings_full_secure',
+    'get_users_secure'
   ],
   koordinator: [
     '*' // Koordinator (admin) memiliki akses ke seluruh RPC
