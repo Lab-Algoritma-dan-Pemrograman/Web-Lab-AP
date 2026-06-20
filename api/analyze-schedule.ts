@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { jwtVerify } from 'jose';
 
 /**
  * Vercel Serverless Function: Analyze schedule using Gemini AI
@@ -24,12 +25,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Server configuration error" });
   }
 
-  // Verify internal secret to prevent public abuse
-  const appSecret = process.env.APP_INTERNAL_SECRET;
-  const clientSecret = req.headers["x-app-secret"];
+  // Verify dynamic JWT Bearer token instead of static APP_INTERNAL_SECRET
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Unauthorized: Missing session token" });
+  }
 
-  if (!appSecret || clientSecret !== appSecret) {
-    return res.status(401).json({ error: "Unauthorized access" });
+  const token = authHeader.split(' ')[1];
+  const secretKey = process.env.JWT_SECRET;
+  if (!secretKey) {
+    console.error("JWT_SECRET is missing on the server env");
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  let userRole = '';
+  try {
+    const encodedSecret = new TextEncoder().encode(secretKey);
+    const { payload } = await jwtVerify(token, encodedSecret);
+    userRole = (payload.role as string || '').toLowerCase();
+  } catch (err: any) {
+    console.warn(`JWT verification failed for analyze-schedule:`, err.message);
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+  }
+
+  // Only assistants or coordinators are allowed to analyze schedule
+  if (userRole !== 'asisten' && userRole !== 'koordinator') {
+    return res.status(403).json({ error: "Forbidden: Hanya staf/asisten yang dapat melakukan analisis jadwal KRS" });
   }
 
   const { fileBase64, mimeType, model } = req.body || {};

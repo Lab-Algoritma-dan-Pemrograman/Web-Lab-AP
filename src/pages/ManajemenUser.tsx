@@ -319,14 +319,16 @@ export default function ManajemenUser() {
         // Jika isian password tidak kosong, maka update password
         if (password && password.length > 0) {
           const { error: pwdError } = await supabase.rpc('update_password', {
-            p_user_id: formData.id,
+            p_caller_id: currentUser?.id, // di-inject proxy dari JWT
+            p_target_id: formData.id,     // target user yang diubah
             p_new_password: password
           });
           if (pwdError) throw pwdError;
         }
       } else {
-        // Tambah user baru pakai RPC agar di-hash
-        const { error: insertError } = await supabase.rpc('register_user', {
+        // Tambah user baru pakai RPC admin (validasi is_admin di database)
+        const { error: insertError } = await supabase.rpc('admin_create_user', {
+          p_caller_id: currentUser?.id, // di-override proxy dari JWT
           p_username: payload.username,
           p_password: payload.password || "123456", // default
           p_full_name: payload.full_name,
@@ -454,8 +456,11 @@ export default function ManajemenUser() {
         const unique = Array.from(new Map(formatted.map((item: any) => [item.username, item])).values());
 
         setLoading(true);
-        // Menggunakan RPC agar password di-hash secara aman di database
-        const { error } = await supabase.rpc('register_users_batch', { p_users: unique });
+        // Menggunakan RPC admin_create_user melalui register_users_batch (validasi is_admin di database)
+        const { error } = await supabase.rpc('register_users_batch', { 
+          p_caller_id: currentUser?.id, // di-override proxy dari JWT
+          p_users: unique 
+        });
 
         if (error) throw error;
         toast.success(`Import berhasil: ${unique.length} data.`);

@@ -35,9 +35,10 @@ export default function Profil() {
 
     try {
       // 1. Update Nama ke Supabase (via RPC, tidak akses tabel langsung)
+      // p_caller_id di-inject otomatis oleh proxy dari JWT — tidak perlu dikirim manual
       const { data, error } = await supabase
         .rpc('update_user_profile_secure', {
-          p_user_id: currentUser?.id,
+          p_caller_id: currentUser?.id, // akan di-override oleh proxy dari JWT
           p_full_name: fullName
         });
 
@@ -47,7 +48,8 @@ export default function Profil() {
       if (password && password.length > 0) {
         if (password.length < 3) throw new Error("Password minimal 3 karakter");
         const { error: pwdError } = await supabase.rpc('update_password', {
-            p_user_id: currentUser?.id,
+            p_caller_id: currentUser?.id, // di-override proxy dari JWT
+            p_target_id: currentUser?.id, // self-update
             p_new_password: password
         });
         if (pwdError) throw pwdError;

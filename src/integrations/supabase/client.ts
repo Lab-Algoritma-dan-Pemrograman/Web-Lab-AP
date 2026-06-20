@@ -14,7 +14,14 @@ const originalSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHAB
 });
 
 // Daftar fungsi publik yang tidak perlu melewati proxy serverless (tetap panggil Supabase langsung)
-const PUBLIC_RPCS = ['check_username_exists', 'login_user'];
+const PUBLIC_RPCS = [
+  'check_username_exists',
+  'login_user',
+  'register_user',
+  'get_public_settings',
+  'get_qr_session_secure',
+  'get_renter_items_secure'
+];
 
 // Helper untuk memanggil API Gateway Proxy di serverless function
 async function callRpcProxy(fnName: string, params: any) {

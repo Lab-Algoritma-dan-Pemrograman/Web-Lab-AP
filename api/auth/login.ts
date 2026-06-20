@@ -29,8 +29,8 @@ async function signJWT(
 ): Promise<string> {
   const header = { alg: "HS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
-  // Token berlaku selama 12 jam (43200 detik)
-  const fullPayload = { ...payload, iat: now, exp: now + 43200 };
+  // Token berlaku selama 1 jam (3600 detik)
+  const fullPayload = { ...payload, iat: now, exp: now + 3600 };
 
   const encodedHeader = textToBase64Url(JSON.stringify(header));
   const encodedPayload = textToBase64Url(JSON.stringify(fullPayload));
