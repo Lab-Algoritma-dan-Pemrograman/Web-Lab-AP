@@ -189,6 +189,31 @@ export default function ELearning() {
 
       setProgress(computedProgress);
       setLastSyncTime(new Date());
+
+      // Kirim hasil sinkronisasi ke database utama Web Lab AP secara aman
+      try {
+        const { error: dbSyncError } = await supabase.rpc('save_elearning_progress_secure', {
+          p_caller_id: user.id, // Akan ditimpa oleh server proxy dari JWT
+          p_nim: userNim,
+          p_student_name: computedProgress.student_name,
+          p_completed_lessons: computedProgress.completed_lessons,
+          p_total_lessons: computedProgress.total_lessons,
+          p_completion_percentage: computedProgress.completion_percentage,
+          p_is_completed: computedProgress.is_completed,
+          p_completed_levels: computedProgress.completed_levels,
+          p_current_level: computedProgress.current_level,
+          p_last_accessed_at: computedProgress.last_accessed_at
+        });
+        
+        if (dbSyncError) {
+          console.error("Gagal menyinkronkan data progres ke database utama:", dbSyncError.message);
+        } else {
+          console.log("Progres E-Learning berhasil disinkronkan ke database utama.");
+        }
+      } catch (syncDbErr) {
+        console.error("Kesalahan jaringan saat sinkronisasi progres ke database utama:", syncDbErr);
+      }
+
       if (showToast) toast.success("Data berhasil disinkronkan!");
 
     } catch (err: any) {
