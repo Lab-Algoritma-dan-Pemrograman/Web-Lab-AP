@@ -8,15 +8,9 @@ import { toast } from "sonner";
 import {
   GraduationCap, ExternalLink, Loader2, BookOpen,
   Trophy, Clock, CheckCircle2, AlertCircle, RefreshCw,
-  Sparkles, TrendingUp, Zap
+  Sparkles, TrendingUp
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { createClient } from "@supabase/supabase-js";
-
-const ELEARNING_SUPABASE_URL = "https://tvsawtkevzfqobsfkiag.supabase.co";
-const ELEARNING_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2c2F3dGtldnpmcW9ic2ZraWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3Njk3MDQsImV4cCI6MjA4OTM0NTcwNH0.bO8dU2ic4dv4pYWIvHrf9InoTDMdLXnr1ZK1paCu8Zo";
-
-const elearningSupabase = createClient(ELEARNING_SUPABASE_URL, ELEARNING_SUPABASE_ANON_KEY);
 
 const ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
 
@@ -51,7 +45,6 @@ async function requestJWT(userId: number): Promise<string> {
 // ===== Types =====
 
 interface ElearningProgress {
-  id: string;
   nim: string;
   student_name: string | null;
   completed_lessons: number;
@@ -61,8 +54,6 @@ interface ElearningProgress {
   completed_levels: string[] | null;
   current_level: string | null;
   last_accessed_at: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 // ===== COMPONENT =====
@@ -77,147 +68,37 @@ export default function ELearning() {
 
   const userNim = user?.nim || user?.username || "";
 
-  // ===== Fetch Progress from Supabase =====
+  // ===== Fetch Progress from Supabase via Vercel Serverless Sync API =====
   const fetchProgress = useCallback(async (showToast = false) => {
     if (!user || !userNim) return;
 
     try {
-      // 1. Fetch levels, modules, lessons
-      const { data: levelsData, error: levelsError } = await elearningSupabase
-        .from('levels')
-        .select('*, modules(*, lessons(*))');
-
-      if (levelsError) throw levelsError;
-
-      // 2. Fetch student progress
-      const { data: progressData, error: progressError } = await elearningSupabase
-        .from('student_progress')
-        .select('*')
-        .eq('nim', userNim);
-
-      if (progressError) throw progressError;
-
-      // 3. Fetch active session
-      const { data: sessionData } = await elearningSupabase
-        .from('active_sessions')
-        .select('*')
-        .eq('nim', userNim)
-        .maybeSingle();
-
-      const completedLessonIds = (progressData || [])
-        .filter(p => p.completed)
-        .map(p => p.lesson_id);
-
-      let totalLessonsCount = 0;
-      let completedLessonsCount = completedLessonIds.length;
-      const completedLevels: string[] = [];
-      let currentLevelTitle: string | null = null;
-
-      if (levelsData) {
-        // Sort levels by sort_order
-        const sortedLevels = [...levelsData].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-        
-        for (const lvl of sortedLevels) {
-          let lvlTotal = 0;
-          let lvlDone = 0;
-          
-          // Sort modules by sort_order
-          const sortedModules = [...(lvl.modules || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-          
-          for (const mod of sortedModules) {
-            // Sort lessons by sort_order
-            const sortedLessons = [...(mod.lessons || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-            
-            for (const lsn of sortedLessons) {
-              lvlTotal++;
-              totalLessonsCount++;
-              if (completedLessonIds.includes(lsn.id)) {
-                lvlDone++;
-              }
-            }
-          }
-          
-          if (lvlTotal > 0 && lvlDone >= lvlTotal) {
-            completedLevels.push(lvl.title);
-          } else if (lvlDone > 0 && !currentLevelTitle) {
-            currentLevelTitle = lvl.title;
-          }
-        }
-        
-        // Fallback for current level if none is partially completed but some are incomplete
-        if (!currentLevelTitle) {
-          const firstIncomplete = sortedLevels.find(lvl => {
-            const lvlLessons = (lvl.modules || []).flatMap((m: any) => m.lessons || []);
-            const lvlTotal = lvlLessons.length;
-            const lvlDone = lvlLessons.filter((l: any) => completedLessonIds.includes(l.id)).length;
-            return lvlTotal > 0 && lvlDone < lvlTotal;
-          });
-          if (firstIncomplete) {
-            currentLevelTitle = firstIncomplete.title;
-          }
-        }
-      }
-
-      const completionPercent = totalLessonsCount > 0 ? (completedLessonsCount / totalLessonsCount) * 105 : 0; // scaled matching completion_percentage formatting
-      const finalPercentage = Math.min(100, Math.round(completionPercent * 100) / 100);
-
-      let lastAccessed: string | null = null;
-      if (sessionData?.last_heartbeat) {
-        lastAccessed = sessionData.last_heartbeat;
-      } else if (progressData && progressData.length > 0) {
-        const dates = progressData.map(p => p.completed_at ? new Date(p.completed_at).getTime() : 0);
-        const maxDate = Math.max(...dates);
-        if (maxDate > 0) {
-          lastAccessed = new Date(maxDate).toISOString();
-        }
-      }
-
-      const computedProgress: ElearningProgress = {
-        id: user.id.toString(),
-        nim: userNim,
-        student_name: user.nama || user.full_name || 'Mahasiswa',
-        completed_lessons: completedLessonsCount,
-        total_lessons: totalLessonsCount,
-        completion_percentage: finalPercentage,
-        is_completed: totalLessonsCount > 0 && completedLessonsCount >= totalLessonsCount,
-        completed_levels: completedLevels,
-        current_level: currentLevelTitle || 'Belum Mulai',
-        last_accessed_at: lastAccessed,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      const token = localStorage.getItem("lab_jwt_token");
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
       };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/sync-elearning", {
+        method: "POST",
+        headers,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Server error" }));
+        throw new Error(errData.error || `Server error: ${res.status}`);
+      }
+
+      const computedProgress = await res.json();
 
       setProgress(computedProgress);
       setLastSyncTime(new Date());
-
-      // Kirim hasil sinkronisasi ke database utama Web Lab AP secara aman
-      try {
-        const { error: dbSyncError } = await supabase.rpc('save_elearning_progress_secure', {
-          p_caller_id: user.id, // Akan ditimpa oleh server proxy dari JWT
-          p_nim: userNim,
-          p_student_name: computedProgress.student_name,
-          p_completed_lessons: computedProgress.completed_lessons,
-          p_total_lessons: computedProgress.total_lessons,
-          p_completion_percentage: computedProgress.completion_percentage,
-          p_is_completed: computedProgress.is_completed,
-          p_completed_levels: computedProgress.completed_levels,
-          p_current_level: computedProgress.current_level,
-          p_last_accessed_at: computedProgress.last_accessed_at
-        });
-        
-        if (dbSyncError) {
-          console.error("Gagal menyinkronkan data progres ke database utama:", dbSyncError.message);
-        } else {
-          console.log("Progres E-Learning berhasil disinkronkan ke database utama.");
-        }
-      } catch (syncDbErr) {
-        console.error("Kesalahan jaringan saat sinkronisasi progres ke database utama:", syncDbErr);
-      }
-
-      if (showToast) toast.success("Data berhasil disinkronkan!");
+      if (showToast) toast.success("Data progres berhasil disinkronkan!");
 
     } catch (err: any) {
-      console.error("Gagal load progress:", err);
+      console.error("Gagal load progress E-Learning:", err);
       if (showToast) toast.error("Gagal memuat data progress", { description: err.message });
     } finally {
       setLoadingProgress(false);
@@ -233,49 +114,25 @@ export default function ELearning() {
   useEffect(() => {
     if (!userNim) return;
 
-    const channelProgress = elearningSupabase
+    const channelProgress = supabase
       .channel("elearning-student-progress-sync")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "student_progress",
+          table: "elearning_progress",
           filter: `nim=eq.${userNim}`,
         },
         (payload) => {
-          console.log("Realtime progress update received:", payload);
-          fetchProgress();
-          
-          if (payload.eventType === "INSERT") {
-            toast.success("Progress terupdate!", {
-              description: "Materi baru diselesaikan!",
-              icon: <Sparkles className="h-4 w-4" />
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    const channelSession = elearningSupabase
-      .channel("elearning-session-sync")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "active_sessions",
-          filter: `nim=eq.${userNim}`,
-        },
-        () => {
+          console.log("Realtime progress update received from main DB:", payload);
           fetchProgress();
         }
       )
       .subscribe();
 
     return () => {
-      elearningSupabase.removeChannel(channelProgress);
-      elearningSupabase.removeChannel(channelSession);
+      supabase.removeChannel(channelProgress);
     };
   }, [userNim, fetchProgress]);
 
