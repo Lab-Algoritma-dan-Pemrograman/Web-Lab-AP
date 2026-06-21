@@ -37,10 +37,10 @@ export default function Pengaturan() {
     setLoading(true);
     const { error } = await supabase.rpc('admin_update_global_settings_secure', {
         p_caller_id: user.id,
-        p_semester_active: settings.semester_active,
-        p_announcement: settings.announcement,
-        p_is_recruitment_open: settings.is_recruitment_open,
-        p_wa_templates: settings.wa_templates
+        p_semester_active: settings.semester_active || "",
+        p_announcement: settings.announcement || "",
+        p_is_recruitment_open: settings.is_recruitment_open || false,
+        p_wa_templates: settings.wa_templates || null
     });
 
     if (error) toast.error("Gagal menyimpan pengaturan: " + error.message);

@@ -99,9 +99,9 @@ export default function Absensi() {
     const isAslabAdmin = ['koordinator', 'sekretaris', 'k3'].includes(user.role || '');
     const isAslabK = user.role === 'asisten' && (user.assistant_code || '').toUpperCase().endsWith('K');
     
-    setHasAuditHapusAccess(isAslabAdmin || (isAslabK && hasFullAccess));
-    setHasDeletePower(isAslabAdmin || (isAslabK && (hasFullAccess || isPJAbsenToday)));
-  }, [user, hasFullAccess, isPJAbsenToday]);
+    setHasAuditHapusAccess(isAslabAdmin || isAslabK);
+    setHasDeletePower(isAslabAdmin || isAslabK);
+  }, [user]);
 
   // --- CEK APAKAH PJ ABSEN ---
   useEffect(() => {
