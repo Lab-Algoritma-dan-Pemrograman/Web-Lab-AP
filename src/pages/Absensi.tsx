@@ -389,6 +389,20 @@ export default function Absensi() {
         setLoading(false); return;
       }
 
+      // Verifikasi Hari Jadwal Praktikum
+      const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+      const todayDayName = daysIndo[new Date().getDay()];
+      const hasRegularClassToday = myOwnSchedules.some(s => s.day_of_week === todayDayName);
+      const hasRescheduledClassToday = myLogs.some(log => 
+        log.reschedule_status === 'approved' && 
+        log.schedules?.day_of_week === todayDayName
+      );
+
+      if (!hasRegularClassToday && !hasRescheduledClassToday) {
+        toast.error(`Gagal Absen: Hari ini (${todayDayName}) Anda tidak memiliki jadwal praktikum atau reschedule yang disetujui.`);
+        setScanLocked(false); setLoading(false); return;
+      }
+
       const { error } = await supabase.rpc('upsert_attendance_log_secure', {
         p_caller_id: user.id,
         p_target_user_id: user.id,
@@ -419,6 +433,18 @@ export default function Absensi() {
     setLoading(true);
     try {
       const schedInfo = myOwnSchedules.find(s => s.id.toString() === selectedMySchedule);
+
+      // Verifikasi Hari Jadwal Praktikum
+      const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+      const dateObj = new Date(izinDate + 'T00:00:00');
+      const dateDayName = daysIndo[dateObj.getDay()];
+      
+      if (schedInfo && schedInfo.day_of_week !== dateDayName) {
+        toast.error(`Tanggal yang Anda pilih (${izinDate} jatuh pada hari ${dateDayName}) tidak cocok dengan hari jadwal praktikum Anda (${schedInfo.day_of_week})!`);
+        setLoading(false);
+        return;
+      }
+
       const prefixInfo = schedInfo ? `[Kelas ${schedInfo.class_code} - ${schedInfo.day_of_week}] ` : "";
       const targetDateTime = new Date(`${izinDate}T08:00:00`).toISOString();
 
