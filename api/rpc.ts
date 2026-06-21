@@ -59,6 +59,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_dashboard_stats_secure',
     'get_attendance_logs_secure',
     'get_group_members_secure',
+    'get_financial_records_secure',
+    'upsert_financial_record_secure',
+    'delete_financial_record_secure',
     // Spesifik Asisten
     'check_pj_absen_today',
     'is_pj_absen_today',
