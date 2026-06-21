@@ -1,56 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-/**
- * Vercel Serverless Function: Generate JWT token for E-Learning SSO
- * 
- * POST /api/generate-jwt
- * Body: { nim: string, nama: string, kelas: string }
- * Returns: { token: string }
- * 
- * JWT_SECRET is read from process.env (Vercel Environment Variable),
- * NOT from the frontend bundle.
- */
-
-// --- Crypto Helpers ---
-
-function base64UrlEncode(data: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]);
-  }
-  return Buffer.from(binary, "binary")
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function textToBase64Url(text: string): string {
-  return Buffer.from(text)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-async function signJWT(
-  payload: Record<string, unknown>,
-  secret: string
-): Promise<string> {
-  const header = { alg: "HS256", typ: "JWT" };
-  const now = Math.floor(Date.now() / 1000);
-  const fullPayload = { ...payload, iat: now, exp: now + 7200 };
-
-  const encodedHeader = textToBase64Url(JSON.stringify(header));
-  const encodedPayload = textToBase64Url(JSON.stringify(fullPayload));
-  const dataToSign = `${encodedHeader}.${encodedPayload}`;
-
-  const { createHmac } = await import("crypto");
-  const signature = createHmac("sha256", secret).update(dataToSign).digest();
-  const encodedSignature = base64UrlEncode(new Uint8Array(signature));
-
-  return `${dataToSign}.${encodedSignature}`;
-}
+import { SignJWT } from 'jose';
 
 // --- Handler ---
 
@@ -144,13 +93,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 3. Generate SSO Token (STRICT ALIGNMENT)
-    const jwt = await signJWT({ 
+    const jwt = await new SignJWT({ 
         nim: finalNim, 
         nama: finalNama, 
         kelas: scheduleClass,
         jurusan: scheduleMajor,
         role: finalRole
-    }, secret);
+    })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setIssuedAt()
+      .setExpirationTime('2h')
+      .sign(new TextEncoder().encode(secret));
     
     return res.status(200).json({ token: jwt });
   } catch (err: any) {

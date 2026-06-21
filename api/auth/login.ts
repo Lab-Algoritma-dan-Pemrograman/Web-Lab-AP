@@ -1,47 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { SignJWT } from 'jose';
 
-// --- Crypto Helpers (HMAC-SHA256 untuk JWT manual agar kompatibel dan cepat) ---
-
-function base64UrlEncode(data: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]);
-  }
-  return Buffer.from(binary, "binary")
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function textToBase64Url(text: string): string {
-  return Buffer.from(text)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-async function signJWT(
-  payload: Record<string, unknown>,
-  secret: string
-): Promise<string> {
-  const header = { alg: "HS256", typ: "JWT" };
-  const now = Math.floor(Date.now() / 1000);
-  // Token berlaku selama 1 jam (3600 detik)
-  const fullPayload = { ...payload, iat: now, exp: now + 3600 };
-
-  const encodedHeader = textToBase64Url(JSON.stringify(header));
-  const encodedPayload = textToBase64Url(JSON.stringify(fullPayload));
-  const dataToSign = `${encodedHeader}.${encodedPayload}`;
-
-  const { createHmac } = await import("crypto");
-  const signature = createHmac("sha256", secret).update(dataToSign).digest();
-  const encodedSignature = base64UrlEncode(new Uint8Array(signature));
-
-  return `${dataToSign}.${encodedSignature}`;
-}
+// ponytail: lightweight in-memory rate limiter per warm serverless container instance
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
 
 // --- Handler ---
 
@@ -49,6 +11,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Hanya izinkan POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const ip = (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const windowMs = 60000; // 1 minute
+  const maxAttempts = 5; // 5 attempts per minute
+
+  // ponytail: prune expired entries to avoid memory leaks
+  if (loginAttempts.size > 1000) {
+    for (const [key, val] of loginAttempts.entries()) {
+      if (now > val.resetTime) loginAttempts.delete(key);
+    }
+  }
+
+  const attempt = loginAttempts.get(ip);
+  if (attempt) {
+    if (now < attempt.resetTime) {
+      if (attempt.count >= maxAttempts) {
+        return res.status(429).json({ 
+          error: "Terlalu banyak percobaan login. Silakan coba lagi dalam satu menit." 
+        });
+      }
+      attempt.count++;
+    } else {
+      loginAttempts.set(ip, { count: 1, resetTime: now + windowMs });
+    }
+  } else {
+    loginAttempts.set(ip, { count: 1, resetTime: now + windowMs });
   }
 
   const { username, password } = req.body || {};
@@ -77,9 +67,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       .maybeSingle();
 
+    // ponytail: mask internal database schema/syntax errors to prevent information leakage
     if (loginError) {
       console.error("Database login RPC error:", loginError);
-      return res.status(400).json({ error: loginError.message });
+      const isSystemError = /constraint|violates|foreign key|relation|table|syntax|null value|permission denied|does not exist|column|parse/i.test(loginError.message || '');
+      const clientMessage = isSystemError ? 'Terjadi kesalahan sistem. Silakan coba lagi.' : loginError.message;
+      return res.status(400).json({ error: clientMessage });
     }
 
     if (!userData) {
@@ -125,11 +118,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 3. Login sukses -> Hapus field sensitif sebelum membuat JWT
-    const { password: _, ...safeUser } = userData;
+    // 3. Login sukses -> Filter payload JWT minimal agar tidak membocorkan PII (seperti no telp/shift/kelas)
+    const jwtPayload = {
+      id: userData.id,
+      username: userData.username,
+      role: userData.role,
+      division: userData.division,
+      nim: userData.nim,
+      assistant_code: userData.assistant_code,
+      full_name: userData.full_name
+    };
 
     // 4. Generate JWT
-    const token = await signJWT(safeUser, secret);
+    const token = await new SignJWT(jwtPayload)
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(new TextEncoder().encode(secret));
+
+    // ponytail: Kirim safeUser lengkap untuk kebutuhan rendering UI, tapi JWT tetap minimal
+    const { password: _, ...safeUser } = userData;
 
     return res.status(200).json({
       user: safeUser,
@@ -137,6 +145,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     console.error("Login endpoint exception:", err);
-    return res.status(500).json({ error: err.message || "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

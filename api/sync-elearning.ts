@@ -2,7 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { jwtVerify } from 'jose';
 
-const ELEARNING_SUPABASE_URL = "https://tvsawtkevzfqobsfkiag.supabase.co";
+// ponytail: read e-learning database URL from env, default to fallback
+const ELEARNING_SUPABASE_URL = process.env.ELEARNING_SUPABASE_URL || process.env.VITE_ELEARNING_SUPABASE_URL || "https://tvsawtkevzfqobsfkiag.supabase.co";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Hanya izinkan POST

@@ -18,32 +18,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   praktikan: [
     'get_user_profile',
     'update_user_profile_secure',
-    'check_already_absent_secure',
-    'upsert_attendance_log_secure',
-    'get_external_links_secure',
-    'get_personal_schedules_secure',
-    'get_smart_validation_contact_secure',
-    'request_reschedule_secure',
-    'get_division_access_secure',
-    'check_menu_access_secure',
-    'get_elearning_handshake_secure',
-    'get_my_rentals_secure',
-    'submit_rental_request_secure',
-    'save_elearning_progress_secure',
-    'get_dashboard_stats_secure',
-    'get_attendance_logs_secure',
-    'get_group_members_secure'
-  ],
-  penyewa: [
-    'get_user_profile',
-    'update_user_profile_secure',
-    'get_my_rentals_secure',
-    'submit_rental_request_secure'
-  ],
-  asisten: [
-    // Asisten mewarisi semua akses praktikan
-    'get_user_profile',
-    'update_user_profile_secure',
+    'update_password',
     'check_already_absent_secure',
     'upsert_attendance_log_secure',
     'get_external_links_secure',
@@ -59,6 +34,37 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_dashboard_stats_secure',
     'get_attendance_logs_secure',
     'get_group_members_secure',
+    'insert_feedback_secure',
+    'get_feedback_secure'
+  ],
+  penyewa: [
+    'get_user_profile',
+    'update_user_profile_secure',
+    'update_password',
+    'get_my_rentals_secure',
+    'submit_rental_request_secure'
+  ],
+  asisten: [
+    'get_user_profile',
+    'update_user_profile_secure',
+    'update_password',
+    'check_already_absent_secure',
+    'upsert_attendance_log_secure',
+    'get_external_links_secure',
+    'get_personal_schedules_secure',
+    'get_smart_validation_contact_secure',
+    'request_reschedule_secure',
+    'get_division_access_secure',
+    'check_menu_access_secure',
+    'get_elearning_handshake_secure',
+    'get_my_rentals_secure',
+    'submit_rental_request_secure',
+    'save_elearning_progress_secure',
+    'get_dashboard_stats_secure',
+    'get_attendance_logs_secure',
+    'get_group_members_secure',
+    'insert_feedback_secure',
+    'get_feedback_secure',
     'get_financial_records_secure',
     'upsert_financial_record_secure',
     'delete_financial_record_secure',
@@ -71,10 +77,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'upsert_group_assistant_secure',
     'get_all_group_members_secure',
     'delete_group_assistant_secure',
-    // Spesifik Asisten
     'check_pj_absen_today',
     'is_pj_absen_today',
-    'get_attendance_logs_secure',
     'get_schedules_secure',
     'get_deletion_history_secure',
     'delete_attendance_log_secure',
@@ -91,18 +95,42 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'delete_schedule_assignment_secure',
     'update_swap_status_secure',
     'approve_swap_secure',
-    'get_group_members_secure',
     'update_qr_session_token_secure',
     'upsert_qr_session_secure',
     'stop_qr_session_secure',
     'verify_attendance_secure',
     'get_system_settings_full_secure',
-    'get_users_secure'
+    'get_users_secure',
+    'admin_verify_attendance_secure',
+    'get_equipment_secure',
+    'upsert_equipment_secure',
+    'delete_equipment_secure',
+    'upsert_schedule_secure',
+    'delete_schedule_secure',
+    'get_admin_rentals_secure',
+    'update_rental_status_secure',
+    'upsert_external_link_secure',
+    'delete_external_link_secure'
   ],
-  koordinator: [
-    '*' // Koordinator (admin) memiliki akses ke seluruh RPC
-  ]
+  koordinator: []
 };
+
+// ponytail: avoid array duplication using spread operator
+ROLE_PERMISSIONS.koordinator = [
+  ...ROLE_PERMISSIONS.asisten,
+  'admin_create_user',
+  'admin_delete_user',
+  'admin_update_user',
+  'admin_update_system_setting',
+  'admin_toggle_user_status',
+  'admin_save_division_access',
+  'admin_update_global_settings_secure',
+  'register_users_batch',
+  'sync_class_rosters_secure'
+];
+
+// ponytail: lightweight in-memory rate limiter per warm serverless container instance
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Hanya izinkan POST
@@ -113,6 +141,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const fnName = req.query.fn as string;
   if (!fnName) {
     return res.status(400).json({ error: 'Missing function name' });
+  }
+
+  // ponytail: rate limit public auth/registration RPCs to prevent brute-force/spam
+  if (['login_user', 'register_user'].includes(fnName)) {
+    const ip = (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    const windowMs = 60000;
+    const maxAttempts = 5;
+
+    if (loginAttempts.size > 1000) {
+      for (const [key, val] of loginAttempts.entries()) {
+        if (now > val.resetTime) loginAttempts.delete(key);
+      }
+    }
+
+    const attempt = loginAttempts.get(ip);
+    if (attempt) {
+      if (now < attempt.resetTime) {
+        if (attempt.count >= maxAttempts) {
+          return res.status(429).json({ 
+            error: "Terlalu banyak percobaan. Silakan coba lagi dalam satu menit." 
+          });
+        }
+        attempt.count++;
+      } else {
+        loginAttempts.set(ip, { count: 1, resetTime: now + windowMs });
+      }
+    } else {
+      loginAttempts.set(ip, { count: 1, resetTime: now + windowMs });
+    }
   }
 
   let userId: number | null = null;
@@ -160,29 +218,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Jika user terverifikasi (dari JWT), timpa/suntikkan parameter identitas secara paksa
   if (userId !== null) {
-    // Timpa p_viewer_id jika terdapat di parameter atau jika fungsi bertindak sebagai get/view
-    if ('p_viewer_id' in params) {
-      params['p_viewer_id'] = userId;
-    }
-    
-    // Timpa p_caller_id jika terdapat di parameter
-    if ('p_caller_id' in params) {
-      params['p_caller_id'] = userId;
+    // ponytail: generic identity parameter injection to prevent spoofing
+    const isStaff = userRole === 'asisten' || userRole === 'koordinator';
+
+    if ('p_viewer_id' in params) params['p_viewer_id'] = userId;
+    if ('p_caller_id' in params || fnName === 'request_reschedule_secure') params['p_caller_id'] = userId;
+    if ('p_student_id' in params) params['p_student_id'] = userId;
+
+    if (!isStaff) {
+      // Non-staff (praktikan/penyewa) dipaksa menggunakan ID sendiri untuk parameter identitas user
+      if ('p_user_id' in params) params['p_user_id'] = userId;
+      if ('p_target_user_id' in params) params['p_target_user_id'] = userId;
+      if ('p_target_id' in params) params['p_target_id'] = userId;
+    } else {
+      // Staff (asisten/koordinator) dipaksa menggunakan ID sendiri untuk RPC spesifik
+      if (['check_already_absent_secure', 'get_my_rentals_secure', 'submit_rental_request_secure'].includes(fnName)) {
+        if ('p_user_id' in params) params['p_user_id'] = userId;
+      }
     }
 
     // Kasus khusus get_user_profile: p_caller_id wajib diisi dari JWT
     // p_target_id tetap boleh dari client (untuk lihat profil orang lain, akan dicek di DB)
     if (fnName === 'get_user_profile') {
       params['p_caller_id'] = userId;
-      // Jika p_target_id tidak dikirim, default ke profil sendiri
       if (!('p_target_id' in params)) {
         params['p_target_id'] = userId;
       }
     }
 
-    // Kasus khusus check_already_absent_secure atau rpc sejenis yang memakai p_user_id untuk diri sendiri
-    if (fnName === 'check_already_absent_secure' && 'p_user_id' in params) {
-      params['p_user_id'] = userId;
+    // Kasus khusus update_password: hanya koordinator (admin) yang bisa mengubah password orang lain
+    if (fnName === 'update_password' && userRole !== 'koordinator') {
+      if ('p_target_id' in params) params['p_target_id'] = userId;
     }
   }
 
@@ -199,14 +265,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseServer = createClient(supabaseUrl, supabaseServiceKey);
     const { data, error } = await supabaseServer.rpc(fnName, params);
 
+    // ponytail: mask internal database schema/syntax errors to prevent information leakage
     if (error) {
       console.error(`Database Error in RPC [${fnName}]:`, error);
-      return res.status(400).json({ error: error.message });
+      const isSystemError = /constraint|violates|foreign key|relation|table|syntax|null value|permission denied|does not exist|column|parse/i.test(error.message || '');
+      const clientMessage = isSystemError ? 'Terjadi kesalahan sistem database. Silakan hubungi admin.' : error.message;
+      return res.status(400).json({ error: clientMessage });
     }
 
     return res.status(200).json(data);
   } catch (err: any) {
     console.error(`Proxy Exception in RPC [${fnName}]:`, err);
-    return res.status(500).json({ error: err.message || "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

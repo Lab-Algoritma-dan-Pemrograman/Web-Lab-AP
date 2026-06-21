@@ -23,6 +23,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function fetchAllowedPaths(userId: number, division: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_division_access_secure', {
+    p_viewer_id: userId,
+    p_division: division
+  });
+  if (data && !error) {
+    return Array.isArray(data)
+      ? data.map((d: any) => (typeof d === 'string' ? d : d.menu_key))
+      : [];
+  }
+  return [];
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LabUser | null>(null);
   const [allowedPaths, setAllowedPaths] = useState<string[]>([]);
@@ -44,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (!res.ok) {
             console.warn("Session invalid or expired");
-            localStorage.removeItem("lab_session");
             localStorage.removeItem("lab_jwt_token");
             setUser(null);
             setLoading(false);
@@ -65,28 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               division: dbUser.division || undefined,
             };
 
-            localStorage.setItem("lab_session", JSON.stringify(labUser));
             setUser(labUser);
 
             if (labUser.role === 'asisten' && labUser.division) {
-              const { data: divData, error: divError } = await supabase
-                .rpc('get_division_access_secure', {
-                  p_viewer_id: labUser.id,
-                  p_division: labUser.division
-                });
-              
-              if (divData && !divError) {
-                const paths = Array.isArray(divData) 
-                  ? divData.map((d: any) => typeof d === 'string' ? d : d.menu_key)
-                  : [];
-                setAllowedPaths(paths);
-              }
+              const paths = await fetchAllowedPaths(labUser.id, labUser.division);
+              setAllowedPaths(paths);
             }
           }
         }
       } catch (error) {
         console.error("Gagal membaca sesi:", error);
-        localStorage.removeItem("lab_session");
         localStorage.removeItem("lab_jwt_token");
         setUser(null);
       } finally {
@@ -100,28 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 3. Fungsi Login (Dipanggil dari halaman Login)
   const login = async (userData: LabUser, token: string) => {
     localStorage.setItem("lab_jwt_token", token);
-    localStorage.setItem("lab_session", JSON.stringify(userData));
     setUser(userData);
     
     if (userData.role === 'asisten' && userData.division) {
-       const { data: divData, error: divError } = await supabase
-         .rpc('get_division_access_secure', {
-           p_viewer_id: userData.id,
-           p_division: userData.division
-         });
-       
-       if (divData && !divError) {
-         const paths = Array.isArray(divData) 
-           ? divData.map((d: any) => typeof d === 'string' ? d : d.menu_key)
-           : [];
-         setAllowedPaths(paths);
-       }
+      const paths = await fetchAllowedPaths(userData.id, userData.division);
+      setAllowedPaths(paths);
     }
   };
 
   // 4. Fungsi Logout
   const logout = () => {
-    localStorage.removeItem("lab_session");
     localStorage.removeItem("lab_jwt_token");
     setUser(null);
     window.location.href = "/"; // Refresh ke halaman login

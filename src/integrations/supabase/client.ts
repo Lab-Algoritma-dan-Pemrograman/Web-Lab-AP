@@ -13,16 +13,6 @@ const originalSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHAB
   }
 });
 
-// Daftar fungsi publik yang tidak perlu melewati proxy serverless (tetap panggil Supabase langsung)
-const PUBLIC_RPCS = [
-  'check_username_exists',
-  'login_user',
-  'register_user',
-  'get_public_settings',
-  'get_qr_session_secure',
-  'get_renter_items_secure'
-];
-
 // Helper untuk memanggil API Gateway Proxy di serverless function
 async function callRpcProxy(fnName: string, params: any) {
   try {
@@ -76,52 +66,17 @@ export const supabase = new Proxy(originalSupabase, {
   get(target, prop, receiver) {
     if (prop === 'rpc') {
       return (fnName: string, params: any) => {
-        // Jika fungsi termasuk publik, panggil supabase asli langsung
-        if (PUBLIC_RPCS.includes(fnName)) {
-          return target.rpc(fnName as any, params);
-        }
-        
-        // Untuk RPC sensitif lainnya, alihkan ke proxy serverless kita
         const promise = callRpcProxy(fnName, params);
         
-        // Kita simulasikan chain methods Supabase seperti .single() dan .maybeSingle()
-        const chainObject = {
-          then: (onfulfilled: any, onrejected: any) => promise.then(onfulfilled, onrejected),
-          catch: (onrejected: any) => promise.catch(onrejected),
-          finally: (onfinally: any) => promise.finally(onfinally),
-          single: () => {
-            const singlePromise = promise.then(res => {
-              if (res.error) return res;
-              const data = res.data;
-              return {
-                data: Array.isArray(data) ? data[0] : data,
-                error: null
-              };
-            });
-            return {
-              then: (onf: any, onr: any) => singlePromise.then(onf, onr),
-              catch: (onr: any) => singlePromise.catch(onr),
-              finally: (onf: any) => singlePromise.finally(onf)
-            };
-          },
-          maybeSingle: () => {
-            const maybeSinglePromise = promise.then(res => {
-              if (res.error) return res;
-              const data = res.data;
-              return {
-                data: (Array.isArray(data) && data.length > 0) ? data[0] : (data || null),
-                error: null
-              };
-            });
-            return {
-              then: (onf: any, onr: any) => maybeSinglePromise.then(onf, onr),
-              catch: (onr: any) => maybeSinglePromise.catch(onr),
-              finally: (onf: any) => maybeSinglePromise.finally(onf)
-            };
-          }
-        };
+        const makeThenable = (p: Promise<any>): any => ({
+          then: (onf: any, onr: any) => p.then(onf, onr),
+          catch: (onr: any) => p.catch(onr),
+          finally: (onf: any) => p.finally(onf),
+          single: () => makeThenable(p.then(res => ({ ...res, data: Array.isArray(res.data) ? res.data[0] : res.data }))),
+          maybeSingle: () => makeThenable(p.then(res => ({ ...res, data: (Array.isArray(res.data) && res.data.length > 0) ? res.data[0] : (res.data || null) })))
+        });
 
-        return chainObject;
+        return makeThenable(promise);
       };
     }
     return Reflect.get(target, prop, receiver);
