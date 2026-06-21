@@ -29,7 +29,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_elearning_handshake_secure',
     'get_my_rentals_secure',
     'submit_rental_request_secure',
-    'save_elearning_progress_secure'
+    'save_elearning_progress_secure',
+    'get_dashboard_stats_secure',
+    'get_attendance_logs_secure',
+    'get_group_members_secure'
   ],
   penyewa: [
     'get_user_profile',
@@ -53,6 +56,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_my_rentals_secure',
     'submit_rental_request_secure',
     'save_elearning_progress_secure',
+    'get_dashboard_stats_secure',
+    'get_attendance_logs_secure',
+    'get_group_members_secure',
     // Spesifik Asisten
     'check_pj_absen_today',
     'is_pj_absen_today',
