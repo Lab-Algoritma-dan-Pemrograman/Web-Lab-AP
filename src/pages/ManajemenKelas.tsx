@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { confirm } from "@/lib/confirm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -180,7 +181,7 @@ export default function ManajemenKelas() {
 
   // --- 5. RESET PLOTTING (UNDO SEMUA) ---
   const handleResetPlotting = async () => {
-    if(!confirm("Yakin ingin menghapus semua pembagian asisten? Data mahasiswa tidak akan hilang.")) return;
+    if(!(await confirm("Yakin ingin menghapus semua pembagian asisten? Data mahasiswa tidak akan hilang."))) return;
     
     if (!hasEditAccess) {
         toast.error("Akses Ditolak");

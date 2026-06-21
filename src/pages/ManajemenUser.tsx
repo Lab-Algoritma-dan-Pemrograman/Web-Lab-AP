@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { confirm } from "@/lib/confirm";
 import * as XLSX from "xlsx";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
@@ -154,7 +155,7 @@ export default function ManajemenUser() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Hapus ${selectedIds.length} user terpilih? Seluruh riwayat absensi, bimbingan, dan jadwal yang berkaitan akan ikut terhapus secara permanen.`)) return;
+    if (!(await confirm(`Hapus ${selectedIds.length} user terpilih? Seluruh riwayat absensi, bimbingan, dan jadwal yang berkaitan akan ikut terhapus secara permanen.`))) return;
 
     setLoading(true);
     let successCount = 0;
@@ -360,7 +361,7 @@ export default function ManajemenUser() {
       return;
     }
 
-    if (!confirm(`Hapus user "${name}"? Seluruh riwayat absensi, bimbingan, dan jadwal yang berkaitan dengan orang ini akan ikut terhapus secara permanen.`)) return;
+    if (!(await confirm(`Hapus user "${name}"? Seluruh riwayat absensi, bimbingan, dan jadwal yang berkaitan dengan orang ini akan ikut terhapus secara permanen.`))) return;
 
     setLoading(true);
     try {

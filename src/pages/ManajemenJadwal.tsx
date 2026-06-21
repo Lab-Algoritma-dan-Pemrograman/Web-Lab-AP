@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth"; 
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { confirm } from "@/lib/confirm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,7 +205,7 @@ export default function ManajemenJadwal() {
 
   const handleDelete = async (id: number) => {
     if (!user) return;
-    if (!confirm("Hapus jadwal ini?")) return;
+    if (!(await confirm("Hapus jadwal ini?"))) return;
     
     const { error } = await supabase.rpc('delete_schedule_secure', {
         p_caller_id: user.id,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { confirm } from "@/lib/confirm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -147,7 +148,7 @@ export default function ValidasiAbsensi() {
   };
 
   const handleResetReschedule = async (id: number) => {
-    if(!confirm("Buka kunci jadwal ini?")) return;
+    if (!(await confirm("Buka kunci jadwal ini?"))) return;
     
     // SECURE CHECK
     if (!['koordinator', 'asisten'].includes(user?.role || '')) {

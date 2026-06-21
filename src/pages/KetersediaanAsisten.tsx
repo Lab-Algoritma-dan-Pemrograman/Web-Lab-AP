@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { confirm } from "@/lib/confirm";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -158,7 +159,7 @@ export default function KetersediaanAsisten() {
   };
 
   const handleDelete = async (id: any) => {
-    if(!confirm("Hapus slot waktu ini?")) return;
+    if(!(await confirm("Hapus slot waktu ini?"))) return;
     const { error } = await supabase.rpc('delete_assistant_availability_secure', {
         p_caller_id: user.id,
         p_id: id
@@ -173,7 +174,7 @@ export default function KetersediaanAsisten() {
 
   const handleMultipleDelete = async () => {
     if (selectedSlots.length === 0) return;
-    if (!confirm(`Hapus ${selectedSlots.length} slot waktu yang dipilih?`)) return;
+    if (!(await confirm(`Hapus ${selectedSlots.length} slot waktu yang dipilih?`))) return;
 
     setLoading(true);
     let successCount = 0;

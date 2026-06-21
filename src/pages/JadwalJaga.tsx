@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { confirm } from "@/lib/confirm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -236,7 +237,7 @@ export default function JadwalJaga() {
   };
 
   const handleDelete = async (id: number) => {
-    if(!confirm("Hapus petugas ini?")) return;
+    if(!(await confirm("Hapus petugas ini?"))) return;
     
     const { error } = await supabase.rpc('delete_schedule_assignment_secure', {
         p_caller_id: user.id,
@@ -460,7 +461,7 @@ export default function JadwalJaga() {
 
   const handleOfferSubstitute = async (assignmentId: number) => {
       if (!user) return;
-      if (!confirm("Anda yakin bersedia menggantikan jadwal ini?")) return;
+      if (!(await confirm("Anda yakin bersedia menggantikan jadwal ini?"))) return;
       try {
           const { error } = await supabase.rpc('update_swap_status_secure', {
               p_caller_id: user.id,
@@ -481,7 +482,7 @@ export default function JadwalJaga() {
           return;
       }
 
-      if(!confirm("Setujui pertukaran jadwal ini?")) return;
+      if(!(await confirm("Setujui pertukaran jadwal ini?"))) return;
       try {
           const { error } = await supabase.rpc('approve_swap_secure', {
               p_caller_id: user.id,
@@ -494,7 +495,7 @@ export default function JadwalJaga() {
 
   const handleRejectSwap = async (assignmentId: number) => {
       if (!user) return;
-      if(!confirm("Tolak penawaran ini dan kembalikan jadwal awal?")) return;
+      if(!(await confirm("Tolak penawaran ini dan kembalikan jadwal awal?"))) return;
       try {
           const { error } = await supabase.rpc('update_swap_status_secure', {
               p_caller_id: user.id,
@@ -509,7 +510,7 @@ export default function JadwalJaga() {
 
   const handleCancelSwapKoordinator = async (assignmentId: number) => {
       if (!user) return;
-      if(!confirm("Batalkan pencarian dan paksa jadwal kembali aktif ke asisten awal?")) return;
+      if(!(await confirm("Batalkan pencarian dan paksa jadwal kembali aktif ke asisten awal?"))) return;
       try {
           const { error } = await supabase.rpc('update_swap_status_secure', {
               p_caller_id: user.id,

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { confirm } from "@/lib/confirm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ export default function LaporanKeuangan() {
   };
 
   const handleDelete = async (id: number) => {
-    if(confirm("Hapus data ini?")) {
+    if(await confirm("Hapus data ini?")) {
         const { error } = await supabase.rpc('delete_financial_record_secure', {
             p_caller_id: user.id,
             p_id: id

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { confirm } from "@/lib/confirm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,7 +124,7 @@ export default function PenunjangPraktikum() {
     };
 
     const handleDelete = async (id: number, name: string) => {
-        if (!confirm(`Yakin ingin menghapus "${name}"?`)) return;
+        if (!(await confirm(`Yakin ingin menghapus "${name}"?`))) return;
         try {
             const { error } = await supabase.rpc('delete_equipment_secure', {
                 p_caller_id: user.id,

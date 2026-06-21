@@ -87,6 +87,8 @@ function AppRoutes() {
   );
 }
 
+import { GlobalConfirm } from "@/components/GlobalConfirm";
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -96,6 +98,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <AppRoutes />
+            <GlobalConfirm />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

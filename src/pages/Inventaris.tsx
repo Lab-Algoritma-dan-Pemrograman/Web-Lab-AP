@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { confirm } from "@/lib/confirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,7 +48,7 @@ export default function Inventaris() {
 
   const handleDelete = async (id: string | number) => {
     if (!user) return;
-    if(confirm("Hapus barang ini?")) {
+    if(await confirm("Hapus barang ini?")) {
         const { error } = await supabase.rpc('delete_inventory_item_secure', {
             p_caller_id: user.id,
             p_id: id.toString()

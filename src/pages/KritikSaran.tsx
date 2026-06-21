@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { confirm } from "@/lib/confirm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -176,7 +177,7 @@ export default function KritikSaran() {
 
   const handleDeleteLink = async (id: number) => {
       if(!user) return;
-      if(!confirm("Hapus link ini?")) return;
+      if(!(await confirm("Hapus link ini?"))) return;
       try {
           const { error } = await supabase.rpc('delete_external_link_secure', {
               p_caller_id: user.id,

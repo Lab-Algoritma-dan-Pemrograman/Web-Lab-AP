@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { confirm } from "@/lib/confirm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ export default function ManajemenSewa() {
     if (!user) return;
     
     // Confirm rejection
-    if (status === 'rejected' && !confirm("Tolak pengajuan ini?")) return;
+    if (status === 'rejected' && !(await confirm("Tolak pengajuan ini?"))) return;
 
     const { error } = await supabase.rpc('update_rental_status_secure', {
       p_caller_id: user.id,
