@@ -33,6 +33,7 @@ export default function Absensi() {
   const [hasExportAccess, setHasExportAccess] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [hasDeletePower, setHasDeletePower] = useState(false);
+  const [hasAuditHapusAccess, setHasAuditHapusAccess] = useState(false);
 
   // State Scanner (Khusus Praktikan)
   const [scanLocked, setScanLocked] = useState(false);
@@ -89,12 +90,17 @@ export default function Absensi() {
 
   // --- LOGIKA HAK HAPUS ---
   useEffect(() => {
-    // Siapa yang bisa hapus? 
-    // 1. Koordinator/Sekretaris/K3 (hasFullAccess)
-    // 2. PJ Absen Hari Ini
-    // 3. Asisten dengan hak akses Validasi Absensi (hasFullAccess)
-    setHasDeletePower(hasFullAccess || isPJAbsenToday);
-  }, [hasFullAccess, isPJAbsenToday]);
+    if (!user) {
+      setHasAuditHapusAccess(false);
+      setHasDeletePower(false);
+      return;
+    }
+    const isAslabAdmin = ['koordinator', 'sekretaris', 'k3'].includes(user.role || '');
+    const isAslabK = user.role === 'asisten' && (user.assistant_code || '').toUpperCase().endsWith('K');
+    
+    setHasAuditHapusAccess(isAslabAdmin || (isAslabK && hasFullAccess));
+    setHasDeletePower(isAslabAdmin || (isAslabK && (hasFullAccess || isPJAbsenToday)));
+  }, [user, hasFullAccess, isPJAbsenToday]);
 
   // --- CEK APAKAH PJ ABSEN ---
   useEffect(() => {
@@ -663,7 +669,7 @@ export default function Absensi() {
                           </Button>
                         )}
 
-                        {hasFullAccess && (
+                        {hasAuditHapusAccess && (
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button 

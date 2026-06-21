@@ -77,6 +77,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_attendance_logs_secure',
     'get_schedules_secure',
     'get_deletion_history_secure',
+    'delete_attendance_log_secure',
     'get_assistant_availability',
     'update_assistant_availability',
     'get_all_availability_for_user_secure',
