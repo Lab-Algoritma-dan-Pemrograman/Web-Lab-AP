@@ -34,3 +34,6 @@ dist-ssr
 
 .vercel
 .env*
+
+# Scratch directory
+scratch/
