@@ -234,4 +234,59 @@
   .card-bubbly:hover {
     transform: translateY(-4px) !important;
   }
+
+  /* Global Bubbly Cards styling for standard Shadcn cards */
+  /* Target cards that don't have explicit colorful border classes or custom shadows */
+  .rounded-lg.border.bg-card {
+    border-width: 2px;
+    border-radius: 1rem; /* rounded-2xl */
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s, border-color 0.2s;
+  }
+  
+  .rounded-lg.border.bg-card:not([class*='border-fun-']):not([class*='border-maroon']):not([class*='border-red-']):not([class*='border-blue-']):not([class*='border-green-']):not([class*='border-orange-']):not([class*='border-purple-']):not([class*='border-teal-']):not([class*='border-destructive']) {
+    border-color: #F1F5F9;
+  }
+
+  .rounded-lg.border.bg-card:not([class*='shadow-bubbly-']):not([class*='shadow-inner']):not([class*='shadow-sm']):not([class*='shadow-md']):not([class*='shadow-lg']) {
+    box-shadow: 0 4px 0 #E2E8F0;
+  }
+
+  .rounded-lg.border.bg-card:hover {
+    transform: translateY(-4px);
+  }
+
+  .rounded-lg.border.bg-card:hover:not([class*='shadow-bubbly-']):not([class*='shadow-inner']) {
+    box-shadow: 0 8px 0 #CBD5E1;
+  }
+
+  /* Global Input, Textarea, and Select styling (bubbly & academic rounded-xl) */
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select,
+  button[role='combobox'],
+  [class*='border-input'] {
+    border-radius: 0.75rem !important; /* rounded-xl */
+    border-width: 2px !important;
+    border-color: #E2E8F0 !important;
+    transition: all 0.2s ease-in-out !important;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):focus,
+  textarea:focus,
+  select:focus,
+  button[role='combobox']:focus,
+  [class*='border-input']:focus,
+  [class*='border-input'][data-state='open'] {
+    border-color: #8A1538 !important; /* Maroon focus */
+    box-shadow: 0 0 0 2px rgba(138, 21, 56, 0.15) !important;
+    outline: none !important;
+  }
+
+  /* Global Dialog/Modal styling */
+  div[role="dialog"] {
+    border-width: 2px !important;
+    border-radius: 1.5rem !important; /* rounded-3xl/2xl */
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 10px 0 #CBD5E1 !important;
+  }
 }
