@@ -177,10 +177,19 @@ export default function Login() {
     });
   }
 
+  const hour = new Date().getHours();
+  const greetingText = hour < 11
+    ? '🌅 Selamat Pagi! Semangat Praktikum Hari Ini!'
+    : hour < 15
+    ? '☀️ Selamat Siang! Jangan Lupa Istirahat ya~'
+    : hour < 19
+    ? '🌆 Selamat Sore! Tetap Semangat Belajarnya!'
+    : '🌙 Selamat Malam! Tetap Produktif & Jaga Kesehatan!';
+
   if (announcementsList.length === 0) {
     announcementsList.push({
       type: 'info',
-      text: 'Selamat Datang di Laboratorium Algoritma Pemrograman'
+      text: greetingText
     });
   }
 
@@ -188,20 +197,34 @@ export default function Login() {
   const combinedElements = announcementsList.map((item, idx) => {
     let content: React.ReactNode;
     if (item.type === 'oprec') {
-      content = <span className="text-pink-600 mx-4 font-black">{item.text}</span>;
+      content = (
+        <span className="text-pink-600 mx-3 font-black flex items-center gap-1 shrink-0">
+          <svg className="w-3 h-3 text-pink-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          {item.text}
+          <svg className="w-3 h-3 text-pink-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        </span>
+      );
     } else if (item.type === 'reschedule') {
       content = (
-        <span className="mx-4 text-amber-600 flex items-center gap-1.5 shrink-0">
+        <span className="mx-3 text-amber-600 flex items-center gap-1.5 shrink-0">
           <span className="bg-amber-100 text-amber-600 px-2 py-0.5 rounded-md border border-amber-200 text-[10px]">
             {item.kelas}
           </span>
           <span>{item.text}</span>
         </span>
       );
+    } else if (item.text.includes('SHIFT') && sysSettings?.active_shift) {
+      content = (
+        <span className="mx-3 flex items-center gap-1.5 shrink-0">
+          <svg className="w-3 h-3 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
+          <span className="bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-lg font-black text-[10px]">SHIFT {sysSettings?.active_shift} AKTIF</span>
+          <span className="text-amber-600 font-bold">{item.text.replace(`AKSES LOGIN SHIFT ${sysSettings?.active_shift} SEDANG DIBUKA`, 'Login hanya untuk shift ini')}</span>
+        </span>
+      );
     } else {
       content = (
-        <span className="text-slate-500 mx-4 flex items-center gap-1.5 shrink-0">
-          <i className="fa-solid fa-circle-info text-[9px]"></i>
+        <span className="text-slate-500 mx-3 flex items-center gap-1.5 shrink-0">
+          <svg className="w-3 h-3 text-blue-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>
           <span>{item.text}</span>
         </span>
       );
@@ -243,7 +266,7 @@ export default function Login() {
           <div className="flex-1 bg-white border-2 border-pink-200 rounded-2xl shadow-[0_4px_0_#FBCFE8] flex items-center overflow-hidden relative">
             {/* Label Statis Kiri */}
             <div className="flex items-center gap-1.5 px-3 h-full font-black text-maroon z-20 bg-white border-r-2 border-pink-100 shrink-0 relative">
-              <span className="text-pink-500 text-lg leading-none">🎉</span> Info:
+              <svg className="w-4 h-4 text-pink-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg> Info:
               <div className="absolute -right-3 top-0 w-3 h-full bg-gradient-to-r from-white to-transparent"></div>
             </div>
 
@@ -570,13 +593,57 @@ export default function Login() {
               Panduan Akses Sistem Terpadu
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-blue-900/80 text-sm font-medium leading-relaxed flex gap-3">
-              <i className="fa-solid fa-clock text-blue-500 text-lg shrink-0 mt-0.5"></i>
-              <p className="whitespace-pre-line">
-                {sysSettings?.login_guide_text || "Pembatasan login bertujuan menjaga kestabilan server dan ketertiban praktikum di laboratorium. Pastikan Anda hanya mencoba login ketika sesi shift kelas Anda sedang aktif. Jika Anda menghadapi kendala login darurat, hubungi Asisten PJ kelas Anda."}
-              </p>
-            </div>
+          <div className="space-y-4 mt-2 text-slate-700 text-sm font-medium">
+            {sysSettings?.login_guide_text ? (
+              (() => {
+                const lines = sysSettings.login_guide_text.split('\n').filter((l: string) => l.trim());
+                return lines.map((line: string, idx: number) => {
+                  const colonIdx = line.indexOf(':');
+                  const title = colonIdx > -1 ? line.substring(0, colonIdx).trim() : `Langkah ${idx + 1}`;
+                  const desc = colonIdx > -1 ? line.substring(colonIdx + 1).trim() : line.trim();
+                  return (
+                    <div key={idx} className={`flex gap-3 items-start ${idx < lines.length - 1 ? 'border-b border-slate-100 pb-3' : ''}`}>
+                      <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-black text-blue-600 shrink-0">{idx + 1}</span>
+                      <div>
+                        <strong className="text-slate-900 block font-bold">{title}</strong>
+                        {desc}
+                      </div>
+                    </div>
+                  );
+                });
+              })()
+            ) : (
+              <>
+                <div className="flex gap-3 items-start border-b border-slate-100 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-black text-blue-600 shrink-0">1</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Cek Shift Aktif</strong>
+                    Lihat pengumuman di atas. Login hanya dibuka sesuai shift yang sedang aktif.
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start border-b border-slate-100 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-black text-blue-600 shrink-0">2</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Gunakan NIM/Username</strong>
+                    Masukkan NIM (untuk praktikan) atau username yang sudah terdaftar.
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start border-b border-slate-100 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-black text-blue-600 shrink-0">3</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Password Benar</strong>
+                    Pastikan password minimal 6 karakter dan sesuai yang didaftarkan.
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-black text-blue-600 shrink-0">4</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Hubungi Asisten</strong>
+                    Jika tetap tidak bisa login di shift aktif Anda, segera hubungi Asisten PJ kelas.
+                  </div>
+                </div>
+              </>
+            )}
             {sysSettings?.active_shift && sysSettings.active_shift !== 'all' && sysSettings.active_shift !== 'none' && (
               <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-amber-900/80 text-sm font-medium leading-relaxed">
                 <span className="font-black text-amber-700 block mb-1">⚠️ SHIFT AKTIF SAAT INI</span>
@@ -654,46 +721,64 @@ export default function Login() {
           </DialogHeader>
           <div className="space-y-4 mt-2 text-slate-700 text-sm font-medium">
             {sysSettings?.reschedule_steps ? (
-              <ol className="list-decimal list-inside space-y-3 font-medium text-slate-700">
-                {sysSettings.reschedule_steps.split("\n").filter((l: string) => l.trim()).map((line: string, idx: number) => {
-                  const colonIdx = line.indexOf(":");
-                  if (colonIdx > -1) {
-                    const title = line.substring(0, colonIdx).trim();
-                    const desc = line.substring(colonIdx + 1).trim();
-                    return (
-                      <li key={idx}>
-                        <span className="text-slate-900 font-bold">{title}:</span> {desc}
-                      </li>
-                    );
-                  }
+              (() => {
+                const lines = sysSettings.reschedule_steps.split('\n').filter((l: string) => l.trim());
+                return lines.map((line: string, idx: number) => {
+                  const colonIdx = line.indexOf(':');
+                  const title = colonIdx > -1 ? line.substring(0, colonIdx).trim() : `Langkah ${idx + 1}`;
+                  const desc = colonIdx > -1 ? line.substring(colonIdx + 1).trim() : line.trim();
                   return (
-                    <li key={idx}>
-                      {line}
-                    </li>
+                    <div key={idx} className={`flex gap-3 items-start ${idx < lines.length - 1 ? 'border-b border-slate-100 pb-3' : ''}`}>
+                      <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-xs font-black text-orange-600 shrink-0">{idx + 1}</span>
+                      <div>
+                        <strong className="text-slate-900 block font-bold">{title}</strong>
+                        {desc}
+                      </div>
+                    </div>
                   );
-                })}
-              </ol>
+                });
+              })()
             ) : (
-              <ol className="list-decimal list-inside space-y-3 font-medium text-slate-700">
-                <li>
-                  <span className="text-slate-900 font-bold">Ajukan Izin:</span> Klik menu <strong>Absensi</strong> setelah login, lalu ajukan izin di tab <strong>Izin</strong>.
-                </li>
-                <li>
-                  <span className="text-slate-900 font-bold">Kirim WhatsApp:</span> Klik <strong>Kirim Bukti WA</strong> untuk membagikan berkas pendukung Anda ke Asisten.
-                </li>
-                <li>
-                  <span className="text-slate-900 font-bold">Verifikasi:</span> Tunggu hingga status pengajuan izin berubah menjadi terverifikasi.
-                </li>
-                <li>
-                  <span className="text-slate-900 font-bold">Pilih Slot Baru:</span> Klik <strong>Pilih Jadwal</strong> dan tentukan slot ganti yang kosong.
-                </li>
-                <li>
-                  <span className="text-slate-900 font-bold">ACC Asisten:</span> Tunggu persetujuan jadwal pengganti agar presensi Anda dianggap sah.
-                </li>
-              </ol>
+              <>
+                <div className="flex gap-3 items-start border-b border-slate-100 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-xs font-black text-orange-600 shrink-0">1</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Ajukan Izin</strong>
+                    Buka menu <strong>Absensi</strong> setelah login, lalu isi form Izin/Sakit di tab <strong>Izin</strong>.
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start border-b border-slate-100 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-xs font-black text-orange-600 shrink-0">2</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Kirim Bukti WA</strong>
+                    Klik tombol <strong>Kirim Bukti WA</strong> pada riwayat untuk kirim berkas ke Asisten.
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start border-b border-slate-100 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-xs font-black text-orange-600 shrink-0">3</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Tunggu Verifikasi</strong>
+                    Status izin akan berubah jika Asisten sudah memverifikasi.
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start border-b border-slate-100 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-xs font-black text-orange-600 shrink-0">4</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Pilih Jadwal Baru</strong>
+                    Klik <strong>Pilih Jadwal</strong> pada riwayat izin untuk memilih slot ganti yang tersedia.
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-xs font-black text-orange-600 shrink-0">5</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Tunggu ACC</strong>
+                    Tunggu persetujuan Asisten agar presensi jadwal pengganti dianggap sah.
+                  </div>
+                </div>
+              </>
             )}
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-800 flex gap-2">
-              <i className="fa-solid fa-circle-exclamation text-amber-500 mt-0.5 shrink-0"></i>
+              <svg className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
               <p>Izin dan reschedule wajib diajukan sebelum praktikum kelas pengganti dimulai.</p>
             </div>
           </div>

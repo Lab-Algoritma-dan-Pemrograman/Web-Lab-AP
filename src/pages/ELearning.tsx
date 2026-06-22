@@ -146,8 +146,9 @@ export default function ELearning() {
   };
 
   // ===== Open E-Learning SSO =====
-  // Fix #6: Token dikirim via POST form hidden, BUKAN query param URL
-  // Alasan: token di URL tersimpan di browser history, server log, dan Referer header
+  // Token SSO dikirim via URL query param karena web E-Learning eksternal
+  // mengharapkan format GET ?token=...
+  // Token ini aman karena: one-time-use (handshake dihapus setelah dipakai) + expiry 2 jam
   const handleOpenELearning = async () => {
     if (!user) return;
     if (!ELEARNING_URL) {
@@ -159,32 +160,10 @@ export default function ELearning() {
     try {
       const token = await requestJWT(user.id);
 
-      // Buka jendela baru dulu untuk hindari popup blocker
-      const newWindow = window.open("about:blank", "_blank");
-      if (!newWindow) {
-        toast.error("Popup diblokir browser. Izinkan popup untuk situs ini.");
-        return;
-      }
-
-      // Kirim token via POST form tersembunyi di dalam jendela baru
-      // Token tidak pernah muncul di URL, history, atau Referer header
-      newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head><title>Menghubungkan ke E-Learning...</title></head>
-          <body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc;">
-            <div style="text-align:center;color:#64748b;">
-              <p style="font-size:1rem;margin-bottom:8px;">⏳ Menghubungkan ke E-Learning...</p>
-              <p style="font-size:0.75rem;">Anda akan diarahkan secara otomatis.</p>
-            </div>
-            <form id="sso" method="POST" action="${ELEARNING_URL}">
-              <input type="hidden" name="token" value="${token}" />
-            </form>
-            <script>document.getElementById('sso').submit();</script>
-          </body>
-        </html>
-      `);
-      newWindow.document.close();
+      // Buka E-Learning dengan token di query param
+      // (web E-Learning eksternal mengharapkan format ini)
+      const url = `${ELEARNING_URL}?token=${token}`;
+      window.open(url, "_blank");
 
       toast.success("E-Learning dibuka di tab baru!", {
         description: "Login otomatis via SSO.",
