@@ -176,17 +176,12 @@ export default function Login() {
     });
   }
 
-  // Dynamic additions to fill the marquee
-  announcementsList.push({
-    type: 'reschedule',
-    kelas: 'INFO',
-    text: 'Ketentuan Reschedule: Ajukan izin di menu Absensi dan kirim bukti WA ke Asisten PJ.'
-  });
-
-  announcementsList.push({
-    type: 'info',
-    text: 'Mohon cek status absensi Anda secara berkala di portal ini.'
-  });
+  if (announcementsList.length === 0) {
+    announcementsList.push({
+      type: 'info',
+      text: 'Selamat Datang di Laboratorium Algoritma Pemrograman'
+    });
+  }
 
   // Render elements of announcements
   const combinedElements = announcementsList.map((item, idx) => {
@@ -228,7 +223,7 @@ export default function Login() {
 
       {/* Main Container - max-w-[480px] */}
       <div className="w-full max-w-[480px] flex flex-col gap-5 relative z-10 animate-fade-in mt-8 md:mt-0">
-        
+
         {/* Header/Logo */}
         <div className="text-center mb-2">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-white rounded-2xl mb-4 transform -rotate-6 hover:rotate-0 transition-transform shadow-[0_4px_0_#CBD5E1] border-2 border-slate-100 p-1.5">
@@ -250,7 +245,7 @@ export default function Login() {
               <span className="text-pink-500 text-lg leading-none">🎉</span> Info:
               <div className="absolute -right-3 top-0 w-3 h-full bg-gradient-to-r from-white to-transparent"></div>
             </div>
-            
+
             {/* Scrolling Area */}
             <div className="flex-1 overflow-hidden relative flex items-center h-full mask-edges">
               <div className="flex animate-marquee-half whitespace-nowrap text-[11px] font-bold tracking-widest uppercase items-center w-max">
@@ -260,7 +255,7 @@ export default function Login() {
               </div>
             </div>
           </div>
-          
+
           {/* Tombol Oprec Statis */}
           {sysSettings?.is_recruitment_open && (
             <a
@@ -281,22 +276,20 @@ export default function Login() {
             <button
               type="button"
               onClick={() => setActiveTab("masuk")}
-              className={`flex-1 py-2 rounded-xl text-sm transition-all font-black focus:outline-none ${
-                activeTab === "masuk"
+              className={`flex-1 py-2 rounded-xl text-sm transition-all font-black focus:outline-none ${activeTab === "masuk"
                   ? "bg-white text-maroon border-2 border-slate-200 shadow-[0_4px_0_rgba(203,213,225,0.4)]"
                   : "text-slate-400 font-bold hover:text-slate-700"
-              }`}
+                }`}
             >
               Masuk
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("daftar")}
-              className={`flex-1 py-2 rounded-xl text-sm transition-all font-black focus:outline-none ${
-                activeTab === "daftar"
+              className={`flex-1 py-2 rounded-xl text-sm transition-all font-black focus:outline-none ${activeTab === "daftar"
                   ? "bg-white text-maroon border-2 border-slate-200 shadow-[0_4px_0_rgba(203,213,225,0.4)]"
                   : "text-slate-400 font-bold hover:text-slate-700"
-              }`}
+                }`}
             >
               Daftar
             </button>
