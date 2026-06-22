@@ -60,12 +60,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseServer = createClient(supabaseUrl, supabaseServiceKey);
     
     // 1. Verifikasi kredensial menggunakan fungsi RPC
-    const { data: userData, error: loginError } = await supabaseServer
+    const { data: rawUserData, error: loginError } = await supabaseServer
       .rpc('login_user', {
         p_username: username,
         p_password: password
       })
       .maybeSingle();
+
+    const userData = rawUserData as any;
 
     // ponytail: mask internal database schema/syntax errors to prevent information leakage
     if (loginError) {
