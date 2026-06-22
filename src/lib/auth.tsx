@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// 1. Definisikan bentuk User sesuai database kita
 export interface LabUser {
   id: number;
   username: string;
@@ -42,47 +41,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 2. Saat website dibuka, cek apakah ada data login tersimpan?
     const checkSession = async () => {
       try {
-        const token = localStorage.getItem("lab_jwt_token");
-        if (token) {
-          // Verifikasi token melalui endpoint serverless
-          const res = await fetch("/api/auth/verify", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${token}`
-            }
-          });
+        // Kirim POST ke /api/auth/verify — server akan baca httpOnly cookie otomatis.
+        // Jika cookie tidak ada, fallback ke localStorage token di Authorization header.
+        const storedToken = localStorage.getItem("lab_jwt_token");
+        const headers: Record<string, string> = {};
+        if (storedToken) {
+          headers['Authorization'] = `Bearer ${storedToken}`;
+        }
 
-          if (!res.ok) {
-            console.warn("Session invalid or expired");
-            localStorage.removeItem("lab_jwt_token");
-            setUser(null);
-            setLoading(false);
-            return;
-          }
+        const res = await fetch("/api/auth/verify", {
+          method: "POST",
+          credentials: "include", // kirim cookie httpOnly secara otomatis
+          headers,
+        });
 
-          const resData = await res.json();
-          const dbUser = resData.user;
+        if (!res.ok) {
+          console.warn("Session invalid or expired");
+          localStorage.removeItem("lab_jwt_token");
+          setUser(null);
+          setLoading(false);
+          return;
+        }
 
-          if (dbUser) {
-            const labUser: LabUser = {
-              id: Number(dbUser.id),
-              username: dbUser.username,
-              full_name: dbUser.full_name,
-              role: dbUser.role,
-              nim: dbUser.nim || undefined,
-              assistant_code: dbUser.assistant_code || undefined,
-              division: dbUser.division || undefined,
-            };
+        const resData = await res.json();
+        const dbUser = resData.user;
 
-            setUser(labUser);
+        if (dbUser) {
+          const labUser: LabUser = {
+            id: Number(dbUser.id),
+            username: dbUser.username,
+            full_name: dbUser.full_name,
+            role: dbUser.role,
+            nim: dbUser.nim || undefined,
+            assistant_code: dbUser.assistant_code || undefined,
+            division: dbUser.division || undefined,
+          };
 
-            if (labUser.role === 'asisten' && labUser.division) {
-              const paths = await fetchAllowedPaths(labUser.id, labUser.division);
-              setAllowedPaths(paths);
-            }
+          setUser(labUser);
+
+          if (labUser.role === 'asisten' && labUser.division) {
+            const paths = await fetchAllowedPaths(labUser.id, labUser.division);
+            setAllowedPaths(paths);
           }
         }
       } catch (error) {
@@ -97,30 +98,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
-  // 3. Fungsi Login (Dipanggil dari halaman Login)
   const login = async (userData: LabUser, token: string) => {
+    // Simpan di localStorage sebagai fallback (httpOnly cookie sudah di-set oleh server)
     localStorage.setItem("lab_jwt_token", token);
     setUser(userData);
-    
+
     if (userData.role === 'asisten' && userData.division) {
       const paths = await fetchAllowedPaths(userData.id, userData.division);
       setAllowedPaths(paths);
     }
   };
 
-  // 4. Fungsi Logout
-  const logout = () => {
+  const logout = async () => {
+    // Hapus token localStorage
     localStorage.removeItem("lab_jwt_token");
     setUser(null);
-    window.location.href = "/"; // Refresh ke halaman login
+    setAllowedPaths([]);
+
+    // Panggil server untuk menghapus httpOnly cookie (tidak bisa dihapus dari JS)
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Abaikan error — redirect tetap jalan
+    }
+
+    window.location.href = "/";
   };
 
-  // 5. AUTO LOGOUT (Inactivity Timer: 15 Minutes)
+  // AUTO LOGOUT (Inactivity Timer: 15 Minutes)
   useEffect(() => {
     if (!user) return;
 
     let timeoutId: NodeJS.Timeout;
-    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 Menit
+    const INACTIVITY_LIMIT = 15 * 60 * 1000;
 
     const resetTimer = () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -130,11 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, INACTIVITY_LIMIT);
     };
 
-    // Event listeners untuk mendeteksi aktivitas
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, resetTimer));
-
-    // Inisialisasi timer pertama kali
     resetTimer();
 
     return () => {
@@ -144,16 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <AuthContext.Provider 
-      value={{ 
-        user, 
-        role: user?.role || null, 
-        allowedPaths,
-        loading, 
-        login, 
-        logout 
-      }}
-    >
+    <AuthContext.Provider value={{ user, role: user?.role || null, allowedPaths, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

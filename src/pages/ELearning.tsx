@@ -29,6 +29,7 @@ async function requestJWT(userId: number): Promise<string> {
   // 2. Exchange Handshake for JWT via Backend API
   const res = await fetch("/api/generate-jwt", {
     method: "POST",
+    credentials: "include", // kirim cookie httpOnly
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ handshake_code: handshakeCode }),
   });
@@ -83,6 +84,7 @@ export default function ELearning() {
 
       const res = await fetch("/api/sync-elearning", {
         method: "POST",
+        credentials: "include", // kirim cookie httpOnly
         headers,
       });
 
@@ -144,6 +146,8 @@ export default function ELearning() {
   };
 
   // ===== Open E-Learning SSO =====
+  // Fix #6: Token dikirim via POST form hidden, BUKAN query param URL
+  // Alasan: token di URL tersimpan di browser history, server log, dan Referer header
   const handleOpenELearning = async () => {
     if (!user) return;
     if (!ELEARNING_URL) {
@@ -155,8 +159,33 @@ export default function ELearning() {
     try {
       const token = await requestJWT(user.id);
 
-      const url = `${ELEARNING_URL}?token=${token}`;
-      window.open(url, "_blank");
+      // Buka jendela baru dulu untuk hindari popup blocker
+      const newWindow = window.open("about:blank", "_blank");
+      if (!newWindow) {
+        toast.error("Popup diblokir browser. Izinkan popup untuk situs ini.");
+        return;
+      }
+
+      // Kirim token via POST form tersembunyi di dalam jendela baru
+      // Token tidak pernah muncul di URL, history, atau Referer header
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Menghubungkan ke E-Learning...</title></head>
+          <body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc;">
+            <div style="text-align:center;color:#64748b;">
+              <p style="font-size:1rem;margin-bottom:8px;">⏳ Menghubungkan ke E-Learning...</p>
+              <p style="font-size:0.75rem;">Anda akan diarahkan secara otomatis.</p>
+            </div>
+            <form id="sso" method="POST" action="${ELEARNING_URL}">
+              <input type="hidden" name="token" value="${token}" />
+            </form>
+            <script>document.getElementById('sso').submit();</script>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
+
       toast.success("E-Learning dibuka di tab baru!", {
         description: "Login otomatis via SSO.",
       });

@@ -56,6 +56,7 @@ export default function Login() {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include", // cookie httpOnly diterima dari server
         headers: {
           "Content-Type": "application/json"
         },

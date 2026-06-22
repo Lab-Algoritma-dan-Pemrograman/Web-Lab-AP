@@ -26,6 +26,7 @@ async function callRpcProxy(fnName: string, params: any) {
 
     const res = await fetch(`/api/rpc?fn=${fnName}`, {
       method: 'POST',
+      credentials: 'include', // kirim httpOnly cookie otomatis
       headers,
       body: JSON.stringify(params || {}),
     });

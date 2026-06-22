@@ -222,11 +222,23 @@ export default function Absensi() {
   useEffect(() => {
     fetchAttendanceData();
 
+    // Fix #8: Filter subscription berdasarkan konteks user
+    // Staff berlangganan semua perubahan (perlu pantau semua praktikan)
+    // Praktikan hanya berlangganan perubahan milik dirinya sendiri
+    const filter = isStaff
+      ? undefined // staff: dengarkan semua
+      : `custom_user_id=eq.${user?.id}`; // praktikan: hanya milik sendiri
+
     const channel = supabase
       .channel('attendance_live_updates')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'attendance_logs' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance_logs',
+          ...(filter ? { filter } : {}),
+        },
         (payload) => {
           console.log('Update Live Diterima!', payload);
           fetchAttendanceData();

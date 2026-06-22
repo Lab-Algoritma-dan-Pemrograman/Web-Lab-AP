@@ -267,6 +267,7 @@ export default function KetersediaanAsisten() {
         const token = localStorage.getItem("lab_jwt_token");
         const res = await fetch("/api/analyze-schedule", {
             method: "POST",
+            credentials: "include", // kirim cookie httpOnly
             headers: { 
                 "Content-Type": "application/json",
                 "Authorization": token ? `Bearer ${token}` : ""

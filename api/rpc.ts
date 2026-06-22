@@ -177,28 +177,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let userId: number | null = null;
   let userRole: string | null = null;
 
+  // Helper: baca token dari httpOnly cookie ATAU Authorization header
+  function extractToken(): string | null {
+    const cookieHeader = (req.headers.cookie as string) || '';
+    const cookies = Object.fromEntries(
+      cookieHeader.split(';').map(c => {
+        const [k, ...v] = c.trim().split('=');
+        return [k.trim(), v.join('=')];
+      })
+    );
+    if (cookies['lab_session']) return cookies['lab_session'];
+    const auth = req.headers.authorization || '';
+    if (auth.startsWith('Bearer ')) return auth.split(' ')[1];
+    return null;
+  }
+
   // 1. Verifikasi Keamanan JWT Token (Kecuali RPC Publik)
   if (!PUBLIC_RPCS.includes(fnName)) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = extractToken();
+    if (!token) {
       return res.status(401).json({ error: 'Unauthorized: Missing session token' });
     }
-
-    const token = authHeader.split(' ')[1];
     const secretKey = process.env.JWT_SECRET;
     if (!secretKey) {
       console.error("JWT_SECRET is missing on the server env");
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
+    let tokenJti: string | undefined;
+
     try {
       const encodedSecret = new TextEncoder().encode(secretKey);
       const { payload } = await jwtVerify(token, encodedSecret);
       userId = payload.id as number;
       userRole = (payload.role as string || '').toLowerCase();
+      tokenJti = payload.jti;
     } catch (err: any) {
       console.warn(`JWT verification failed for RPC ${fnName}:`, err.message);
       return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+    }
+
+    // C-2: Cek token blocklist — tolak token yang sudah di-logout
+    if (tokenJti) {
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (supabaseUrl && supabaseServiceKey) {
+        const supabaseCheck = createClient(supabaseUrl, supabaseServiceKey);
+        const { data: isRevoked } = await supabaseCheck.rpc('is_token_revoked', { p_jti: tokenJti });
+        if (isRevoked) {
+          return res.status(401).json({ error: 'Unauthorized: Session telah berakhir. Silakan login kembali.' });
+        }
+      }
     }
 
     // 2. Evaluasi RBAC (Role-Based Access Control)
@@ -234,6 +263,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else {
       // Staff (asisten/koordinator) dipaksa menggunakan ID sendiri untuk RPC spesifik
       if (['check_already_absent_secure', 'get_my_rentals_secure', 'submit_rental_request_secure'].includes(fnName)) {
+        if ('p_user_id' in params) params['p_user_id'] = userId;
+      }
+      // Fix #9: is_pj_absen_today menggunakan p_user_id untuk cek status diri sendiri
+      // asisten tidak boleh cek status PJ orang lain
+      if (fnName === 'is_pj_absen_today' || fnName === 'check_pj_absen_today') {
         if ('p_user_id' in params) params['p_user_id'] = userId;
       }
     }
