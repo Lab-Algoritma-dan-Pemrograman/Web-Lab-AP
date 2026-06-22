@@ -289,4 +289,31 @@
     border-color: #E2E8F0 !important;
     box-shadow: 0 10px 0 #CBD5E1 !important;
   }
+
+  /* Custom scrollbar khusus untuk panel kanan agar rapi */
+  .custom-scroll::-webkit-scrollbar { width: 6px; }
+  .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+  .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  /* Bubbly click animation */
+  .btn-bubbly-action:active {
+    transform: translateY(4px) !important;
+    box-shadow: 0 0px 0 transparent !important;
+  }
+
+  /* Gradien transparan untuk ujung running text agar teks menghilang halus */
+  .mask-edges {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+  }
+
+  /* Half-length marquee for smooth seamless loops */
+  @keyframes marquee-half {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-marquee-half {
+    animation: marquee-half 25s linear infinite;
+  }
 }

@@ -17,6 +17,7 @@ import * as XLSX from 'xlsx'; // Pastikan sudah install: npm install xlsx
 
 export default function ManajemenJadwal() {
   const { user } = useAuth();
+  const isAdminOrSecretary = user?.role === 'koordinator' || user?.division?.toLowerCase() === 'sekretaris';
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -91,8 +92,8 @@ export default function ManajemenJadwal() {
         setImporting(true);
         try {
             // SECURE CHECK: Hanya Koordinator yang boleh import jadwal massal
-            if (user?.role !== 'koordinator') {
-                toast.error("Akses Ditolak", { description: "Hanya Koordinator yang dapat mengimport jadwal." });
+            if (!isAdminOrSecretary) {
+                toast.error("Akses Ditolak", { description: "Hanya Koordinator atau Sekretaris yang dapat mengimport jadwal." });
                 setImporting(false);
                 return;
             }
@@ -194,7 +195,7 @@ export default function ManajemenJadwal() {
         p_major: major,
         p_class_code: classCode,
         p_type: 'praktikum',
-        p_status: user?.role === 'koordinator' ? 'approved' : 'pending'
+        p_status: isAdminOrSecretary ? 'approved' : 'pending'
       });
 
       if (error) throw error;
@@ -275,7 +276,7 @@ export default function ManajemenJadwal() {
                     <TableHead>Mata Kuliah / Sesi</TableHead>
                     <TableHead>Jurusan</TableHead>
                     <TableHead>Kelas</TableHead> 
-                    {user?.role === 'koordinator' && <TableHead className="text-right">Aksi</TableHead>}
+                    {isAdminOrSecretary && <TableHead className="text-right">Aksi</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -299,7 +300,7 @@ export default function ManajemenJadwal() {
                           {!['Teknik Tenaga Listrik','Teknik Elektro','Teknik Sistem Energi', 'Teknologi Listrik'].includes(s.major) && <span className="text-sm">{s.major}</span>}
                       </TableCell>
                       <TableCell><div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 font-bold text-sm border">{s.class_code}</div></TableCell>
-                      {user?.role === 'koordinator' && (
+                      {isAdminOrSecretary && (
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                                 <Button variant="outline" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50" onClick={() => openEditDialog(s)}><Pencil className="h-4 w-4" /></Button>
@@ -319,7 +320,7 @@ export default function ManajemenJadwal() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader><DialogTitle>{isEditMode ? "Edit Jadwal" : "Buat Jadwal Baru"}</DialogTitle></DialogHeader>
-                {user?.role === 'asisten' && <div className="bg-blue-50 text-blue-700 p-2 text-xs rounded mb-2"><Info className="w-3 h-3 inline mr-1"/>Perlu ACC Koordinator.</div>}
+                {user?.role === 'asisten' && user?.division?.toLowerCase() !== 'sekretaris' && <div className="bg-blue-50 text-blue-700 p-2 text-xs rounded mb-2"><Info className="w-3 h-3 inline mr-1"/>Perlu ACC Koordinator.</div>}
                 <div className="grid gap-4 py-2">
                     <div className="space-y-1"><Label>Nama Mata Kuliah / Sesi</Label><Input placeholder="Contoh: Praktikum Algoritma" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
                     <div className="grid grid-cols-2 gap-4">

@@ -55,6 +55,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_smart_validation_contact_secure',
     'request_reschedule_secure',
     'get_division_access_secure',
+    'get_audit_logs_secure',
     'check_menu_access_secure',
     'get_elearning_handshake_secure',
     'get_my_rentals_secure',

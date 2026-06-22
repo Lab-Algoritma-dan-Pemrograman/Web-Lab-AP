@@ -22,7 +22,7 @@ export default function KetersediaanAsisten() {
   const [activeTab, setActiveTab] = useState("manual");
 
   // --- OPSI KOORDINATOR & AKSES ---
-  const isCoordinator = user?.role === 'koordinator';
+  const isCoordinator = user?.role === 'koordinator' || user?.division?.toLowerCase() === 'sekretaris';
   const hasEditAccess = isCoordinator || (allowedPaths && allowedPaths.includes('/ketersediaan'));
   const [assistantsList, setAssistantsList] = useState<any[]>([]);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Home, BookOpen, PenTool, Calendar, Users, Settings, LogOut, 
   Box, FileText, User, CalendarCheck, CheckCircle, ClipboardCheck,
-  MessageSquare, QrCode, CalendarDays, GraduationCap, PackageSearch, ListChecks
+  MessageSquare, QrCode, CalendarDays, GraduationCap, PackageSearch, ListChecks, History
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -31,7 +31,8 @@ const RESTRICTED_MENUS = [
   "/penunjang-praktikum",
   "/e-learning",
   "/ketersediaan",
-  "/manajemen-sewa"
+  "/manajemen-sewa",
+  "/audit-log"
 ];
 
 export function AppSidebar() {
@@ -102,6 +103,7 @@ export function AppSidebar() {
     { title: "Pilih Asisten", url: "/manajemen-kelas", icon: Users, roles: ["koordinator", "asisten"] },
     { title: "Input Jadwal Free", url: "/ketersediaan", icon: CalendarCheck, roles: ["koordinator", "asisten"] },
     { title: "Laporan Keuangan", url: "/laporan-keuangan", icon: FileText, roles: ["koordinator","asisten"] },
+    { title: "Audit Log", url: "/audit-log", icon: History, roles: ["koordinator", "asisten"] },
 
     { title: "Pengaturan", url: "/pengaturan", icon: Settings, roles: ["koordinator"] },
   ];

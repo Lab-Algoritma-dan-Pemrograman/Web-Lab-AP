@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { CalendarCheck, ArrowRightLeft, CheckCircle2, Clock, Send, Lock, Trash2, Users, XCircle, QrCode, FileDown, Filter } from "lucide-react";
+import { CalendarCheck, ArrowRightLeft, CheckCircle2, Clock, Send, Lock, Trash2, Users, XCircle, QrCode, FileDown, Filter, Info } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
@@ -67,7 +67,7 @@ export default function Absensi() {
       if (!user) return;
 
       // Koor, Sekretaris, K3 otomatis boleh export & full access
-      if (['koordinator', 'sekretaris', 'k3'].includes(user.role)) {
+      if (user.role === 'koordinator' || ['sekretaris', 'k3'].includes(user.division?.toLowerCase() || '')) {
         setHasExportAccess(true);
         setHasFullAccess(true);
       }
@@ -96,7 +96,7 @@ export default function Absensi() {
       setHasDeletePower(false);
       return;
     }
-    const isAslabAdmin = ['koordinator', 'sekretaris', 'k3'].includes(user.role || '');
+    const isAslabAdmin = user.role === 'koordinator' || ['sekretaris', 'k3'].includes(user.division?.toLowerCase() || '');
     const isAslabK = user.role === 'asisten' && (user.assistant_code || '').toUpperCase().endsWith('K');
     
     setHasAuditHapusAccess(isAslabAdmin || isAslabK);
@@ -527,86 +527,112 @@ export default function Absensi() {
           {/* KOLOM KIRI: SCAN / FORM */}
           <div className="lg:col-span-4 space-y-6">
             {!isStaff ? (
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="scan">Scan QR</TabsTrigger><TabsTrigger value="izin">Izin</TabsTrigger></TabsList>
+              <div className="space-y-5 w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="scan">Scan QR</TabsTrigger><TabsTrigger value="izin">Izin</TabsTrigger></TabsList>
 
-                <TabsContent value="scan">
-                  <Card className="shadow-lg border-t-4 border-t-primary">
-                    <CardHeader className="pb-2 text-center"><CardTitle className="text-lg">Arahkan ke Layar</CardTitle></CardHeader>
-                    <CardContent>
-                      <div className="rounded-xl overflow-hidden border-2 border-dashed border-gray-300 bg-slate-50 min-h-[300px] flex flex-col items-center justify-center relative">
-                        {cameraError ? (
-                          <div className="text-center p-6 space-y-4 text-red-500">
-                            <XCircle className="w-12 h-12 mx-auto" />
-                            <p className="text-sm font-medium">{cameraError}</p>
-                            <Button variant="outline" onClick={() => setCameraError("")}>Coba Lagi</Button>
-                          </div>
-                        ) : scanLocked ? (
-                          <div className="text-center p-6 space-y-4">
-                            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto animate-in zoom-in duration-300" />
-                            <div>
-                              <p className="font-bold text-lg text-slate-800">Scan Terkunci</p>
-                              <p className="text-xs text-muted-foreground mt-1">Sistem sedang memproses atau Anda sudah berhasil absen.</p>
+                  <TabsContent value="scan">
+                    <Card className="shadow-lg border-t-4 border-t-primary">
+                      <CardHeader className="pb-2 text-center"><CardTitle className="text-lg">Arahkan ke Layar</CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="rounded-xl overflow-hidden border-2 border-dashed border-gray-300 bg-slate-50 min-h-[300px] flex flex-col items-center justify-center relative">
+                          {cameraError ? (
+                            <div className="text-center p-6 space-y-4 text-red-500">
+                              <XCircle className="w-12 h-12 mx-auto" />
+                              <p className="text-sm font-medium">{cameraError}</p>
+                              <Button variant="outline" onClick={() => setCameraError("")}>Coba Lagi</Button>
                             </div>
-                            <Button variant="outline" className="mt-2" onClick={() => setScanLocked(false)}>Scan Ulang</Button>
-                          </div>
-                        ) : (
-                          <div className="w-full h-full relative">
-                            <div id="qr-reader" className="w-full border-none [&>div]:border-none [&_video]:object-cover [&_video]:h-[300px]"></div>
-                            <div className="absolute bottom-4 left-0 right-0 text-center">
-                              <Badge className="bg-black/50 text-white backdrop-blur-sm px-3 py-1"><QrCode className="w-3 h-3 mr-2 inline" /> Mencari QR Code...</Badge>
+                          ) : scanLocked ? (
+                            <div className="text-center p-6 space-y-4">
+                              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto animate-in zoom-in duration-300" />
+                              <div>
+                                <p className="font-bold text-lg text-slate-800">Scan Terkunci</p>
+                                <p className="text-xs text-muted-foreground mt-1">Sistem sedang memproses atau Anda sudah berhasil absen.</p>
+                              </div>
+                              <Button variant="outline" className="mt-2" onClick={() => setScanLocked(false)}>Scan Ulang</Button>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                          ) : (
+                            <div className="w-full h-full relative">
+                              <div id="qr-reader" className="w-full border-none [&>div]:border-none [&_video]:object-cover [&_video]:h-[300px]"></div>
+                              <div className="absolute bottom-4 left-0 right-0 text-center">
+                                <Badge className="bg-black/50 text-white backdrop-blur-sm px-3 py-1"><QrCode className="w-3 h-3 mr-2 inline" /> Mencari QR Code...</Badge>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                <TabsContent value="izin">
-                  <Card className="shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Form Izin / Sakit</CardTitle>
-                      <CardDescription className="text-xs">Ajukan izin pada jadwal praktikum Anda.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">Jenis Izin</Label>
-                          <Select value={izinType} onValueChange={setIzinType}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent><SelectItem value="Izin">Izin</SelectItem><SelectItem value="Sakit">Sakit</SelectItem></SelectContent>
-                          </Select>
+                  <TabsContent value="izin">
+                    <Card className="shadow-sm">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Form Izin / Sakit</CardTitle>
+                        <CardDescription className="text-xs">Ajukan izin pada jadwal praktikum Anda.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Jenis Izin</Label>
+                            <Select value={izinType} onValueChange={setIzinType}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent><SelectItem value="Izin">Izin</SelectItem><SelectItem value="Sakit">Sakit</SelectItem></SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Pilih Jadwal Anda</Label>
+                            <Select value={selectedMySchedule} onValueChange={setSelectedMySchedule}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={myOwnSchedules.length === 0 ? "Tidak ada jadwal" : "Pilih jadwal..."} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {myOwnSchedules.map(s => (
+                                  <SelectItem key={s.id} value={s.id.toString()}>Kelas {s.class_code} ({s.day_of_week})</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">Pilih Jadwal Anda</Label>
-                          <Select value={selectedMySchedule} onValueChange={setSelectedMySchedule}>
-                            <SelectTrigger>
-                              <SelectValue placeholder={myOwnSchedules.length === 0 ? "Tidak ada jadwal" : "Pilih jadwal..."} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {myOwnSchedules.map(s => (
-                                <SelectItem key={s.id} value={s.id.toString()}>Kelas {s.class_code} ({s.day_of_week})</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label className="text-xs text-muted-foreground">Tanggal Absen</Label>
+                          <Input type="date" value={izinDate} onChange={e => setIzinDate(e.target.value)} />
                         </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Tanggal Absen</Label>
-                        <Input type="date" value={izinDate} onChange={e => setIzinDate(e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Alasan Detail</Label>
-                        <Input placeholder="Contoh: Ada acara keluarga / Dirawat di RS..." value={izinReason} onChange={e => setIzinReason(e.target.value)} />
-                      </div>
-                      <Button onClick={handleSubmitIzin} disabled={loading || myOwnSchedules.length === 0} className="w-full mt-2">
-                        Kirim Pengajuan
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Alasan Detail</Label>
+                          <Input placeholder="Contoh: Ada acara keluarga / Dirawat di RS..." value={izinReason} onChange={e => setIzinReason(e.target.value)} />
+                        </div>
+                        <Button onClick={handleSubmitIzin} disabled={loading || myOwnSchedules.length === 0} className="w-full mt-2">
+                          Kirim Pengajuan
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+
+                {/* KARTU PANDUAN RESCHEDULE */}
+                <Card className="border-2 border-amber-100 shadow-bubbly-yellow rounded-2xl bg-amber-50/20 p-5 space-y-3">
+                  <h4 className="text-sm font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Info className="w-4.5 h-4.5 text-amber-600 shrink-0" /> Alur Ganti Jadwal (Reschedule)
+                  </h4>
+                  <ol className="text-xs text-amber-900/80 font-semibold space-y-2 list-decimal list-inside pl-1 leading-relaxed">
+                    <li>
+                      <span className="text-amber-950 font-bold">Ajukan Izin:</span> Isi form Izin/Sakit di tab sebelah untuk kelas yang ditinggalkan.
+                    </li>
+                    <li>
+                      <span className="text-amber-950 font-bold">Kirim Bukti WA:</span> Klik tombol <span className="underline">Kirim Bukti WA</span> di riwayat bawah untuk mengirim bukti ke Asisten.
+                    </li>
+                    <li>
+                      <span className="text-amber-950 font-bold">Tunggu Verifikasi:</span> Asisten akan memverifikasi izin Anda.
+                    </li>
+                    <li>
+                      <span className="text-amber-950 font-bold">Pilih Jadwal Baru:</span> Klik tombol <span className="underline">Pilih Jadwal</span> pada riwayat izin Anda untuk memilih slot pengganti.
+                    </li>
+                    <li>
+                      <span className="text-amber-950 font-bold">Tunggu ACC Jadwal:</span> Tunggu persetujuan jadwal pengganti dari Asisten.
+                    </li>
+                  </ol>
+                </Card>
+              </div>
             ) : (
               <Card className="shadow-md border-l-4 border-l-primary">
                 <CardHeader className="pb-2"><CardTitle className="text-lg">Bantu Absen Manual</CardTitle></CardHeader>

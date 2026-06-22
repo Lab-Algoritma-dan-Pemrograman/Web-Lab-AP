@@ -10,6 +10,17 @@ import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import { QrCode, StopCircle, Play, Loader2 } from "lucide-react";
 
+const generateSecureToken = (length = 12): string => {
+  const array = new Uint8Array(length);
+  window.crypto.getRandomValues(array);
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < length; i++) {
+    token += chars[array[i] % chars.length];
+  }
+  return token;
+};
+
 export default function BuatQR() {
   const { user } = useAuth();
   
@@ -46,7 +57,7 @@ export default function BuatQR() {
     let intervalId: NodeJS.Timeout;
     if (sessionId && user) {
       intervalId = setInterval(async () => {
-        const newToken = Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 8);
+        const newToken = generateSecureToken(12);
         // Update DB via Secure RPC
         const { error } = await supabase.rpc('update_qr_session_token_secure', {
             p_caller_id: user.id,
@@ -85,7 +96,7 @@ export default function BuatQR() {
     const generatedTitle = `${meetingType} - ${selectedMajor} ${selectedClass}`;
     setTitle(generatedTitle);
 
-    const firstToken = Math.random().toString(36).substring(2, 15);
+    const firstToken = generateSecureToken(12);
 
     const { data: sessionData, error } = await supabase.rpc('upsert_qr_session_secure', {
       p_caller_id: user.id,

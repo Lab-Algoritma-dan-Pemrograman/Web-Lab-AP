@@ -20,6 +20,7 @@ import BuatQR from "./pages/BuatQR";
 import ManajemenJadwal from "./pages/ManajemenJadwal";
 import ManajemenKelas from "./pages/ManajemenKelas";
 import KetersediaanAsisten from "./pages/KetersediaanAsisten";
+import AuditLog from "./pages/AuditLog";
 
 
 // Tahap 1
@@ -77,6 +78,7 @@ function AppRoutes() {
       <Route path="/manajemen-kelas" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]} requiredMenuKey="/manajemen-kelas"><ManajemenKelas /></ProtectedRoute>} />
       <Route path="/ketersediaan" element={<ProtectedRoute allowedRoles={["koordinator", "asisten"]} requiredMenuKey="/ketersediaan"><KetersediaanAsisten /></ProtectedRoute>} />
       <Route path="/laporan-keuangan" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/laporan-keuangan"><LaporanKeuangan /></ProtectedRoute>} />
+      <Route path="/audit-log" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/audit-log"><AuditLog /></ProtectedRoute>} />
       <Route path="/manajemen-sewa" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/inventaris"><ManajemenSewa /></ProtectedRoute>} />
       
       {/* KHUSUS KOORDINATOR (ADMINISTRASI) */}

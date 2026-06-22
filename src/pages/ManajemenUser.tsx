@@ -38,6 +38,7 @@ const MASTER_MENUS = [
   { key: "/ketersediaan", label: "Input Jadwal Free" },
   { key: "/e-learning", label: "Modul E-Learning" },
   { key: "/absensi", label: "Kelola Absensi (Export & Hapus)" },
+  { key: "/audit-log", label: "Audit Log Aktivitas" },
 ];
 
 interface UserData {
@@ -298,6 +299,12 @@ export default function ManajemenUser() {
         assistant_code: formData.role === 'asisten' ? formData.assistant_code : null,
       };
 
+      if (!isEdit && (!payload.password || payload.password.trim().length < 6)) {
+        toast.error("Password wajib diisi dan minimal 6 karakter.");
+        setSaving(false);
+        return;
+      }
+
       if (isEdit) {
         // Update user via RPC aman (SECURITY DEFINER, bypass RLS)
         const { password } = payload;
@@ -331,7 +338,7 @@ export default function ManajemenUser() {
         const { error: insertError } = await supabase.rpc('admin_create_user', {
           p_caller_id: currentUser?.id, // di-override proxy dari JWT
           p_username: payload.username,
-          p_password: payload.password || "123456", // default
+          p_password: payload.password, // default fallback removed
           p_full_name: payload.full_name,
           p_role: payload.role,
           p_nim: payload.nim,
