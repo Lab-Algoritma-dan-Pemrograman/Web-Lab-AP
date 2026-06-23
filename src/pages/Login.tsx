@@ -186,12 +186,18 @@ export default function Login() {
     ? '🌆 Selamat Sore! Tetap Semangat Belajarnya!'
     : '🌙 Selamat Malam! Tetap Produktif & Jaga Kesehatan!';
 
-  if (announcementsList.length === 0) {
-    announcementsList.push({
-      type: 'info',
-      text: greetingText
-    });
-  }
+  // Selalu tampilkan salam hangat di marquee
+  announcementsList.push({
+    type: 'info',
+    text: greetingText
+  });
+
+  // Selalu tampilkan info ganti jadwal (reschedule) di marquee
+  announcementsList.push({
+    type: 'reschedule',
+    kelas: 'INFO RESCHEDULE',
+    text: 'Pengajuan ganti jadwal (reschedule) praktikum dilakukan mandiri di menu Absensi sebelum kelas pengganti dimulai'
+  });
 
   // Render elements of announcements
   const combinedElements = announcementsList.map((item, idx) => {
