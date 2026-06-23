@@ -250,9 +250,7 @@ export default function Login() {
 
         {/* Header/Logo */}
         <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-white rounded-2xl mb-4 transform -rotate-6 hover:rotate-0 transition-transform shadow-[0_4px_0_#CBD5E1] border-2 border-slate-100 p-1.5">
-            <img src="/logo.png" alt="Logo Lab AP" className="w-full h-full object-contain" />
-          </div>
+          <img src="/logo.png" alt="Logo Lab AP" className="w-16 h-16 mx-auto mb-4 object-contain" />
           <h1 className="text-2xl font-black text-slate-800 leading-tight mb-1">
             Laboratorium Algoritma
           </h1>
