@@ -171,8 +171,10 @@ export default function Login() {
   }
 
   if (sysSettings?.announcement) {
+    const isReschedule = /ganti\s*jadwal|reschedule|pindah\s*jadwal|pindah\s*shift|pengganti/i.test(sysSettings.announcement);
     announcementsList.push({
-      type: 'info',
+      type: isReschedule ? 'reschedule' : 'info',
+      kelas: isReschedule ? 'GANTI JADWAL' : undefined,
       text: sysSettings.announcement
     });
   }
@@ -186,18 +188,12 @@ export default function Login() {
     ? '🌆 Selamat Sore! Tetap Semangat Belajarnya!'
     : '🌙 Selamat Malam! Tetap Produktif & Jaga Kesehatan!';
 
-  // Selalu tampilkan salam hangat di marquee
-  announcementsList.push({
-    type: 'info',
-    text: greetingText
-  });
-
-  // Selalu tampilkan info ganti jadwal (reschedule) di marquee
-  announcementsList.push({
-    type: 'reschedule',
-    kelas: 'INFO RESCHEDULE',
-    text: 'Pengajuan ganti jadwal (reschedule) praktikum dilakukan mandiri di menu Absensi sebelum kelas pengganti dimulai'
-  });
+  if (announcementsList.length === 0) {
+    announcementsList.push({
+      type: 'info',
+      text: greetingText
+    });
+  }
 
   // Render elements of announcements
   const combinedElements = announcementsList.map((item, idx) => {
