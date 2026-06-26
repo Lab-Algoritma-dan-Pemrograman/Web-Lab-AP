@@ -24,5 +24,11 @@
       "source": "/((?!api|src|node_modules|@vite|@react-refresh|logo.png|vite.svg).*$)",
       "destination": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/keep-alive",
+      "schedule": "0 0 * * *"
+    }
   ]
 }
