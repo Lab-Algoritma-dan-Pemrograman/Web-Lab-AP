@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const resData = await res.json();
+        const resData = await res.json().catch(() => ({}));
         const dbUser = resData.user;
 
         if (dbUser) {

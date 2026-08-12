@@ -324,10 +324,11 @@ export default function Absensi() {
   };
 
   const handleReschedule = async (logId: number) => {
-    if (!selectedSchedule) return toast.error("Pilih jadwal pengganti!");
+    if (!selectedSchedule || !user) return toast.error("Pilih jadwal pengganti!");
     setLoading(true);
     try {
       const { error } = await supabase.rpc('request_reschedule_secure', {
+        p_caller_id: user.id,
         p_log_id: logId,
         p_new_schedule_id: parseInt(selectedSchedule)
       });
@@ -392,29 +393,11 @@ export default function Absensi() {
 
       if (!session) {
         toast.error("QR Code Salah atau Sesi Telah Berakhir!");
-        setScanLocked(false); setLoading(false); return;
-      }
-
-      const { data: already } = await supabase.rpc('check_already_absent_secure', { p_user_id: user.id });
-      if (already) {
-        toast.warning("Anda sudah melakukan absensi hari ini!");
+        autoResetScanner();
         setLoading(false); return;
       }
 
-      // Verifikasi Hari Jadwal Praktikum
-      const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-      const todayDayName = daysIndo[new Date().getDay()];
-      const hasRegularClassToday = myOwnSchedules.some(s => s.day_of_week === todayDayName);
-      const hasRescheduledClassToday = myLogs.some(log => 
-        log.reschedule_status === 'approved' && 
-        log.schedules?.day_of_week === todayDayName
-      );
-
-      if (!hasRegularClassToday && !hasRescheduledClassToday) {
-        toast.error(`Gagal Absen: Hari ini (${todayDayName}) Anda tidak memiliki jadwal praktikum atau reschedule yang disetujui.`);
-        setScanLocked(false); setLoading(false); return;
-      }
-
+      // Server-side handles schedule validation & duplicate check via upsert_attendance_log_secure
       const { error } = await supabase.rpc('upsert_attendance_log_secure', {
         p_caller_id: user.id,
         p_target_user_id: user.id,
@@ -430,11 +413,17 @@ export default function Absensi() {
       toast.success("Berhasil Absen!");
     } catch (err: any) {
       toast.error(err.message);
-      setScanLocked(false);
+      autoResetScanner();
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-reset scanner lock after a short delay so user doesn't have to click "Scan Ulang"
+  const autoResetScanner = () => {
+    setTimeout(() => setScanLocked(false), 3000);
+  };
+
 
   // --- LOGIKA IZIN ---
   const handleSubmitIzin = async () => {
@@ -967,9 +956,9 @@ export default function Absensi() {
                         {log.is_verified && log.status !== 'Hadir' && (
                           <>
                             {(!log.reschedule_status || log.reschedule_status === 'rejected') && (
-                              <Dialog>
+                              <Dialog onOpenChange={(open) => { if (open) fetchSchedules(); }}>
                                 <DialogTrigger asChild>
-                                  <Button size="sm" variant="outline" className="border-primary/20 text-primary hover:bg-primary/5 h-9 text-xs w-full active:scale-95 transition-all">
+                                  <Button size="sm" variant="outline" onClick={() => fetchSchedules()} className="border-primary/20 text-primary hover:bg-primary/5 h-9 text-xs w-full active:scale-95 transition-all">
                                     <ArrowRightLeft className="w-3 h-3 mr-2" /> Pilih Jadwal
                                   </Button>
                                 </DialogTrigger>

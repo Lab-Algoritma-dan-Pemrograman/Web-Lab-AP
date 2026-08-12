@@ -66,10 +66,10 @@ export default function Login() {
         })
       });
 
-      const resData = await res.json();
+      const resData = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const errMsg = resData.error || "Gagal melakukan login";
+        const errMsg = resData.error || (res.status === 404 ? "Endpoint API tidak ditemukan (/api/auth/login). Pastikan Vercel Dev berjalan." : "Gagal melakukan login");
         const errDetails = resData.details || "";
         toast.error(errMsg, errDetails ? { description: errDetails } : undefined);
         setIsLoading(false);

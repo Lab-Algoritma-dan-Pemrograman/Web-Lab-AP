@@ -34,7 +34,7 @@ async function callRpcProxy(fnName: string, params: any) {
     const contentType = res.headers.get("content-type");
     let resultData = null;
     if (contentType && contentType.includes("application/json")) {
-      resultData = await res.json();
+      resultData = await res.json().catch(() => null);
     } else {
       resultData = await res.text();
     }

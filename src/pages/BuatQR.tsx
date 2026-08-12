@@ -34,7 +34,7 @@ export default function BuatQR() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(10);
 
   // --- DATA BAKU ---
   const meetingOptions = [
@@ -58,7 +58,7 @@ export default function BuatQR() {
     if (sessionId && user) {
       intervalId = setInterval(async () => {
         const newToken = generateSecureToken(12);
-        // Update DB via Secure RPC
+        // Update DB via Secure RPC (old token saved as previous_token for grace period)
         const { error } = await supabase.rpc('update_qr_session_token_secure', {
             p_caller_id: user.id,
             p_id: sessionId,
@@ -66,9 +66,9 @@ export default function BuatQR() {
         });
         if (!error) {
           setQrToken(newToken);
-          setTimeLeft(5);
+          setTimeLeft(10);
         }
-      }, 5000);
+      }, 10000);
     }
     return () => clearInterval(intervalId);
   }, [sessionId, user]);
@@ -109,7 +109,7 @@ export default function BuatQR() {
     } else if (sessionData && sessionData.length > 0) {
       setSessionId(sessionData[0].id);
       setQrToken(firstToken);
-      setTimeLeft(5);
+      setTimeLeft(10);
       toast.success(`Sesi Dimulai: ${generatedTitle}`);
     }
     setLoading(false);
