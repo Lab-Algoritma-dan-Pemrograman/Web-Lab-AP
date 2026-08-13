@@ -533,15 +533,14 @@ export default function JadwalJaga() {
             let cleanPhone = targetPhone.replace(/\D/g, '');
             if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
             
-            let text = `Halo *Koordinator*,\n\nSaya *${user?.full_name}* mengajukan permohonan swap (tukar jadwal) jaga:\n📌 Jadwal: *${scheduleInfo}*\n📝 Alasan: *${leaveReason}*\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
+            let text = `Selamat ${getGreeting()} mas, saya *${user?.full_name}* izin tidak dapat jaga dan sedang mencari pengganti (Swap).\nAlasan: ${leaveReason}`;
             
             if (waTemplates?.asisten_swap) {
-                let customMsg = waTemplates.asisten_swap
+                text = waTemplates.asisten_swap
                     .replace(/{{waktu}}/g, getGreeting())
                     .replace(/{{nama}}/g, user?.full_name || "")
                     .replace(/{{jadwal}}/g, scheduleInfo)
                     .replace(/{{alasan}}/g, leaveReason);
-                text = `Halo *Koordinator*,\n\n${customMsg}\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
             }
 
             // Send automated WA background broadcast if configured
