@@ -139,6 +139,38 @@ export const triggerServerWebPush = async (
   }
 };
 
+/**
+  Triggers Automated Server-Side WhatsApp Broadcast via Vercel Serverless /api/send-wa.
+  Sends WhatsApp message 100% automatically in background via Fonnte/Wablas!
+ */
+export const triggerServerWhatsApp = async (
+  targetUserId: number,
+  message: string,
+  targetPhone?: string
+) => {
+  try {
+    const res = await fetch("/api/send-wa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetUserId,
+        targetPhone,
+        message,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    console.log("Server WA Broadcast Result:", data);
+    if (data && data.sent) {
+      toast.success("Pesan WhatsApp otomatis terkirim dari server!");
+    } else if (data && data.error && !data.error.includes("belum dikonfigurasi")) {
+      toast.error("Status WA Gateway: " + data.error);
+    }
+    return data;
+  } catch (err) {
+    console.error("Gagal mengirim Server WhatsApp Broadcast:", err);
+  }
+};
+
 export const requestNotificationPermission = async (user?: any): Promise<boolean> => {
   if (!("Notification" in window)) {
     console.warn("Browser ini tidak mendukung Web Notifications API.");

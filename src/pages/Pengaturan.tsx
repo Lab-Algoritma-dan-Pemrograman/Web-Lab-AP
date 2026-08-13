@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Settings, Smartphone, Info, BookOpen, ListChecks, CalendarClock } from "lucide-react";
+import { Save, Settings, Smartphone, Info, BookOpen, ListChecks, CalendarClock, Send } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { triggerServerWhatsApp } from "@/lib/notifications";
+import { getDailyQuote } from "@/lib/quotes";
 
 export default function Pengaturan() {
   const { user } = useAuth();
@@ -50,6 +53,9 @@ export default function Pengaturan() {
         p_login_guide_text: settings.login_guide_text || "",
         p_procedure_text: procedureValue || null,
         p_reschedule_steps: settings.reschedule_steps || "",
+        p_wa_gateway_provider: settings.wa_gateway_provider || "fonnte",
+        p_wa_gateway_token: settings.wa_gateway_token || "",
+        p_wa_auto_notify_enabled: settings.wa_auto_notify_enabled !== false,
     });
 
     if (error) toast.error("Gagal menyimpan pengaturan: " + error.message);
@@ -197,6 +203,77 @@ export default function Pengaturan() {
                    />
                    <p className="text-[10px] text-muted-foreground">Teks bebas multi-baris. Setiap baris menjadi satu butir langkah dalam modal reschedule di halaman login.</p>
                 </div>
+             </CardContent>
+          </Card>
+
+          {/* PENGATURAN WHATSAPP GATEWAY AUTOMATIC BROADCAST */}
+          <Card className="border-green-200 bg-green-50/30 shadow-sm">
+             <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-800">
+                   <Send className="w-5 h-5 text-green-600"/> Pengaturan WhatsApp Gateway (Pengiriman Otomatis)
+                </CardTitle>
+                <CardDescription>
+                   Hubungkan penyedia WhatsApp Gateway (Fonnte / Wablas / Whacenter) agar pesan pengingat WA terkirim 100% otomatis dari server tanpa perlu di-klik.
+                </CardDescription>
+             </CardHeader>
+             <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                      <Label>Penyedia WA Gateway</Label>
+                      <Select 
+                        value={settings.wa_gateway_provider || "fonnte"} 
+                        onValueChange={val => setSettings({...settings, wa_gateway_provider: val})}
+                      >
+                         <SelectTrigger className="bg-white"><SelectValue placeholder="Pilih Provider..."/></SelectTrigger>
+                         <SelectContent>
+                            <SelectItem value="fonnte">Fonnte (Recommended - api.fonnte.com)</SelectItem>
+                            <SelectItem value="wablas">Wablas (kudus.wablas.com)</SelectItem>
+                            <SelectItem value="whacenter">Whacenter (app.whacenter.com)</SelectItem>
+                            <SelectItem value="custom">Custom Webhook HTTP API</SelectItem>
+                         </SelectContent>
+                      </Select>
+                   </div>
+
+                   <div className="space-y-2">
+                      <Label>API Token WA Gateway</Label>
+                      <Input 
+                        type="password"
+                        className="bg-white font-mono text-sm"
+                        value={settings.wa_gateway_token || ""} 
+                        onChange={e => setSettings({...settings, wa_gateway_token: e.target.value})}
+                        placeholder="Contoh: xYz123456789Token..."
+                      />
+                   </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
+                   <div>
+                      <p className="text-sm font-semibold text-green-900">Aktifkan Pengiriman WA Otomatis (Auto Broadcast)</p>
+                      <p className="text-xs text-muted-foreground">Kirim pengingat jadwal & reschedule otomatis dari server saat ada perubahan</p>
+                   </div>
+                   <Switch 
+                      checked={settings.wa_auto_notify_enabled !== false} 
+                      onCheckedChange={val => setSettings({...settings, wa_auto_notify_enabled: val})}
+                   />
+                </div>
+
+                <Button 
+                   type="button" 
+                   variant="outline" 
+                   size="sm" 
+                   className="border-green-600 text-green-700 bg-white hover:bg-green-50 mt-2"
+                   onClick={async () => {
+                      if (!user) return;
+                      const quote = getDailyQuote("asisten");
+                      toast.info("📲 Memicu Uji Kirim WA Otomatis dari Server...");
+                      await triggerServerWhatsApp(
+                         user.id,
+                         `🤖 *Tes WA Gateway Lab AP (Server Auto Broadcast)*\n\nHore! Integrasi WhatsApp Gateway dari server Vercel berhasil terhubung!\n\n🌐 *Buka Web:* https://www.lab-ap.web.id\n\n✨ "${quote}"`
+                      );
+                   }}
+                >
+                   <Send className="w-4 h-4 mr-2 text-green-600"/> Uji Kirim WA Otomatis dari Server
+                </Button>
              </CardContent>
           </Card>
 
