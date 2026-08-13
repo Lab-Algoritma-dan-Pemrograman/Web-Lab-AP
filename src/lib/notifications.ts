@@ -73,6 +73,26 @@ export const subscribeToWebPush = async (user: any) => {
   }
 };
 
+/**
+  Unsubscribes device token from Web Push and removes it from database on logout
+ */
+export const unsubscribeWebPush = async (user?: any) => {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) {
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        await sub.unsubscribe();
+        console.log("VAPID Push subscription removed on logout");
+      }
+    }
+  } catch (err) {
+    console.error("Gagal menghapus push subscription saat logout:", err);
+  }
+};
+
 export const requestNotificationPermission = async (user?: any): Promise<boolean> => {
   if (!("Notification" in window)) {
     console.warn("Browser ini tidak mendukung Web Notifications API.");

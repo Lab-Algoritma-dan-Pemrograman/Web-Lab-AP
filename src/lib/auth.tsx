@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { unsubscribeWebPush } from "@/lib/notifications";
 
 export interface LabUser {
   id: number;
@@ -110,6 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Unsubscribe push token from device on logout to avoid role cross-notifications
+    await unsubscribeWebPush(user);
+
     // Hapus token localStorage
     localStorage.removeItem("lab_jwt_token");
     setUser(null);
