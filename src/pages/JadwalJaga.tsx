@@ -501,7 +501,8 @@ export default function JadwalJaga() {
         const { error: updateError } = await supabase.rpc('update_swap_status_secure', {
             p_caller_id: user.id,
             p_id: parseInt(leaveAssignmentId),
-            p_status: 'mencari_pengganti'
+            p_status: 'mencari_pengganti',
+            p_substitute_id: null
         });
         if (updateError) throw updateError;
 
@@ -587,7 +588,8 @@ export default function JadwalJaga() {
           const { error } = await supabase.rpc('update_swap_status_secure', {
               p_caller_id: user.id,
               p_id: assignmentId,
-              p_status: 'aktif'
+              p_status: 'aktif',
+              p_substitute_id: null
           });
           if (error) throw error;
           toast.success("Pencarian dibatalkan. Jadwal kembali aktif.");
