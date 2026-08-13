@@ -98,7 +98,6 @@ export default function JadwalJaga() {
     setLoading(true);
     
     const { data: statsData } = await supabase.rpc('get_dashboard_stats_secure', { p_viewer_id: user.id });
-    if (statsData?.user_phone) setCoordPhone(statsData.user_phone);
     
     // 1b. Fetch WA Templates
     const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
@@ -138,8 +137,9 @@ export default function JadwalJaga() {
     const { data: userData } = await supabase.rpc('get_users_secure', { p_viewer_id: user.id });
     const allUsers = userData || [];
     const coordinatorUser = allUsers.find((u: any) => u.role === 'koordinator');
-    if (coordinatorUser?.phone) {
-        setCoordPhone(coordinatorUser.phone);
+    const coordPhoneNum = coordinatorUser?.phone || coordinatorUser?.phone_number;
+    if (coordPhoneNum) {
+        setCoordPhone(coordPhoneNum);
     }
     setAssistants(allUsers.filter((u: any) => ['asisten', 'koordinator'].includes(u.role)));
     
@@ -527,7 +527,7 @@ export default function JadwalJaga() {
         }
 
         // 2. Target Number for Swap is Coordinator's Phone Number
-        const targetPhone = coordinator?.phone || coordPhone;
+        const targetPhone = coordinator?.phone || coordinator?.phone_number || coordPhone;
 
         if (targetPhone) {
             let cleanPhone = targetPhone.replace(/\D/g, '');
