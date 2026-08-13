@@ -30,7 +30,6 @@ export default function ValidasiAbsensi() {
     }
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
   };
-  };
 
   const fetchData = async () => {
     if (!user) return;
