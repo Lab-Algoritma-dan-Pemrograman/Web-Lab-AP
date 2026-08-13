@@ -77,7 +77,9 @@ export default function JadwalJaga() {
         checkAndNotifyUpcomingShifts(user, assignments);
       }
     } else {
-      toast.warning("Notifikasi Ditolak / Diblokir", { description: "Aktifkan notifikasi di pengaturan browser kamu." });
+      toast.warning("Notifikasi Diblokir Browser", { 
+        description: "Klik ikon gembok / setelan situs (🔒/🎛️) di address bar browser -> Ubah Notifikasi menjadi 'Allow / Izinkan'." 
+      });
     }
   };
 
@@ -273,7 +275,7 @@ export default function JadwalJaga() {
         const payload = {
             p_caller_id: user.id,
             p_id: isEditMode && editingId ? editingId : 0,
-            p_schedule_id: selectedScheduleId, 
+            p_schedule_id: parseInt(selectedScheduleId), 
             p_user_id: parseInt(selectedAssistantId),
             p_task_role: selectedRole, 
             p_activity_name: activityName, 
@@ -438,7 +440,7 @@ export default function JadwalJaga() {
                       const { error } = await supabase.rpc('upsert_schedule_assignment_secure', {
                           p_caller_id: user.id,
                           p_id: 0,
-                          p_schedule_id: p.schedule_id,
+                          p_schedule_id: parseInt(p.schedule_id),
                           p_user_id: p.user_id,
                           p_task_role: p.task_role,
                           p_activity_name: p.activity_name,

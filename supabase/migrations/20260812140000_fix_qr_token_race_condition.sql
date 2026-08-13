@@ -29,7 +29,8 @@ BEGIN
               'stop_qr_session_secure', 
               'get_qr_session_secure', 
               'check_already_absent_secure',
-              'get_schedules_secure'
+              'get_schedules_secure',
+              'upsert_schedule_assignment_secure'
           )
     LOOP
         EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_signature || ' CASCADE;';
@@ -235,13 +236,63 @@ BEGIN
     ORDER BY s.day_of_week ASC, s.start_time ASC;
 END; $$;
 
--- ── 6. Grant permissions & Reload Schema Cache ───────────────────────────
+-- ── 6. Re-create upsert_schedule_assignment_secure (p_schedule_id BIGINT) ──
+CREATE OR REPLACE FUNCTION public.upsert_schedule_assignment_secure(
+    p_caller_id BIGINT,
+    p_id BIGINT,
+    p_schedule_id BIGINT,
+    p_user_id BIGINT,
+    p_task_role TEXT,
+    p_activity_name TEXT,
+    p_activity_date DATE
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_asst_name TEXT;
+    v_sched_title TEXT;
+BEGIN
+    IF NOT public.is_staff(p_caller_id) THEN
+        RAISE EXCEPTION 'Akses ditolak.';
+    END IF;
+
+    SELECT full_name INTO v_asst_name FROM public.users WHERE id = p_user_id;
+    SELECT title INTO v_sched_title FROM public.schedules WHERE id = p_schedule_id;
+
+    IF p_id IS NULL OR p_id = 0 THEN
+        INSERT INTO public.schedule_assignments (schedule_id, user_id, task_role, activity_name, activity_date, status)
+        VALUES (p_schedule_id, p_user_id, p_task_role, p_activity_name, p_activity_date, 'aktif');
+        
+        PERFORM public.log_activity(
+            p_caller_id, 
+            'SCHEDULE_ASSIGNMENT', 
+            'Menambahkan petugas ' || COALESCE(v_asst_name, '') || ' untuk jadwal ID ' || p_schedule_id,
+            jsonb_build_object('schedule_id', p_schedule_id, 'user_id', p_user_id, 'task_role', p_task_role, 'activity_name', p_activity_name, 'activity_date', p_activity_date)
+        );
+    ELSE
+        UPDATE public.schedule_assignments 
+        SET schedule_id = p_schedule_id,
+            user_id = p_user_id,
+            task_role = p_task_role,
+            activity_name = p_activity_name,
+            activity_date = p_activity_date
+        WHERE id = p_id;
+
+        PERFORM public.log_activity(
+            p_caller_id, 
+            'SCHEDULE_ASSIGNMENT', 
+            'Mengubah petugas ID ' || p_id || ' untuk jadwal ID ' || p_schedule_id,
+            jsonb_build_object('id', p_id, 'schedule_id', p_schedule_id, 'user_id', p_user_id, 'task_role', p_task_role, 'activity_name', p_activity_name, 'activity_date', p_activity_date)
+        );
+    END IF;
+END; $$;
+
+-- ── 7. Grant permissions & Reload Schema Cache ───────────────────────────
 GRANT EXECUTE ON FUNCTION public.update_qr_session_token_secure TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.stop_qr_session_secure TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_qr_session_secure TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.check_already_absent_secure TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.upsert_attendance_log_secure TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_schedules_secure TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.upsert_schedule_assignment_secure TO authenticated, service_role;
 
 -- Reload Supabase PostgREST Schema Cache
 NOTIFY pgrst, 'reload schema';

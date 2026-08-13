@@ -306,8 +306,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error) {
       console.error(`Database Error in RPC [${fnName}]:`, error);
       const isSystemError = /constraint|violates|foreign key|relation|table|syntax|null value|permission denied|does not exist|column|parse/i.test(error.message || '');
-      const clientMessage = isSystemError ? 'Terjadi kesalahan sistem database. Silakan hubungi admin.' : error.message;
-      return res.status(400).json({ error: clientMessage });
+      const clientMessage = isSystemError ? `Terjadi kesalahan sistem database: ${error.message}` : error.message;
+      return res.status(400).json({ error: clientMessage, details: error.message });
     }
 
     return res.status(200).json(data);
