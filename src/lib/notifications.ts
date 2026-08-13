@@ -1,11 +1,25 @@
 // =========================================================================
-// Browser Push Notification Utility (Web Notification API + Service Worker + Web Audio)
+// Browser Push Notification Utility (Web Notification API + Service Worker + VAPID Keys + Web Audio)
 // Provides native desktop/mobile push notifications + audio chime sound + Daily Quotes
 // Stages: H-1, Hari Ini, 2 Jam Sebelum, 1 Jam Sebelum, & 30 Menit Sebelum Shift
 // =========================================================================
 
 import { toast } from "sonner";
 import { getDailyQuote } from "./quotes";
+import { supabase } from "@/integrations/supabase/client";
+
+export const VAPID_PUBLIC_KEY = "BIrsvU55B5AXjGVqi1kVqKgINewqYRiIFE5wDBAapS17GQiA8Xx5hphZ40Q4d-u83wt5zGYzjzqQuzbufcz7XuU";
+
+export const urlBase64ToUint8Array = (base64String: string) => {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
 
 // Auto Register Service Worker for PWA Push Notifications
 export const registerServiceWorker = async () => {
@@ -21,7 +35,45 @@ export const registerServiceWorker = async () => {
   return null;
 };
 
-export const requestNotificationPermission = async (): Promise<boolean> => {
+/**
+  Subscribes current browser device to VAPID Web Push and saves token to DB
+ */
+export const subscribeToWebPush = async (user: any) => {
+  if (!user || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (Notification.permission !== "granted") return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    const subJson = sub.toJSON();
+    if (subJson.endpoint && subJson.keys?.p256dh && subJson.keys?.auth) {
+      const { error } = await supabase.rpc("save_push_subscription_secure", {
+        p_caller_id: user.id,
+        p_endpoint: subJson.endpoint,
+        p_p256dh: subJson.keys.p256dh,
+        p_auth: subJson.keys.auth,
+        p_user_agent: navigator.userAgent,
+      });
+      if (error) {
+        console.error("Error saving push subscription to DB:", error);
+      } else {
+        console.log("VAPID Web Push subscription saved successfully for user:", user.id);
+      }
+    }
+  } catch (err) {
+    console.error("Gagal berlangganan VAPID Web Push:", err);
+  }
+};
+
+export const requestNotificationPermission = async (user?: any): Promise<boolean> => {
   if (!("Notification" in window)) {
     console.warn("Browser ini tidak mendukung Web Notifications API.");
     return false;
@@ -29,16 +81,18 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 
   registerServiceWorker();
 
-  if (Notification.permission === "granted") {
-    return true;
-  }
+  let isGranted = Notification.permission === "granted";
 
-  if (Notification.permission !== "denied") {
+  if (!isGranted && Notification.permission !== "denied") {
     const permission = await Notification.requestPermission();
-    return permission === "granted";
+    isGranted = permission === "granted";
   }
 
-  return false;
+  if (isGranted && user) {
+    subscribeToWebPush(user);
+  }
+
+  return isGranted;
 };
 
 export const getNotificationPermissionState = (): NotificationPermission | "unsupported" => {

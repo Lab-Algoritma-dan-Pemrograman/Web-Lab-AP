@@ -66,6 +66,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
@@ -80,6 +81,7 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@types/react-qr-reader": "^2.1.7",
+    "@types/web-push": "^3.6.4",
     "@vercel/node": "^5.7.3",
     "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitejs/plugin-react-swc": "^3.11.0",

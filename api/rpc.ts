@@ -37,7 +37,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'insert_feedback_secure',
     'get_feedback_secure',
     'get_schedules_secure',
-    'get_system_settings_full_secure'
+    'get_system_settings_full_secure',
+    'save_push_subscription_secure'
   ],
   penyewa: [
     'get_user_profile',

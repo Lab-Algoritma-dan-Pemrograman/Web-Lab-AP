@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   checkAndNotifyUpcomingShifts,
   sendBrowserNotification,
+  subscribeToWebPush,
 } from "@/lib/notifications";
 
 export function useShiftNotifications() {
@@ -11,6 +12,9 @@ export function useShiftNotifications() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Automatically register device to VAPID Web Push
+    subscribeToWebPush(user);
 
     let isMounted = true;
 
