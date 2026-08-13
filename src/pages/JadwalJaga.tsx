@@ -138,7 +138,7 @@ export default function JadwalJaga() {
     setLoading(false);
   };
 
-  // --- EFEK UTAMA & SUPABASE REALTIME ---
+  // --- EFEK UTAMA & SUPABASE REALTIME & PERIODIC TIMER ---
   useEffect(() => { 
     if (user) { 
         checkAccess(); 
@@ -170,9 +170,19 @@ export default function JadwalJaga() {
           )
           .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        // Timer periodik setiap 1 menit untuk cek pengingat 2 jam, 1 jam, dan 30 menit
+        const notifTimer = setInterval(() => {
+          if (assignments.length > 0) {
+            checkAndNotifyUpcomingShifts(user, assignments);
+          }
+        }, 60000);
+
+        return () => { 
+          supabase.removeChannel(channel); 
+          clearInterval(notifTimer);
+        };
     } 
-  }, [user]);
+  }, [user, assignments.length]);
 
   const { activeAssignments, historyAssignments } = useMemo(() => {
     const todayDate = new Date();
