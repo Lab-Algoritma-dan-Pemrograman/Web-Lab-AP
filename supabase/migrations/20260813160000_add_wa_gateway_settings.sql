@@ -8,6 +8,22 @@ ADD COLUMN IF NOT EXISTS wa_gateway_provider TEXT DEFAULT 'fonnte',
 ADD COLUMN IF NOT EXISTS wa_gateway_token TEXT DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS wa_auto_notify_enabled BOOLEAN DEFAULT true;
 
+-- Drop all existing overloaded versions of admin_update_global_settings_secure safely
+DO $$ 
+DECLARE 
+    r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT proname, oidvectortypes(proargtypes) as argtypes
+        FROM pg_proc
+        JOIN pg_namespace ON pg_namespace.oid = pg_proc.pronamespace
+        WHERE proname = 'admin_update_global_settings_secure'
+        AND nspname = 'public'
+    ) LOOP
+        EXECUTE 'DROP FUNCTION IF EXISTS public.' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE;';
+    END LOOP;
+END $$;
+
 -- Update RPC function admin_update_global_settings_secure
 CREATE OR REPLACE FUNCTION public.admin_update_global_settings_secure(
     p_caller_id BIGINT,

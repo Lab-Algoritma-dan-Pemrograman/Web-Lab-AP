@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error("Gagal mengambil system_settings:", settingsErr);
     }
 
-    const settings = settingsList && settingsList.length > 0 ? settingsList[0] : {};
+    const settings: any = settingsList && settingsList.length > 0 ? settingsList[0] : {};
     const provider = settings.wa_gateway_provider || "fonnte";
     const token = settings.wa_gateway_token || process.env.WA_GATEWAY_TOKEN;
     const isEnabled = settings.wa_auto_notify_enabled !== false;

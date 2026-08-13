@@ -606,7 +606,7 @@ export default function JadwalJaga() {
                   <TableHead>Jurusan & Kelas</TableHead>
                   <TableHead>Asisten</TableHead>
                   <TableHead>Status / Tugas</TableHead>
-                  <TableHead className="text-right">Aksi & WA</TableHead>
+                  {hasEditAccess && <TableHead className="text-right">Aksi</TableHead>}
               </TableRow>
           </TableHeader>
           <TableBody>
@@ -643,38 +643,14 @@ export default function JadwalJaga() {
                               </div>
                           </TableCell>
                           
-                          <TableCell className="text-right">
-                             <div className="flex justify-end gap-1.5 items-center">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="h-7 px-2 text-[11px] border-green-600 text-green-700 bg-green-50 hover:bg-green-100 font-semibold shadow-xs" 
-                                    title="Kirim pengingat via WhatsApp"
-                                    onClick={() => {
-                                      const phone = item.user?.phone || "";
-                                      const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
-                                      const quote = getDailyQuote(item.user?.role || "asisten");
-                                      const text = `Halo *${item.user?.full_name || "Asisten"}*,\n\nPengingat Jadwal Jaga di Lab AP:\n📌 Kegiatan: *${item.activity_name || "Praktikum"}*\n📅 Tanggal: *${item.activity_date}*\n⏰ Waktu: *${item.schedule?.day_of_week}, ${item.schedule?.start_time?.slice(0,5)} WIB*\n💼 Tugas: *${item.task_role}*\n📍 Kelas: *${item.schedule?.major || ""} - ${item.schedule?.class_code || ""}*\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
-                                      
-                                      if (cleanPhone) {
-                                        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
-                                      } else {
-                                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                                      }
-                                    }}
-                                  >
-                                    <Smartphone className="w-3.5 h-3.5 mr-1 text-green-600"/>
-                                    WA
-                                  </Button>
-
-                                  {hasEditAccess && (
-                                    <>
-                                      <Button variant="ghost" size="icon" className="text-blue-500 hover:bg-blue-50 h-7 w-7" onClick={() => openEditDialog(item)}><Pencil className="w-3.5 h-3.5"/></Button>
-                                      <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-7 w-7" onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5"/></Button>
-                                    </>
-                                  )}
-                             </div>
-                          </TableCell>
+                          {hasEditAccess && (
+                              <TableCell className="text-right">
+                                 <div className="flex justify-end gap-1">
+                                      <Button variant="ghost" size="icon" className="text-blue-500 hover:bg-blue-50 h-8 w-8" onClick={() => openEditDialog(item)}><Pencil className="w-4 h-4"/></Button>
+                                      <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="w-4 h-4"/></Button>
+                                 </div>
+                              </TableCell>
+                          )}
                       </TableRow>
                   ))
               )}
@@ -702,51 +678,26 @@ export default function JadwalJaga() {
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 inline-block"></span> Live Update
                 </Badge>
 
-                {/* Tombol Status Push Notifikasi Browser & Tes Push Server */}
+                {/* Tombol Status Push Notifikasi Browser */}
                 {notifPermission === "granted" ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-7 text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm"
-                      onClick={async () => {
-                        if (user) {
-                          await subscribeToWebPush(user);
-                        }
-                        sendBrowserNotification("🔔 Uji Notifikasi Browser", {
-                          body: "Notifikasi browser aktif! Device token terdaftar di database.",
-                          onClickUrl: "/jadwal-jaga"
-                        });
-                        toast.success("Device Token VAPID berhasil terdaftar & disimpan di database!");
-                      }}
-                    >
-                      <Bell className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                      Notifikasi Browser Aktif
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-[11px] bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 shadow-sm"
-                      onClick={async () => {
-                        if (!user) return;
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm"
+                    onClick={async () => {
+                      if (user) {
                         await subscribeToWebPush(user);
-                        const quote = getDailyQuote(user.role || "asisten");
-                        toast.info("📲 Sinyal Push dikirim dari server! Tutup/minimize PWA sekarang...", {
-                          duration: 4000,
-                        });
-                        await triggerServerWebPush(
-                          user.id,
-                          "🚀 Tes Push Server VAPID (PWA Ditutup)",
-                          `Hore! Notifikasi VAPID dari server berhasil meletus di HP kamu meskipun PWA ditutup total!\n\n✨ "${quote}"`,
-                          "/jadwal-jaga"
-                        );
-                      }}
-                    >
-                      <Smartphone className="w-3.5 h-3.5 mr-1 text-purple-600" />
-                      Tes Push Server (Tutup App)
-                    </Button>
-                  </div>
+                      }
+                      sendBrowserNotification("🔔 Uji Notifikasi Browser", {
+                        body: "Notifikasi browser aktif! Device token terdaftar di database.",
+                        onClickUrl: "/jadwal-jaga"
+                      });
+                      toast.success("Device Token VAPID berhasil terdaftar & disimpan di database!");
+                    }}
+                  >
+                    <Bell className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                    Notifikasi Browser Aktif
+                  </Button>
                 ) : (
                   <Button 
                     variant="outline" 
