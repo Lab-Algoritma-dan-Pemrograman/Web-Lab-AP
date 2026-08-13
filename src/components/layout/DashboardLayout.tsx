@@ -2,8 +2,12 @@ import { ReactNode } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Separator } from "@/components/ui/separator";
+import { useShiftNotifications } from "@/hooks/useShiftNotifications";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  // Global automatic background shift notification scheduler (checks every 30s)
+  useShiftNotifications();
+
   return (
     <SidebarProvider>
       {/* Panggil Sidebar Baru Disini */}
