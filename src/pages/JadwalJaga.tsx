@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw, Bell, BellRing } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx"; // <--- IMPORT LIBRARY EXCEL
-import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification, clearShiftNotifiedHistory } from "@/lib/notifications";
+import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification, clearShiftNotifiedHistory, subscribeToWebPush } from "@/lib/notifications";
 
 export default function JadwalJaga() {
   const { user } = useAuth();
@@ -673,12 +673,15 @@ export default function JadwalJaga() {
                     variant="outline" 
                     size="sm" 
                     className="h-7 text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm"
-                    onClick={() => {
+                    onClick={async () => {
+                      if (user) {
+                        await subscribeToWebPush(user);
+                      }
                       sendBrowserNotification("🔔 Uji Notifikasi Browser", {
-                        body: "Notifikasi browser aktif! Kamu akan diingatkan saat ada jadwal jaga.",
+                        body: "Notifikasi browser aktif! Device token terdaftar di database.",
                         onClickUrl: "/jadwal-jaga"
                       });
-                      toast.info("Notifikasi uji dikirim ke browser!");
+                      toast.success("Device Token VAPID berhasil terdaftar & disimpan di database!");
                     }}
                   >
                     <Bell className="w-3.5 h-3.5 mr-1 text-emerald-600" />
