@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw, Bell, BellCheck, BellRing } from "lucide-react";
+import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw, Bell, BellRing } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx"; // <--- IMPORT LIBRARY EXCEL
 import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification } from "@/lib/notifications";
@@ -673,7 +673,7 @@ export default function JadwalJaga() {
                       toast.info("Notifikasi uji dikirim ke browser!");
                     }}
                   >
-                    <BellCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                    <Bell className="w-3.5 h-3.5 mr-1 text-emerald-600" />
                     Notifikasi Browser Aktif
                   </Button>
                 ) : (
