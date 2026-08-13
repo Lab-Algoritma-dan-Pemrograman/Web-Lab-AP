@@ -646,6 +646,26 @@ export default function JadwalJaga() {
                           {hasEditAccess && (
                               <TableCell className="text-right">
                                  <div className="flex justify-end gap-1">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="text-green-600 hover:bg-green-50 h-8 w-8" 
+                                        title="Ingatkan via WhatsApp"
+                                        onClick={() => {
+                                          const phone = item.user?.phone || "";
+                                          const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
+                                          const quote = getDailyQuote(item.user?.role || "asisten");
+                                          const text = `Halo *${item.user?.full_name || "Asisten"}*,\n\nPengingat Jadwal Jaga di Lab AP:\n📌 Kegiatan: *${item.activity_name || "Praktikum"}*\n📅 Tanggal: *${item.activity_date}*\n⏰ Waktu: *${item.schedule?.day_of_week}, ${item.schedule?.start_time?.slice(0,5)} WIB*\n💼 Tugas: *${item.task_role}*\n📍 Kelas: *${item.schedule?.major || ""} - ${item.schedule?.class_code || ""}*\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
+                                          
+                                          if (cleanPhone) {
+                                            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
+                                          } else {
+                                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                                          }
+                                        }}
+                                      >
+                                        <Smartphone className="w-4 h-4 text-green-600"/>
+                                      </Button>
                                       <Button variant="ghost" size="icon" className="text-blue-500 hover:bg-blue-50 h-8 w-8" onClick={() => openEditDialog(item)}><Pencil className="w-4 h-4"/></Button>
                                       <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="w-4 h-4"/></Button>
                                  </div>

@@ -10,17 +10,26 @@ import { toast } from "sonner";
 import { CheckCircle, Loader2, History, Clock, MessageCircle, RotateCcw, XCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
+import { triggerServerWebPush } from "@/lib/notifications";
+import { getDailyQuote } from "@/lib/quotes";
+
 export default function ValidasiAbsensi() {
   const { user } = useAuth();
   const [pendingLogs, setPendingLogs] = useState<any[]>([]);
   const [historyLogs, setHistoryLogs] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
 
-  // Helper WA Link
-  const getWaLink = (phone: string | null) => {
-    if (!phone) return null;
-    let clean = phone.replace(/\D/g, ''); if (clean.startsWith('0')) clean = '62' + clean.slice(1);
-    return `https://wa.me/${clean}`;
+  // Helper WA Link with Daily Quote
+  const getWaLink = (phone: string | null, targetName?: string, isApproved?: boolean) => {
+    if (!phone) return "#";
+    const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
+    const quote = getDailyQuote("praktikan");
+    let msg = `Halo *${targetName || "Praktikan"}*,\n\nPermohonan reschedule praktikum kamu telah diproses.\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/absensi\n\n✨ "${quote}"`;
+    if (isApproved !== undefined) {
+      msg = `Halo *${targetName || "Praktikan"}*,\n\nPermohonan reschedule praktikum kamu telah ${isApproved ? "DISETUJUI ✅" : "DITOLAK ❌"}.\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/absensi\n\n✨ "${quote}"`;
+    }
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  };
   };
 
   const fetchData = async () => {
