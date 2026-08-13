@@ -12,9 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw } from "lucide-react";
+import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw, Bell, BellCheck, BellRing } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx"; // <--- IMPORT LIBRARY EXCEL
+import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification } from "@/lib/notifications";
 
 export default function JadwalJaga() {
   const { user } = useAuth();
@@ -56,6 +57,30 @@ export default function JadwalJaga() {
       "Ujian Praktikum (UAS)", "Praktikum Susulan (Inhal)", "Persiapan / Briefing", "Lainnya"
   ];
 
+  const [notifPermission, setNotifPermission] = useState<string>("default");
+
+  useEffect(() => {
+    setNotifPermission(getNotificationPermissionState());
+  }, []);
+
+  const handleEnableNotif = async () => {
+    const granted = await requestNotificationPermission();
+    const state = getNotificationPermissionState();
+    setNotifPermission(state);
+    if (granted) {
+      toast.success("Notifikasi Aktif!", { description: "Kamu akan menerima notifikasi browser saat ada jadwal jaga." });
+      sendBrowserNotification("🔔 Notifikasi Jadwal Jaga Aktif!", {
+        body: "Kamu akan menerima notifikasi browser otomatis untuk jadwal jaga hari ini & H-1.",
+        onClickUrl: "/jadwal-jaga"
+      });
+      if (user && assignments.length > 0) {
+        checkAndNotifyUpcomingShifts(user, assignments);
+      }
+    } else {
+      toast.warning("Notifikasi Ditolak / Diblokir", { description: "Aktifkan notifikasi di pengaturan browser kamu." });
+    }
+  };
+
   const checkAccess = async () => {
     if (!user) return;
     const { data: hasAccess, error } = await supabase.rpc('check_menu_access_secure', { 
@@ -95,6 +120,11 @@ export default function JadwalJaga() {
             original_user: { id: a.original_user_id, full_name: a.original_user_full_name }
         }));
         setAssignments(mapped);
+
+        // Check and send browser push notifications for upcoming shifts
+        if (user) {
+          checkAndNotifyUpcomingShifts(user, mapped);
+        }
     }
 
     // 3. Fetch Available Schedules via Secure RPC
@@ -114,15 +144,28 @@ export default function JadwalJaga() {
         checkAccess(); 
         fetchData(); 
 
-        // MENYALAKAN FITUR AUTO-REFRESH (REALTIME)
+        // MENYALAKAN FITUR AUTO-REFRESH (REALTIME) & PUSH NOTIFICATIONS
         const channel = supabase
           .channel('jadwal_jaga_live_updates')
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'schedule_assignments' },
-            (payload) => {
+            (payload: any) => {
               console.log('Update Jadwal Jaga Diterima!', payload);
               fetchData(); // Panggil ulang untuk merefresh tabel otomatis
+
+              // Kirim notifikasi browser otomatis saat ada penugasan baru atau tukar jadwal
+              if (payload.eventType === 'INSERT' && payload.new?.user_id === user.id) {
+                sendBrowserNotification("🚀 Penugasan Jadwal Jaga Baru!", {
+                  body: `Kamu ditugaskan sebagai ${payload.new.task_role || 'Petugas'} untuk ${payload.new.activity_name || 'Praktikum'}.`,
+                  onClickUrl: "/jadwal-jaga"
+                });
+              } else if (payload.new?.status === 'mencari_pengganti' && payload.new?.user_id !== user.id) {
+                sendBrowserNotification("🔄 Permintaan Tukar Jadwal Jaga!", {
+                  body: `Ada asisten yang sedang mencari pengganti jadwal jaga. Klik untuk melihat & membantu.`,
+                  onClickUrl: "/jadwal-jaga"
+                });
+              }
             }
           )
           .subscribe();
@@ -597,14 +640,43 @@ export default function JadwalJaga() {
     <DashboardLayout>
        <div className="space-y-6">
          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                     <Users className="text-primary"/> Plotting Jadwal Jaga
                 </h1>
                 {/* Indikator Realtime Live */}
-                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-600 border-green-200 animate-pulse mt-1 shadow-sm">
+                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-600 border-green-200 animate-pulse shadow-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 inline-block"></span> Live Update
                 </Badge>
+
+                {/* Tombol Status Push Notifikasi Browser */}
+                {notifPermission === "granted" ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm"
+                    onClick={() => {
+                      sendBrowserNotification("🔔 Uji Notifikasi Browser", {
+                        body: "Notifikasi browser aktif! Kamu akan diingatkan saat ada jadwal jaga.",
+                        onClickUrl: "/jadwal-jaga"
+                      });
+                      toast.info("Notifikasi uji dikirim ke browser!");
+                    }}
+                  >
+                    <BellCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                    Notifikasi Browser Aktif
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-[11px] bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 shadow-sm"
+                    onClick={handleEnableNotif}
+                  >
+                    <BellRing className="w-3.5 h-3.5 mr-1 animate-bounce text-amber-600" />
+                    Aktifkan Notifikasi
+                  </Button>
+                )}
             </div>
             
             {hasEditAccess && (
