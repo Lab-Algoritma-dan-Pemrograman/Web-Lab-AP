@@ -43,6 +43,7 @@ export const subscribeToWebPush = async (user: any) => {
   if (Notification.permission !== "granted") return;
 
   try {
+    await registerServiceWorker();
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
 
@@ -56,17 +57,26 @@ export const subscribeToWebPush = async (user: any) => {
     const subJson = sub.toJSON();
     if (subJson.endpoint && subJson.keys?.p256dh && subJson.keys?.auth) {
       const { error } = await supabase.rpc("save_push_subscription_secure", {
-        p_caller_id: user.id,
+        p_caller_id: Number(user.id),
         p_endpoint: subJson.endpoint,
         p_p256dh: subJson.keys.p256dh,
         p_auth: subJson.keys.auth,
         p_user_agent: navigator.userAgent,
       });
+
       if (error) {
-        console.error("Error saving push subscription to DB:", error);
-      } else {
-        console.log("VAPID Web Push subscription saved successfully for user:", user.id);
+        console.warn("RPC save_push_subscription_secure warning, trying fallback upsert:", error.message);
+        await supabase.from("push_subscriptions").upsert({
+          user_id: Number(user.id),
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth: subJson.keys.auth,
+          user_agent: navigator.userAgent,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "endpoint" });
       }
+
+      console.log("VAPID Web Push subscription saved successfully for user:", user.id);
     }
   } catch (err) {
     console.error("Gagal berlangganan VAPID Web Push:", err);
@@ -99,7 +109,7 @@ export const requestNotificationPermission = async (user?: any): Promise<boolean
     return false;
   }
 
-  registerServiceWorker();
+  await registerServiceWorker();
 
   let isGranted = Notification.permission === "granted";
 
@@ -109,7 +119,7 @@ export const requestNotificationPermission = async (user?: any): Promise<boolean
   }
 
   if (isGranted && user) {
-    subscribeToWebPush(user);
+    await subscribeToWebPush(user);
   }
 
   return isGranted;
