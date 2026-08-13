@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw, Bell, BellRing } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx"; // <--- IMPORT LIBRARY EXCEL
-import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification, clearShiftNotifiedHistory, subscribeToWebPush, triggerServerWebPush } from "@/lib/notifications";
+import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification, clearShiftNotifiedHistory, subscribeToWebPush, triggerServerWebPush, triggerServerWhatsApp } from "@/lib/notifications";
 import { getDailyQuote } from "@/lib/quotes";
 
 export default function JadwalJaga() {
@@ -506,14 +506,27 @@ export default function JadwalJaga() {
         });
         if (updateError) throw updateError;
 
+        const targetAssignment = assignments.find(a => a.id.toString() === leaveAssignmentId);
+        const scheduleInfo = targetAssignment ? `${targetAssignment.schedule?.day_of_week}, ${targetAssignment.schedule?.start_time?.slice(0,5)} WIB (${targetAssignment.activity_name})` : "Jadwal Jaga";
+        const quote = getDailyQuote("asisten");
+
+        // 1. Send VAPID Push Notification to Coordinator
+        const coordinator = assistants.find((a: any) => a.role === "koordinator");
+        if (coordinator) {
+          await triggerServerWebPush(
+            coordinator.id,
+            "🔄 Permohonan Swap Jadwal Jaga Baru",
+            `Asisten ${user?.full_name} mengajukan swap jadwal: ${scheduleInfo}.\nAlasan: ${leaveReason}\n\n✨ "${quote}"`,
+            "/jadwal-jaga"
+          );
+        }
+
+        // 2. Target Number for Swap is Coordinator's Phone Number
         if (coordPhone) {
             let cleanPhone = coordPhone.replace(/\D/g, '');
             if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
             
-            const targetAssignment = assignments.find(a => a.id.toString() === leaveAssignmentId);
-            const scheduleInfo = targetAssignment ? `${targetAssignment.schedule?.day_of_week}, ${targetAssignment.schedule?.start_time?.slice(0,5)} (${targetAssignment.activity_name})` : "Jadwal Jaga";
-
-            let text = `Selamat ${getGreeting()} mas, saya *${user?.full_name}* izin tidak dapat jaga dan sedang mencari pengganti (Swap).\nAlasan: ${leaveReason}`;
+            let text = `Halo *Koordinator*,\n\nSaya *${user?.full_name}* mengajukan permohonan swap (tukar jadwal) jaga:\n📌 Jadwal: *${scheduleInfo}*\n📝 Alasan: *${leaveReason}*\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
             
             if (waTemplates?.asisten_swap) {
                 text = waTemplates.asisten_swap
@@ -523,10 +536,13 @@ export default function JadwalJaga() {
                     .replace(/{{alasan}}/g, leaveReason);
             }
 
+            // Send automated WA background broadcast if configured
+            await triggerServerWhatsApp(0, text, cleanPhone);
+
             window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
-            toast.success("Jadwal dilempar ke Bursa! Mengalihkan ke WhatsApp...");
+            toast.success("Jadwal dilempar ke Bursa! Mengalihkan ke WhatsApp Koordinator...");
         } else {
-            toast.success("Berhasil! Jadwal sekarang masuk ke bursa pengganti."); 
+            toast.success("Berhasil! Permohonan swap berhasil dikirim ke Koordinator."); 
         }
         setLeaveReason(""); setLeaveAssignmentId(""); 
     } catch (err: any) { toast.error(err.message); } finally { setSubmittingLeave(false); }
@@ -543,6 +559,18 @@ export default function JadwalJaga() {
               p_substitute_id: user.id
           });
           if (error) throw error;
+
+          // Notify Coordinator of Substitute Offer
+          const coordinator = assistants.find((a: any) => a.role === "koordinator");
+          if (coordinator) {
+            await triggerServerWebPush(
+              coordinator.id,
+              "🙋 Penawaran Pengganti Shift (Swap)",
+              `Asisten ${user.full_name} menawarkan diri untuk menggantikan jadwal ID #${assignmentId}. Mohon persetujuan Koordinator.`,
+              "/jadwal-jaga"
+            );
+          }
+
           toast.success("Berhasil menawarkan diri! Menunggu persetujuan Koordinator.");
       } catch (err: any) { toast.error("Gagal menawarkan diri: " + err.message); }
   };
@@ -562,6 +590,25 @@ export default function JadwalJaga() {
               p_id: assignmentId
           });
           if (error) throw error;
+
+          // Notify both original assistant and substitute assistant of approval
+          if (originalUserId) {
+            await triggerServerWebPush(
+              originalUserId,
+              "✅ Swap Jadwal Disetujui Koordinator",
+              `Permohonan swap jadwal jaga kamu telah disetujui Koordinator!`,
+              "/jadwal-jaga"
+            );
+          }
+          if (substituteId) {
+            await triggerServerWebPush(
+              substituteId,
+              "✅ Kamu Resmi Menjadi Pengganti Shift",
+              `Selamat! Penawaran kamu untuk menggantikan shift telah disetujui Koordinator.`,
+              "/jadwal-jaga"
+            );
+          }
+
           toast.success("Pertukaran jadwal berhasil disetujui!");
       } catch (err: any) { toast.error("Gagal menyetujui: " + err.message); }
   };
