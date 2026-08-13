@@ -35,7 +35,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_attendance_logs_secure',
     'get_group_members_secure',
     'insert_feedback_secure',
-    'get_feedback_secure'
+    'get_feedback_secure',
+    'get_schedules_secure',
+    'get_system_settings_full_secure'
   ],
   penyewa: [
     'get_user_profile',
