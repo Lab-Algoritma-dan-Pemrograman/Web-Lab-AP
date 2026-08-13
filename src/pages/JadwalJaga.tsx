@@ -134,9 +134,14 @@ export default function JadwalJaga() {
     const { data: schedData } = await supabase.rpc('get_schedules_secure', { p_viewer_id: user.id });
     setAvailableSchedules((schedData || []).filter((s: any) => s.type === 'praktikum'));
 
-    // 4. Fetch Assistants via Secure RPC
+    // 4. Fetch Assistants & Koordinator via Secure RPC
     const { data: userData } = await supabase.rpc('get_users_secure', { p_viewer_id: user.id });
-    setAssistants((userData || []).filter((u: any) => u.role === 'asisten'));
+    const allUsers = userData || [];
+    const coordinatorUser = allUsers.find((u: any) => u.role === 'koordinator');
+    if (coordinatorUser?.phone) {
+        setCoordPhone(coordinatorUser.phone);
+    }
+    setAssistants(allUsers.filter((u: any) => ['asisten', 'koordinator'].includes(u.role)));
     
     setLoading(false);
   };
@@ -522,8 +527,10 @@ export default function JadwalJaga() {
         }
 
         // 2. Target Number for Swap is Coordinator's Phone Number
-        if (coordPhone) {
-            let cleanPhone = coordPhone.replace(/\D/g, '');
+        const targetPhone = coordinator?.phone || coordPhone;
+
+        if (targetPhone) {
+            let cleanPhone = targetPhone.replace(/\D/g, '');
             if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
             
             let text = `Halo *Koordinator*,\n\nSaya *${user?.full_name}* mengajukan permohonan swap (tukar jadwal) jaga:\n📌 Jadwal: *${scheduleInfo}*\n📝 Alasan: *${leaveReason}*\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
