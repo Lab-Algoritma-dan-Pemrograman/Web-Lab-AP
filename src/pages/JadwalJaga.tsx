@@ -606,7 +606,7 @@ export default function JadwalJaga() {
                   <TableHead>Jurusan & Kelas</TableHead>
                   <TableHead>Asisten</TableHead>
                   <TableHead>Status / Tugas</TableHead>
-                  {hasEditAccess && <TableHead className="text-right">Aksi</TableHead>}
+                  <TableHead className="text-right">Aksi & WA</TableHead>
               </TableRow>
           </TableHeader>
           <TableBody>
@@ -643,34 +643,38 @@ export default function JadwalJaga() {
                               </div>
                           </TableCell>
                           
-                          {hasEditAccess && (
-                              <TableCell className="text-right">
-                                 <div className="flex justify-end gap-1">
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="text-green-600 hover:bg-green-50 h-8 w-8" 
-                                        title="Ingatkan via WhatsApp"
-                                        onClick={() => {
-                                          const phone = item.user?.phone || "";
-                                          const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
-                                          const quote = getDailyQuote(item.user?.role || "asisten");
-                                          const text = `Halo *${item.user?.full_name || "Asisten"}*,\n\nPengingat Jadwal Jaga di Lab AP:\n📌 Kegiatan: *${item.activity_name || "Praktikum"}*\n📅 Tanggal: *${item.activity_date}*\n⏰ Waktu: *${item.schedule?.day_of_week}, ${item.schedule?.start_time?.slice(0,5)} WIB*\n💼 Tugas: *${item.task_role}*\n📍 Kelas: *${item.schedule?.major || ""} - ${item.schedule?.class_code || ""}*\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
-                                          
-                                          if (cleanPhone) {
-                                            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
-                                          } else {
-                                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                                          }
-                                        }}
-                                      >
-                                        <Smartphone className="w-4 h-4 text-green-600"/>
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="text-blue-500 hover:bg-blue-50 h-8 w-8" onClick={() => openEditDialog(item)}><Pencil className="w-4 h-4"/></Button>
-                                      <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="w-4 h-4"/></Button>
-                                 </div>
-                              </TableCell>
-                          )}
+                          <TableCell className="text-right">
+                             <div className="flex justify-end gap-1.5 items-center">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 px-2 text-[11px] border-green-600 text-green-700 bg-green-50 hover:bg-green-100 font-semibold shadow-xs" 
+                                    title="Kirim pengingat via WhatsApp"
+                                    onClick={() => {
+                                      const phone = item.user?.phone || "";
+                                      const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
+                                      const quote = getDailyQuote(item.user?.role || "asisten");
+                                      const text = `Halo *${item.user?.full_name || "Asisten"}*,\n\nPengingat Jadwal Jaga di Lab AP:\n📌 Kegiatan: *${item.activity_name || "Praktikum"}*\n📅 Tanggal: *${item.activity_date}*\n⏰ Waktu: *${item.schedule?.day_of_week}, ${item.schedule?.start_time?.slice(0,5)} WIB*\n💼 Tugas: *${item.task_role}*\n📍 Kelas: *${item.schedule?.major || ""} - ${item.schedule?.class_code || ""}*\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/jadwal-jaga\n\n✨ "${quote}"`;
+                                      
+                                      if (cleanPhone) {
+                                        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
+                                      } else {
+                                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                                      }
+                                    }}
+                                  >
+                                    <Smartphone className="w-3.5 h-3.5 mr-1 text-green-600"/>
+                                    WA
+                                  </Button>
+
+                                  {hasEditAccess && (
+                                    <>
+                                      <Button variant="ghost" size="icon" className="text-blue-500 hover:bg-blue-50 h-7 w-7" onClick={() => openEditDialog(item)}><Pencil className="w-3.5 h-3.5"/></Button>
+                                      <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-7 w-7" onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5"/></Button>
+                                    </>
+                                  )}
+                             </div>
+                          </TableCell>
                       </TableRow>
                   ))
               )}
