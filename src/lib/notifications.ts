@@ -26,7 +26,6 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     return false;
   }
 
-  // Also register service worker when requesting permission
   registerServiceWorker();
 
   if (Notification.permission === "granted") {
@@ -59,6 +58,32 @@ export const formatLocalDateStr = (d: Date): string => {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+/**
+  Clears notification tracking history in sessionStorage so updated/re-edited shifts can re-notify
+ */
+export const clearShiftNotifiedHistory = (assignmentId?: string | number) => {
+  try {
+    if (assignmentId) {
+      const idStr = assignmentId.toString();
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith("notified_shifts_")) {
+          const list: string[] = JSON.parse(sessionStorage.getItem(key) || "[]");
+          const filtered = list.filter((item) => item !== idStr);
+          sessionStorage.setItem(key, JSON.stringify(filtered));
+        }
+      });
+    } else {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith("notified_shifts_")) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
+  } catch (e) {
+    console.error("Gagal menghapus riwayat notifikasi:", e);
+  }
 };
 
 /**
@@ -98,7 +123,7 @@ export const playNotificationSound = () => {
     osc2.start(now + 0.1);
     osc2.stop(now + 0.35);
   } catch (e) {
-    // Suppress audio autoplay errors if any
+    // Suppress audio autoplay errors
   }
 };
 
@@ -122,7 +147,7 @@ export const sendBrowserNotification = async (title: string, options: ShiftNotif
     const notificationOptions = {
       body: options.body,
       icon: options.icon || defaultIcon,
-      tag: options.tag || "jadwal-jaga",
+      tag: options.tag || `jadwal-jaga-${Date.now()}`,
       badge: defaultIcon,
       data: { url: options.onClickUrl || "/jadwal-jaga" },
     };
@@ -169,7 +194,6 @@ export const checkAndNotifyUpcomingShifts = (user: any, assignments: any[]) => {
   tomorrow.setDate(now.getDate() + 1);
   const tomorrowStr = formatLocalDateStr(tomorrow);
 
-  // Retrieve notified tracking from sessionStorage to avoid duplicate popups
   const getNotifiedList = (key: string): string[] => {
     return JSON.parse(sessionStorage.getItem(key) || "[]");
   };

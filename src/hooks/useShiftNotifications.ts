@@ -56,7 +56,7 @@ export function useShiftNotifications() {
       fetchAndCheckShifts();
     }, 30000);
 
-    // 3. Supabase Realtime listener for live assignment updates
+    // 3. Supabase Realtime listener for live assignment INSERT and UPDATE events
     const channel = supabase
       .channel("global_jadwal_jaga_notif")
       .on(
@@ -65,11 +65,18 @@ export function useShiftNotifications() {
         (payload: any) => {
           fetchAndCheckShifts();
 
-          if (payload.eventType === "INSERT" && payload.new?.user_id === user.id) {
-            sendBrowserNotification("🚀 Penugasan Jadwal Jaga Baru!", {
-              body: `Kamu ditugaskan sebagai ${payload.new.task_role || "Petugas"} untuk ${payload.new.activity_name || "Praktikum"}.`,
-              onClickUrl: "/jadwal-jaga",
-            });
+          if (
+            (payload.eventType === "INSERT" || payload.eventType === "UPDATE") &&
+            payload.new?.user_id === user.id
+          ) {
+            const isUpdate = payload.eventType === "UPDATE";
+            sendBrowserNotification(
+              isUpdate ? "✏️ Perubahan Jadwal Jaga!" : "🚀 Penugasan Jadwal Jaga Baru!",
+              {
+                body: `Jadwal jaga kamu sebagai ${payload.new.task_role || "Petugas"} untuk ${payload.new.activity_name || "Praktikum"} telah ${isUpdate ? "diperbarui" : "ditambahkan"}.`,
+                onClickUrl: "/jadwal-jaga",
+              }
+            );
           } else if (payload.new?.status === "mencari_pengganti" && payload.new?.user_id !== user.id) {
             sendBrowserNotification("🔄 Permintaan Tukar Jadwal Jaga!", {
               body: `Ada asisten yang sedang mencari pengganti jadwal jaga. Klik untuk melihat & membantu.`,

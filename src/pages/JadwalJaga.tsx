@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw, Bell, BellRing } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx"; // <--- IMPORT LIBRARY EXCEL
-import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification } from "@/lib/notifications";
+import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification, clearShiftNotifiedHistory } from "@/lib/notifications";
 
 export default function JadwalJaga() {
   const { user } = useAuth();
@@ -285,6 +285,12 @@ export default function JadwalJaga() {
         const { error } = await supabase.rpc('upsert_schedule_assignment_secure', payload);
         if (error) throw error; 
         
+        clearShiftNotifiedHistory(editingId || undefined);
+        sendBrowserNotification(isEditMode ? "✏️ Jadwal Jaga Diperbarui!" : "🚀 Jadwal Jaga Ditambahkan!", {
+          body: `Jadwal jaga ${activityName} (${activityDate}) berhasil disimpan.`,
+          onClickUrl: "/jadwal-jaga"
+        });
+
         toast.success(isEditMode ? "Petugas berhasil diperbarui!" : "Petugas ditambahkan!");
         setIsDialogOpen(false);
         fetchData();
