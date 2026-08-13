@@ -1,8 +1,10 @@
 // =========================================================================
 // Browser Push Notification Utility (Web Notification API)
 // Provides native desktop/mobile push notifications for shift assignments
-// Stages: H-1, 2 Jam Sebelum, 1 Jam Sebelum, & 30 Menit Sebelum Shift
+// Stages: H-1, Hari Ini, 2 Jam Sebelum, 1 Jam Sebelum, & 30 Menit Sebelum Shift
 // =========================================================================
+
+import { toast } from "sonner";
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!("Notification" in window)) {
@@ -35,7 +37,20 @@ export interface ShiftNotificationOptions {
   onClickUrl?: string;
 }
 
+export const formatLocalDateStr = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export const sendBrowserNotification = (title: string, options: ShiftNotificationOptions) => {
+  // Always trigger toast as in-app fallback notification
+  toast.info(title, {
+    description: options.body,
+    duration: 6000,
+  });
+
   if (!("Notification" in window) || Notification.permission !== "granted") {
     return;
   }
@@ -66,23 +81,20 @@ export const sendBrowserNotification = (title: string, options: ShiftNotificatio
 /**
   Checks upcoming shifts for the logged-in user:
   1. H-1 (Diberitahukan sehari sebelumnya)
-  2. 2 Jam Sebelum Shift (Hari H)
-  3. 1 Jam Sebelum Shift (Hari H)
-  4. 30 Menit Sebelum Shift (Hari H)
+  2. Hari Ini (Saat pertama kali membuka web pada tanggal bertugas)
+  3. 2 Jam Sebelum Shift (Hari H)
+  4. 1 Jam Sebelum Shift (Hari H)
+  5. 30 Menit Sebelum Shift (Hari H)
  */
 export const checkAndNotifyUpcomingShifts = (user: any, assignments: any[]) => {
   if (!user || !assignments || assignments.length === 0) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   const now = new Date();
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
+  const todayStr = formatLocalDateStr(now);
 
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
-  const todayStr = today.toISOString().split("T")[0];
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  const tomorrowStr = formatLocalDateStr(tomorrow);
 
   // Retrieve notified tracking from sessionStorage to avoid duplicate popups
   const getNotifiedList = (key: string): string[] => {
@@ -94,11 +106,13 @@ export const checkAndNotifyUpcomingShifts = (user: any, assignments: any[]) => {
   };
 
   const keyH1 = `notified_shifts_h1_${user.id}_${todayStr}`;
+  const keyTodayGeneral = `notified_shifts_today_general_${user.id}_${todayStr}`;
   const key2h = `notified_shifts_2h_${user.id}_${todayStr}`;
   const key1h = `notified_shifts_1h_${user.id}_${todayStr}`;
   const key30m = `notified_shifts_30m_${user.id}_${todayStr}`;
 
   const notifiedH1 = getNotifiedList(keyH1);
+  const notifiedGeneral = getNotifiedList(keyTodayGeneral);
   const notified2h = getNotifiedList(key2h);
   const notified1h = getNotifiedList(key1h);
   const notified30m = getNotifiedList(key30m);
@@ -128,52 +142,67 @@ export const checkAndNotifyUpcomingShifts = (user: any, assignments: any[]) => {
       saveNotifiedList(keyH1, notifiedH1);
     }
 
-    // ── Kategori Hari H: Hitung Selisih Menit ─────────────────────────────
-    if (assignDateStr === todayStr && assignment.schedule?.start_time) {
-      const timeParts = assignment.schedule.start_time.split(":");
-      const shiftHours = parseInt(timeParts[0], 10);
-      const shiftMinutes = parseInt(timeParts[1], 10);
-
-      const shiftTime = new Date(now);
-      shiftTime.setHours(shiftHours, shiftMinutes, 0, 0);
-
-      const diffMs = shiftTime.getTime() - now.getTime();
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-      // ── 2. Pengingat 2 Jam Sebelum Shift (Antara 61 - 120 menit) ────────
-      if (diffMinutes <= 120 && diffMinutes > 60 && !notified2h.includes(assignId)) {
-        sendBrowserNotification(`⏰ 2 Jam Lagi! Jadwal Jaga`, {
-          body: `Halo ${user.full_name || "Asisten"}, 2 jam lagi kamu bertugas sebagai ${taskRole} di ${activityName} (Pukul ${startTimeStr} WIB).`,
-          tag: `shift-2h-${assignId}`,
+    // ── Kategori Hari H ───────────────────────────────────────────────────
+    if (assignDateStr === todayStr) {
+      // ── 2. General Hari Ini Reminder ────────────────────────────────────
+      if (!notifiedGeneral.includes(assignId)) {
+        sendBrowserNotification(`📌 Jadwal Jaga Hari Ini!`, {
+          body: `Halo ${user.full_name || "Asisten"}, hari ini kamu bertugas sebagai ${taskRole} di ${activityName} ${scheduleInfo}.`,
+          tag: `shift-today-gen-${assignId}`,
           onClickUrl: "/jadwal-jaga",
         });
 
-        notified2h.push(assignId);
-        saveNotifiedList(key2h, notified2h);
+        notifiedGeneral.push(assignId);
+        saveNotifiedList(keyTodayGeneral, notifiedGeneral);
       }
 
-      // ── 3. Pengingat 1 Jam Sebelum Shift (Antara 31 - 60 menit) ─────────
-      if (diffMinutes <= 60 && diffMinutes > 30 && !notified1h.includes(assignId)) {
-        sendBrowserNotification(`⏳ 1 Jam Lagi! Jadwal Jaga`, {
-          body: `Persiapkan diri! 1 jam lagi kamu bertugas sebagai ${taskRole} di ${activityName} (Pukul ${startTimeStr} WIB).`,
-          tag: `shift-1h-${assignId}`,
-          onClickUrl: "/jadwal-jaga",
-        });
+      // Hitung Selisih Menit untuk Countdown (2 Jam, 1 Jam, 30 Menit)
+      if (assignment.schedule?.start_time) {
+        const timeParts = assignment.schedule.start_time.split(":");
+        const shiftHours = parseInt(timeParts[0], 10);
+        const shiftMinutes = parseInt(timeParts[1], 10);
 
-        notified1h.push(assignId);
-        saveNotifiedList(key1h, notified1h);
-      }
+        const shiftTime = new Date(now);
+        shiftTime.setHours(shiftHours, shiftMinutes, 0, 0);
 
-      // ── 4. Pengingat 30 Menit Sebelum Shift (Antara 0 - 30 menit) ───────
-      if (diffMinutes <= 30 && diffMinutes > 0 && !notified30m.includes(assignId)) {
-        sendBrowserNotification(`🚨 30 Menit Lagi! Jadwal Jaga Segera Dimulai`, {
-          body: `Perhatian! 30 menit lagi kamu bertugas sebagai ${taskRole} di ${activityName} (Pukul ${startTimeStr} WIB). Segera menuju laboratorium!`,
-          tag: `shift-30m-${assignId}`,
-          onClickUrl: "/jadwal-jaga",
-        });
+        const diffMs = shiftTime.getTime() - now.getTime();
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
-        notified30m.push(assignId);
-        saveNotifiedList(key30m, notified30m);
+        // ── 3. Pengingat 2 Jam Sebelum Shift (Antara 61 - 120 menit) ────────
+        if (diffMinutes <= 120 && diffMinutes > 60 && !notified2h.includes(assignId)) {
+          sendBrowserNotification(`⏰ 2 Jam Lagi! Jadwal Jaga`, {
+            body: `Halo ${user.full_name || "Asisten"}, 2 jam lagi kamu bertugas sebagai ${taskRole} di ${activityName} (Pukul ${startTimeStr} WIB).`,
+            tag: `shift-2h-${assignId}`,
+            onClickUrl: "/jadwal-jaga",
+          });
+
+          notified2h.push(assignId);
+          saveNotifiedList(key2h, notified2h);
+        }
+
+        // ── 4. Pengingat 1 Jam Sebelum Shift (Antara 31 - 60 menit) ─────────
+        if (diffMinutes <= 60 && diffMinutes > 30 && !notified1h.includes(assignId)) {
+          sendBrowserNotification(`⏳ 1 Jam Lagi! Jadwal Jaga`, {
+            body: `Persiapkan diri! 1 jam lagi kamu bertugas sebagai ${taskRole} di ${activityName} (Pukul ${startTimeStr} WIB).`,
+            tag: `shift-1h-${assignId}`,
+            onClickUrl: "/jadwal-jaga",
+          });
+
+          notified1h.push(assignId);
+          saveNotifiedList(key1h, notified1h);
+        }
+
+        // ── 5. Pengingat 30 Menit Sebelum Shift (Antara 0 - 30 menit) ───────
+        if (diffMinutes <= 30 && diffMinutes > 0 && !notified30m.includes(assignId)) {
+          sendBrowserNotification(`🚨 30 Menit Lagi! Jadwal Jaga Segera Dimulai`, {
+            body: `Perhatian! 30 menit lagi kamu bertugas sebagai ${taskRole} di ${activityName} (Pukul ${startTimeStr} WIB). Segera menuju laboratorium!`,
+            tag: `shift-30m-${assignId}`,
+            onClickUrl: "/jadwal-jaga",
+          });
+
+          notified30m.push(assignId);
+          saveNotifiedList(key30m, notified30m);
+        }
       }
     }
   });
