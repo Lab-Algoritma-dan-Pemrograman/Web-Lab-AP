@@ -10,11 +10,13 @@ export function useShiftNotifications() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user || (user.role !== "asisten" && user.role !== "koordinator")) return;
+    if (!user) return;
 
     let isMounted = true;
 
     const fetchAndCheckShifts = async () => {
+      if (user.role !== "asisten" && user.role !== "koordinator") return;
+
       try {
         const { data: assignData } = await supabase.rpc(
           "get_schedule_assignments_secure",
@@ -56,8 +58,8 @@ export function useShiftNotifications() {
       fetchAndCheckShifts();
     }, 30000);
 
-    // 3. Supabase Realtime listener for live assignment INSERT and UPDATE events
-    const channel = supabase
+    // 3. Supabase Realtime listener for live assignment & reschedule updates
+    const channelAssignments = supabase
       .channel("global_jadwal_jaga_notif")
       .on(
         "postgres_changes",
@@ -79,9 +81,49 @@ export function useShiftNotifications() {
             );
           } else if (payload.new?.status === "mencari_pengganti" && payload.new?.user_id !== user.id) {
             sendBrowserNotification("🔄 Permintaan Tukar Jadwal Jaga!", {
-              body: `Ada asisten yang sedang mencari pengganti jadwal jaga. Klik untuk melihat & membantu.`,
+              body: `Ada asisten yang sedang mencari pengganti jadwal jaga (Swap). Klik untuk melihat & membantu.`,
               onClickUrl: "/jadwal-jaga",
             });
+          }
+        }
+      )
+      .subscribe();
+
+    // 4. Supabase Realtime listener for Reschedule Praktikum (Attendance Logs)
+    const channelAttendance = supabase
+      .channel("global_reschedule_praktikum_notif")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendance_logs" },
+        (payload: any) => {
+          // Notification for staff/asisten when a new reschedule request is submitted
+          if (
+            payload.new?.reschedule_status === "pending" &&
+            (user.role === "asisten" || user.role === "koordinator")
+          ) {
+            sendBrowserNotification("📅 Permohonan Reschedule Praktikum Baru!", {
+              body: `Ada pengajuan reschedule jadwal praktikum baru yang membutuhkan verifikasi.`,
+              onClickUrl: "/validasi-absensi",
+            });
+          }
+
+          // Notification for user when their reschedule request status changes
+          if (
+            payload.new?.user_id === user.id &&
+            payload.eventType === "UPDATE" &&
+            payload.new?.reschedule_status &&
+            payload.new.reschedule_status !== payload.old?.reschedule_status
+          ) {
+            const isApproved = payload.new.reschedule_status === "approved";
+            sendBrowserNotification(
+              isApproved ? "✅ Reschedule Praktikum Disetujui!" : "❌ Reschedule Praktikum Ditolak",
+              {
+                body: isApproved
+                  ? `Pengajuan reschedule jadwal praktikum kamu telah disetujui!`
+                  : `Pengajuan reschedule jadwal praktikum kamu ditolak/dikembalikan.`,
+                onClickUrl: "/absensi",
+              }
+            );
           }
         }
       )
@@ -90,7 +132,8 @@ export function useShiftNotifications() {
     return () => {
       isMounted = false;
       clearInterval(timer);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelAssignments);
+      supabase.removeChannel(channelAttendance);
     };
   }, [user]);
 }
