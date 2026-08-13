@@ -103,6 +103,35 @@ export const unsubscribeWebPush = async (user?: any) => {
   }
 };
 
+/**
+  Triggers Server-Side VAPID Web Push Notification via Vercel Serverless /api/send-push.
+  This delivers native OS push notifications to mobile/desktop EVEN WHEN PWA IS CLOSED!
+ */
+export const triggerServerWebPush = async (
+  targetUserId: number,
+  title: string,
+  body: string,
+  url: string = "/jadwal-jaga"
+) => {
+  try {
+    const res = await fetch("/api/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetUserId,
+        title,
+        body,
+        url,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    console.log("Server VAPID Push Result:", data);
+    return data;
+  } catch (err) {
+    console.error("Gagal mengirim Server VAPID Push:", err);
+  }
+};
+
 export const requestNotificationPermission = async (user?: any): Promise<boolean> => {
   if (!("Notification" in window)) {
     console.warn("Browser ini tidak mendukung Web Notifications API.");

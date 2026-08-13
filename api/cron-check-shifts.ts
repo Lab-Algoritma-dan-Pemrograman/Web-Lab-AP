@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
-import { getDailyQuote } from "../src/lib/quotes";
+import { getDailyQuote } from "../src/lib/quotes.js";
 
 const VAPID_PUBLIC_KEY = process.env.VITE_VAPID_PUBLIC_KEY || "BIrsvU55B5AXjGVqi1kVqKgINewqYRiIFE5wDBAapS17GQiA8Xx5hphZ40Q4d-u83wt5zGYzjzqQuzbufcz7XuU";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "HcUZLw1hhIKxj2Hy9JWLP_9AVsgK-ee6J8YhCX9hw9g";

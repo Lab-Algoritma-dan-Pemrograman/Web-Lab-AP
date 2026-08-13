@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { Trash2, UserPlus, Users, Loader2, Clock, Send, Smartphone, Pencil, Filter, CalendarDays, FileUp, FileDown, Info, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw, History, RotateCcw, Bell, BellRing } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx"; // <--- IMPORT LIBRARY EXCEL
-import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification, clearShiftNotifiedHistory, subscribeToWebPush } from "@/lib/notifications";
+import { requestNotificationPermission, getNotificationPermissionState, checkAndNotifyUpcomingShifts, sendBrowserNotification, clearShiftNotifiedHistory, subscribeToWebPush, triggerServerWebPush } from "@/lib/notifications";
+import { getDailyQuote } from "@/lib/quotes";
 
 export default function JadwalJaga() {
   const { user } = useAuth();
@@ -286,6 +287,16 @@ export default function JadwalJaga() {
         if (error) throw error; 
         
         clearShiftNotifiedHistory(editingId || undefined);
+
+        if (selectedAssistantId) {
+          triggerServerWebPush(
+            parseInt(selectedAssistantId),
+            isEditMode ? "✏️ Perubahan Jadwal Jaga!" : "🚀 Penugasan Jadwal Jaga Baru!",
+            `Kamu ditugaskan sebagai ${selectedRole} untuk ${activityName} (${activityDate}).\n\n✨ "${getDailyQuote('asisten')}"`,
+            "/jadwal-jaga"
+          );
+        }
+
         sendBrowserNotification(isEditMode ? "✏️ Jadwal Jaga Diperbarui!" : "🚀 Jadwal Jaga Ditambahkan!", {
           body: `Jadwal jaga ${activityName} (${activityDate}) berhasil disimpan.`,
           onClickUrl: "/jadwal-jaga"
@@ -667,26 +678,53 @@ export default function JadwalJaga() {
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 inline-block"></span> Live Update
                 </Badge>
 
-                {/* Tombol Status Push Notifikasi Browser */}
+                {/* Tombol Status Push Notifikasi Browser & Tes Push Server */}
                 {notifPermission === "granted" ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm"
-                    onClick={async () => {
-                      if (user) {
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm"
+                      onClick={async () => {
+                        if (user) {
+                          await subscribeToWebPush(user);
+                        }
+                        sendBrowserNotification("🔔 Uji Notifikasi Browser", {
+                          body: "Notifikasi browser aktif! Device token terdaftar di database.",
+                          onClickUrl: "/jadwal-jaga"
+                        });
+                        toast.success("Device Token VAPID berhasil terdaftar & disimpan di database!");
+                      }}
+                    >
+                      <Bell className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                      Notifikasi Browser Aktif
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px] bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 shadow-sm"
+                      onClick={async () => {
+                        if (!user) return;
                         await subscribeToWebPush(user);
-                      }
-                      sendBrowserNotification("🔔 Uji Notifikasi Browser", {
-                        body: "Notifikasi browser aktif! Device token terdaftar di database.",
-                        onClickUrl: "/jadwal-jaga"
-                      });
-                      toast.success("Device Token VAPID berhasil terdaftar & disimpan di database!");
-                    }}
-                  >
-                    <Bell className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                    Notifikasi Browser Aktif
-                  </Button>
+                        toast.info("📲 Segera TUTUP / MINIMIZE PWA dari recent apps! Push notification server akan meletus dalam 5 detik...", {
+                          duration: 6000,
+                        });
+                        setTimeout(async () => {
+                          const quote = getDailyQuote(user.role || "asisten");
+                          await triggerServerWebPush(
+                            user.id,
+                            "🚀 Tes Push Server VAPID (PWA Ditutup)",
+                            `Hore! Notifikasi VAPID dari server berhasil meletus di HP kamu meskipun PWA ditutup total!\n\n✨ "${quote}"`,
+                            "/jadwal-jaga"
+                          );
+                        }, 5000);
+                      }}
+                    >
+                      <Smartphone className="w-3.5 h-3.5 mr-1 text-purple-600" />
+                      Tes Push Server (Tutup App)
+                    </Button>
+                  </div>
                 ) : (
                   <Button 
                     variant="outline" 
