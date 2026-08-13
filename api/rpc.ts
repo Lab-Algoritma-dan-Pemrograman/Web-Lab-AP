@@ -114,7 +114,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_admin_rentals_secure',
     'update_rental_status_secure',
     'upsert_external_link_secure',
-    'delete_external_link_secure'
+    'delete_external_link_secure',
+    'save_push_subscription_secure'
   ],
   koordinator: []
 };
