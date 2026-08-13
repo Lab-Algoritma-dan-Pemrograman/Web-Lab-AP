@@ -131,24 +131,27 @@ export const sendBrowserNotification = async (title: string, options: ShiftNotif
   // 1. Play audio chime sound
   playNotificationSound();
 
-  // 2. Trigger toast as in-app fallback notification
+  // 2. Trigger toast as in-app fallback notification banner with rich details
   toast.info(title, {
     description: options.body,
-    duration: 6000,
+    duration: 8000,
   });
 
-  // 3. Trigger native browser / OS Service Worker push notification if permitted
+  // 3. Trigger native browser / OS Service Worker push notification with full WhatsApp-style text & banner
   if (!("Notification" in window) || Notification.permission !== "granted") {
     return;
   }
 
   try {
     const defaultIcon = "/logo.png";
-    const notificationOptions = {
+    const notificationOptions: NotificationOptions & { [key: string]: any } = {
       body: options.body,
       icon: options.icon || defaultIcon,
       tag: options.tag || `jadwal-jaga-${Date.now()}`,
       badge: defaultIcon,
+      vibrate: [200, 100, 200, 100, 200],
+      requireInteraction: true, // Stays on screen like WhatsApp notification until user interacts
+      renotify: true,
       data: { url: options.onClickUrl || "/jadwal-jaga" },
     };
 
