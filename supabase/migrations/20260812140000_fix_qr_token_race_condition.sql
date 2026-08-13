@@ -9,9 +9,12 @@
 --   5. Drop all conflicting overloads of upsert_attendance_log_secure
 -- =========================================================================
 
--- ── 1. Add previous_token column ──────────────────────────────────────────
+-- ── 1. Add missing columns ────────────────────────────────────────────────
 ALTER TABLE public.qr_sessions 
 ADD COLUMN IF NOT EXISTS previous_token TEXT DEFAULT NULL;
+
+ALTER TABLE public.schedules 
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
 -- ── 2. Drop ALL overloaded versions dynamically from pg_proc ──────────────
 DO $$
