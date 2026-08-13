@@ -28,7 +28,7 @@
   "crons": [
     {
       "path": "/api/cron-check-shifts",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/keep-alive",
