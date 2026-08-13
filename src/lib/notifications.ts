@@ -1,16 +1,33 @@
 // =========================================================================
-// Browser Push Notification Utility (Web Notification API + Web Audio API)
+// Browser Push Notification Utility (Web Notification API + Service Worker + Web Audio)
 // Provides native desktop/mobile push notifications + audio chime sound
 // Stages: H-1, Hari Ini, 2 Jam Sebelum, 1 Jam Sebelum, & 30 Menit Sebelum Shift
 // =========================================================================
 
 import { toast } from "sonner";
 
+// Auto Register Service Worker for PWA Push Notifications
+export const registerServiceWorker = async () => {
+  if ("serviceWorker" in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      console.log("PWA Service Worker registered successfully:", reg.scope);
+      return reg;
+    } catch (err) {
+      console.warn("Gagal mendaftarkan Service Worker:", err);
+    }
+  }
+  return null;
+};
+
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!("Notification" in window)) {
     console.warn("Browser ini tidak mendukung Web Notifications API.");
     return false;
   }
+
+  // Also register service worker when requesting permission
+  registerServiceWorker();
 
   if (Notification.permission === "granted") {
     return true;
@@ -85,7 +102,7 @@ export const playNotificationSound = () => {
   }
 };
 
-export const sendBrowserNotification = (title: string, options: ShiftNotificationOptions) => {
+export const sendBrowserNotification = async (title: string, options: ShiftNotificationOptions) => {
   // 1. Play audio chime sound
   playNotificationSound();
 
@@ -95,21 +112,32 @@ export const sendBrowserNotification = (title: string, options: ShiftNotificatio
     duration: 6000,
   });
 
-  // 3. Trigger native browser push notification if permitted
+  // 3. Trigger native browser / OS Service Worker push notification if permitted
   if (!("Notification" in window) || Notification.permission !== "granted") {
     return;
   }
 
   try {
     const defaultIcon = "/logo.png";
-    const notification = new Notification(title, {
+    const notificationOptions = {
       body: options.body,
       icon: options.icon || defaultIcon,
       tag: options.tag || "jadwal-jaga",
       badge: defaultIcon,
-      data: options.data,
-    });
+      data: { url: options.onClickUrl || "/jadwal-jaga" },
+    };
 
+    // Use Service Worker if active for persistent OS level notification
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg && reg.showNotification) {
+        await reg.showNotification(title, notificationOptions);
+        return;
+      }
+    }
+
+    // Fallback to standard window Notification
+    const notification = new Notification(title, notificationOptions);
     notification.onclick = (event) => {
       event.preventDefault();
       window.focus();

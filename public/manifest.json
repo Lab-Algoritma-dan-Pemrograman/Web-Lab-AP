@@ -1,0 +1,21 @@
+{
+  "short_name": "Lab AP",
+  "name": "Laboratorium Algoritma Pemrograman",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "display": "standalone",
+  "orientation": "portrait"
+}
