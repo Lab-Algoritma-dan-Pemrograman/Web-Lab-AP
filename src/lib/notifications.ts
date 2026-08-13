@@ -126,6 +126,13 @@ export const triggerServerWebPush = async (
     });
     const data = await res.json().catch(() => ({}));
     console.log("Server VAPID Push Result:", data);
+
+    if (data && data.sent === 0) {
+      toast.warning("Belum ada token device HP terdaftar di database. Silakan klik tombol 'Notifikasi Browser Aktif' di HP kamu dulu!");
+    } else if (data && data.sent > 0) {
+      toast.success(`Server VAPID Push terkirim ke ${data.sent} device!`);
+    }
+
     return data;
   } catch (err) {
     console.error("Gagal mengirim Server VAPID Push:", err);

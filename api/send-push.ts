@@ -41,7 +41,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let query = supabaseServer.from("push_subscriptions").select("*");
     if (targetUserId) {
-      query = query.eq("user_id", targetUserId);
+      const numId = Number(targetUserId);
+      if (!isNaN(numId)) {
+        query = query.eq("user_id", numId);
+      } else {
+        query = query.eq("user_id", targetUserId);
+      }
     }
 
     const { data: subscriptions, error } = await query;

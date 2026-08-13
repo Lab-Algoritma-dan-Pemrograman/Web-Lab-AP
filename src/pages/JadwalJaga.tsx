@@ -727,18 +727,16 @@ export default function JadwalJaga() {
                       onClick={async () => {
                         if (!user) return;
                         await subscribeToWebPush(user);
-                        toast.info("📲 Segera TUTUP / MINIMIZE PWA dari recent apps! Push notification server akan meletus dalam 5 detik...", {
-                          duration: 6000,
+                        const quote = getDailyQuote(user.role || "asisten");
+                        toast.info("📲 Sinyal Push dikirim dari server! Tutup/minimize PWA sekarang...", {
+                          duration: 4000,
                         });
-                        setTimeout(async () => {
-                          const quote = getDailyQuote(user.role || "asisten");
-                          await triggerServerWebPush(
-                            user.id,
-                            "🚀 Tes Push Server VAPID (PWA Ditutup)",
-                            `Hore! Notifikasi VAPID dari server berhasil meletus di HP kamu meskipun PWA ditutup total!\n\n✨ "${quote}"`,
-                            "/jadwal-jaga"
-                          );
-                        }, 5000);
+                        await triggerServerWebPush(
+                          user.id,
+                          "🚀 Tes Push Server VAPID (PWA Ditutup)",
+                          `Hore! Notifikasi VAPID dari server berhasil meletus di HP kamu meskipun PWA ditutup total!\n\n✨ "${quote}"`,
+                          "/jadwal-jaga"
+                        );
                       }}
                     >
                       <Smartphone className="w-3.5 h-3.5 mr-1 text-purple-600" />
