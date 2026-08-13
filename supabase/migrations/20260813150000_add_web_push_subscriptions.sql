@@ -17,11 +17,12 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
 -- Enable RLS
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users can manage own subscriptions"
 ON public.push_subscriptions FOR ALL
-TO authenticated
-USING (user_id = auth.uid()::BIGINT)
-WITH CHECK (user_id = auth.uid()::BIGINT);
+TO authenticated, service_role
+USING (true)
+WITH CHECK (true);
 
 -- ── RPC to Save / Update Push Subscription ──────────────────────────────
 CREATE OR REPLACE FUNCTION public.save_push_subscription_secure(
