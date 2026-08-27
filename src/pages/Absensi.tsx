@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -48,6 +48,14 @@ export default function Absensi() {
   const [deletionHistory, setDeletionHistory] = useState<any[]>([]);
   const [filterDate, setFilterDate] = useState(new Date().toLocaleDateString('en-CA'));
 
+  // State Staff Quick Attendance Grid
+  const [selectedClassSchedule, setSelectedClassSchedule] = useState("");
+  const [classMembers, setClassMembers] = useState<any[]>([]);
+  const [fetchingMembers, setFetchingMembers] = useState(false);
+  const [draftAttendance, setDraftAttendance] = useState<{ [key: number]: string }>({});
+  const [savingBatch, setSavingBatch] = useState(false);
+  const [selectedShiftFilter, setSelectedShiftFilter] = useState<string>("all");
+
   // State Praktikan (Izin Pribadi)
   const [izinReason, setIzinReason] = useState("");
   const [izinType, setIzinType] = useState("Izin");
@@ -60,6 +68,234 @@ export default function Absensi() {
   const [availableSchedules, setAvailableSchedules] = useState<any[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState("");
   const [waTemplates, setWaTemplates] = useState<any>(null);
+
+  // Filter jadwal berdasarkan Hari dari filterDate
+  const selectedDayName = useMemo(() => {
+    const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    if (!filterDate) return daysIndo[new Date().getDay()];
+    const dateObj = new Date(filterDate + 'T00:00:00');
+    return daysIndo[dateObj.getDay()];
+  }, [filterDate]);
+
+  const dayClasses = useMemo(() => {
+    if (!selectedDayName) return [];
+    return availableSchedules.filter(
+      (s: any) => s.day_of_week?.toString().trim().toLowerCase() === selectedDayName.toLowerCase()
+    );
+  }, [availableSchedules, selectedDayName]);
+
+  const extractClassLetterOrCode = (val: string | undefined | null) => {
+    if (!val) return "";
+    const str = val.trim();
+    // Cari pola "Kelas B" atau "Kelas 3B" -> ambil "B" / "3B"
+    const classMatch = str.match(/kelas\s+([a-z0-9-]+)/i);
+    if (classMatch) {
+      return classMatch[1].toUpperCase();
+    }
+    // Jika format "S1-B" atau "3IA01" atau "B"
+    return str.toUpperCase();
+  };
+
+  const isMatchingClassCode = (studentClassCode: string, scheduleClassCode: string, scheduleTitle: string) => {
+    if (!studentClassCode) return false;
+
+    const stdClass = extractClassLetterOrCode(studentClassCode);
+    const schedClass = extractClassLetterOrCode(scheduleClassCode) || extractClassLetterOrCode(scheduleTitle);
+
+    if (!stdClass || !schedClass) return false;
+
+    // 1. Cek kesamaan persis (e.g. "B" === "B" atau "3IA01" === "3IA01")
+    if (stdClass === schedClass) return true;
+
+    // 2. Jika berformat "S1-B" vs "B", atau "3IA01" vs "IA01"
+    if (stdClass.endsWith(`-${schedClass}`) || stdClass.endsWith(` ${schedClass}`)) return true;
+    if (schedClass.endsWith(`-${stdClass}`) || schedClass.endsWith(` ${stdClass}`)) return true;
+
+    return false;
+  };
+
+  // Fetch anggota kelas ketika selectedClassSchedule berubah (strictly filtered by class_code & schedule_id)
+  useEffect(() => {
+    const fetchMembers = async () => {
+      const schedId = parseInt(selectedClassSchedule);
+      if (!selectedClassSchedule || isNaN(schedId) || !user) {
+        setClassMembers([]);
+        return;
+      }
+      setFetchingMembers(true);
+
+      const targetSched = availableSchedules.find((s: any) => s.id.toString() === selectedClassSchedule);
+
+      // 1. Fetch group members dari RPC
+      const { data: groupData } = await supabase.rpc('get_group_members_secure', {
+        p_viewer_id: user.id,
+        p_schedule_id: schedId
+      });
+
+      // 2. Fetch all users sebagai enrichment/fallback
+      const { data: allUsersData } = await supabase.rpc('get_users_secure', {
+        p_viewer_id: user.id
+      });
+
+      // Sumber kebenaran: ambil mahasiswa dari tabel users yang class_code DAN major-nya cocok
+      const praktikanForClass = (allUsersData || []).filter((u: any) => {
+        if (u.role !== 'praktikan') return false;
+        if (targetSched?.class_code && u.class_code !== targetSched.class_code) return false;
+        if (targetSched?.major && u.major !== targetSched.major) return false;
+        return true;
+      });
+
+      // Buat set NIM dari group_members untuk enrichment info asisten, dll.
+      const groupMemberNims = new Set((groupData || []).map((m: any) => m.student_nim));
+
+      const finalList = praktikanForClass.map((u: any) => {
+        // Ambil data tambahan dari group_members jika ada (misalnya asisten kelas)
+        const gm = (groupData || []).find((m: any) => m.student_nim === u.username || String(m.student_id) === String(u.id));
+        return {
+          id: u.id,
+          schedule_id: schedId,
+          student_id: u.id,
+          assistant_id: gm?.assistant_id ?? null,
+          student_name: u.full_name,
+          student_nim: u.username,
+          assistant_name: gm?.assistant_name ?? null,
+          student_shift: u.shift || "1",
+          student_class_code: u.class_code,
+          student_major: u.major || targetSched?.major || "",
+          _in_group: groupMemberNims.has(u.username),
+        };
+      });
+
+      console.log('[DEBUG] finalList from users.class_code:', finalList.length, '| targetSched.class_code:', targetSched?.class_code);
+      setClassMembers(finalList);
+
+      setFetchingMembers(false);
+    };
+
+    fetchMembers();
+  }, [selectedClassSchedule, user, availableSchedules]);
+
+  const getNormalizedShift = (shiftVal: any) => {
+    if (!shiftVal) return "1";
+    const str = String(shiftVal).toLowerCase().trim();
+    if (str.includes("2")) return "2";
+    if (str.includes("1")) return "1";
+    return str;
+  };
+
+  // Filter praktikan kelas berdasarkan Shift yang dipilih (Shift 1 / Shift 2 / Semua)
+  const filteredClassMembers = useMemo(() => {
+    if (selectedShiftFilter === "all") return classMembers;
+    return classMembers.filter((m: any) => {
+      const studentShift = getNormalizedShift(m.student_shift || m.shift);
+      return studentShift === selectedShiftFilter;
+    });
+  }, [classMembers, selectedShiftFilter]);
+
+  // Reset selectedClassSchedule jika kelas yang dipilih tidak ada pada hari yang difilter
+  useEffect(() => {
+    if (dayClasses.length > 0) {
+      if (!dayClasses.some((s: any) => s.id.toString() === selectedClassSchedule)) {
+        setSelectedClassSchedule(dayClasses[0].id.toString());
+      }
+    } else {
+      setSelectedClassSchedule("");
+    }
+  }, [dayClasses]);
+
+  // Reset draft attendance jika kelas atau tanggal filter berubah
+  useEffect(() => {
+    setDraftAttendance({});
+  }, [selectedClassSchedule, filterDate, selectedShiftFilter]);
+
+  // Hitung Statistik Hadir, Izin, Sakit, Alpha untuk kelas terpilih (responsif terhadap Shift & Draft)
+  const classStats = useMemo(() => {
+    let hadir = 0;
+    let izin = 0;
+    let sakit = 0;
+    let alpha = 0;
+
+    filteredClassMembers.forEach((student: any) => {
+      const draftStatus = draftAttendance[student.student_id];
+      const log = allAttendanceData.find(
+        (l) => l.users?.username === student.student_nim || l.user_id === student.student_id
+      );
+      const effectiveStatus = draftStatus !== undefined ? draftStatus : (log ? log.status : null);
+
+      if (!effectiveStatus || effectiveStatus === 'Alpha') {
+        alpha++;
+      } else if (effectiveStatus === 'Hadir') {
+        hadir++;
+      } else if (effectiveStatus === 'Izin') {
+        izin++;
+      } else if (effectiveStatus === 'Sakit') {
+        sakit++;
+      }
+    });
+
+    return { hadir, izin, sakit, alpha, total: filteredClassMembers.length };
+  }, [filteredClassMembers, allAttendanceData, draftAttendance]);
+
+  // Helper untuk memilih/toggle status draft absensi
+  const handleSelectDraftStatus = (studentUserId: number, status: string) => {
+    setDraftAttendance((prev) => {
+      const current = prev[studentUserId];
+      if (current === status) {
+        const next = { ...prev };
+        delete next[studentUserId];
+        return next;
+      }
+      return { ...prev, [studentUserId]: status };
+    });
+  };
+
+  // Helper untuk Simpan Absensi Sekaligus (Batch Save)
+  const handleSaveBatchAttendance = async () => {
+    if (!user) return;
+    const entries = Object.entries(draftAttendance);
+    if (entries.length === 0) {
+      toast.info("Belum ada perubahan status absensi yang dipilih.");
+      return;
+    }
+
+    setSavingBatch(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const [studentIdStr, status] of entries) {
+      const studentUserId = Number(studentIdStr);
+      try {
+        const targetDateTime = new Date(`${filterDate}T08:00:00`).toISOString();
+        const { error } = await supabase.rpc('upsert_attendance_log_secure', {
+          p_caller_id: user.id,
+          p_target_user_id: studentUserId,
+          p_status: status,
+          p_notes: `Quick input (${status}) oleh ${user.full_name}`,
+          p_check_in: targetDateTime,
+          p_is_verified: true,
+          p_type: 'staff_manual'
+        });
+        if (error) {
+          console.error("Gagal menyimpan absensi user:", studentUserId, error);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      } catch (err) {
+        errorCount++;
+      }
+    }
+
+    setSavingBatch(false);
+    if (successCount > 0) {
+      toast.success(`Berhasil menyimpan ${successCount} data absensi!`);
+      setDraftAttendance({});
+      fetchAttendanceData();
+    }
+    if (errorCount > 0) {
+      toast.error(`Gagal menyimpan ${errorCount} data absensi.`);
+    }
+  };
 
   // --- CEK HAK AKSES EXPORT ---
   useEffect(() => {
@@ -210,11 +446,17 @@ export default function Absensi() {
     fetchAdminContact();
     fetchDeletionHistory();
     
-    // Fetch WA Templates
+    // Fetch WA Templates & Active Shift Setting
     const fetchSettings = async () => {
         if (!user) return;
         const { data } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
-        if (data && data.length > 0) setWaTemplates(data[0].wa_templates);
+        if (data && data.length > 0) {
+          setWaTemplates(data[0].wa_templates);
+          const sysShift = data[0].active_shift;
+          if (sysShift && (sysShift === '1' || sysShift === '2')) {
+            setSelectedShiftFilter(sysShift);
+          }
+        }
     };
     fetchSettings();
   }, [user, isStaff, hasFullAccess]);
@@ -500,14 +742,15 @@ export default function Absensi() {
         p_caller_id: user.id,
         p_log_id: id,
         p_reason: "Dihapus manual oleh Asisten",
-        p_target_nim: logData.users?.username,
-        p_snapshot_data: JSON.stringify(logData)
+        p_target_nim: logData.users?.username || "-",
+        p_snapshot_data: logData
       });
       if (error) throw error;
       toast.success("Data berhasil dihapus dan riwayat tersimpan");
+      fetchAttendanceData();
       fetchDeletionHistory();
     } catch (err: any) {
-      toast.error("Gagal menghapus: " + err.message);
+      toast.error("Gagal menghapus: " + (err.message || "Akses ditolak atau terjadi kesalahan"));
     } finally {
       setLoading(false);
     }
@@ -635,37 +878,242 @@ export default function Absensi() {
                 </Card>
               </div>
             ) : (
-              <Card className="shadow-md border-l-4 border-l-primary">
-                <CardHeader className="pb-2"><CardTitle className="text-lg">Bantu Absen Manual</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>NIM Praktikan</Label>
-                    <Input placeholder="Masukkan NIM..." value={targetNim} onChange={e => setTargetNim(e.target.value)} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <Select value={targetStatus} onValueChange={setTargetStatus}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Hadir">Hadir</SelectItem>
-                          <SelectItem value="Izin">Izin</SelectItem>
-                          <SelectItem value="Sakit">Sakit</SelectItem>
-                          <SelectItem value="Alpha">Alpha</SelectItem>
-                        </SelectContent>
-                      </Select>
+              <div className="space-y-6">
+                {/* QUICK ATTENDANCE & REKAP KELAS */}
+                <Card className="shadow-md border-l-4 border-l-primary">
+                  <CardHeader className="pb-3 border-b bg-slate-50/50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                          <Users className="w-4 h-4 text-primary" /> Quick Input & Rekap Kelas
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Pilih kelas pada hari <span className="font-semibold text-slate-700">{selectedDayName}</span> ({filterDate}) untuk rekap & input cepat.
+                        </CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                        {dayClasses.length} Kelas Tersedia
+                      </Badge>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Ket (Opsional)</Label>
-                      <Input placeholder="..." value={targetNote} onChange={e => setTargetNote(e.target.value)} />
+                  </CardHeader>
+
+                  <CardContent className="pt-4 space-y-4">
+                    {/* Dropdown Pilih Kelas & Toggle Filter Shift */}
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-700">Pilih Jadwal Kelas</Label>
+                        <Select value={selectedClassSchedule} onValueChange={setSelectedClassSchedule}>
+                          <SelectTrigger className="w-full bg-white">
+                            <SelectValue placeholder={dayClasses.length === 0 ? `Tidak ada kelas hari ${selectedDayName}` : "Pilih kelas..."} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dayClasses.map((s: any) => (
+                              <SelectItem key={s.id} value={s.id.toString()}>
+                                Kelas {s.class_code || s.title} ({s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)}) - {s.major || 'Praktikum'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                        <Label className="text-xs font-semibold text-slate-600">Filter Shift:</Label>
+                        <div className="w-[140px]">
+                          <Select value={selectedShiftFilter} onValueChange={setSelectedShiftFilter}>
+                            <SelectTrigger className="w-full h-8 text-xs bg-white border-slate-200">
+                              <Filter className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                              <SelectValue placeholder="Shift" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Semua Shift</SelectItem>
+                              <SelectItem value="1">Shift 1</SelectItem>
+                              <SelectItem value="2">Shift 2</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <Button onClick={handleStaffHelp} disabled={loading} className="w-full">Simpan Kehadiran</Button>
-                  <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-                    *Data yang diinput otomatis akan masuk ke dalam tanggal filter yang sedang Anda pilih di tabel.
-                  </p>
-                </CardContent>
-              </Card>
+
+                    {selectedClassSchedule && (
+                      <>
+                        {/* Ringkasan Status H / I / S / A */}
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div className="bg-emerald-50 border border-emerald-200/60 rounded-lg p-2 shadow-xs">
+                            <div className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Hadir</div>
+                            <div className="text-xl font-black text-emerald-800">{classStats.hadir}</div>
+                          </div>
+                          <div className="bg-amber-50 border border-amber-200/60 rounded-lg p-2 shadow-xs">
+                            <div className="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider">Izin</div>
+                            <div className="text-xl font-black text-amber-800">{classStats.izin}</div>
+                          </div>
+                          <div className="bg-blue-50 border border-blue-200/60 rounded-lg p-2 shadow-xs">
+                            <div className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider">Sakit</div>
+                            <div className="text-xl font-black text-blue-800">{classStats.sakit}</div>
+                          </div>
+                          <div className="bg-rose-50 border border-rose-200/60 rounded-lg p-2 shadow-xs">
+                            <div className="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider">Alpha</div>
+                            <div className="text-xl font-black text-rose-800">{classStats.alpha}</div>
+                          </div>
+                        </div>
+
+                        {/* List Mahasiswa dengan tombol H / I / S / A (Mode Pilih / Draft) */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase px-1">
+                            <span>Daftar Praktikan ({filteredClassMembers.length})</span>
+                            <span className="text-[10px] font-normal text-slate-400">Pilih status lalu simpan</span>
+                          </div>
+
+                          <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+                            {fetchingMembers ? (
+                              <p className="text-xs text-center py-6 text-slate-400 italic">Memuat daftar mahasiswa...</p>
+                            ) : filteredClassMembers.length === 0 ? (
+                              <div className="text-center py-6 px-4 bg-slate-50 rounded-lg border border-dashed text-slate-400">
+                                <p className="text-xs font-medium">Belum ada praktikan terdaftar di shift/kelas ini.</p>
+                                <p className="text-[10px] mt-1 text-slate-400">Gunakan filter Shift di atas atau sync dari Manajemen Kelas.</p>
+                              </div>
+                            ) : (
+                              filteredClassMembers.map((student: any) => {
+                                const log = allAttendanceData.find(
+                                  (l) => l.users?.username === student.student_nim || l.user_id === student.student_id
+                                );
+                                const savedStatus = log ? log.status : null;
+                                const draftStatus = draftAttendance[student.student_id];
+                                const effectiveStatus = draftStatus !== undefined ? draftStatus : savedStatus;
+
+                                return (
+                                  <div key={student.id} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-white hover:bg-slate-50/80 transition-all text-xs gap-2 shadow-2xs">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <p className="font-bold text-slate-800 truncate">{student.student_name}</p>
+                                        {draftStatus && (
+                                          <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-1 rounded border border-indigo-100">Draft</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-[10px]">
+                                        <span className="font-mono text-slate-400">{student.student_nim}</span>
+                                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-slate-50 text-slate-600 border-slate-200 font-medium">
+                                          Shift {getNormalizedShift(student.student_shift || student.shift || log?.users?.shift)}
+                                        </Badge>
+                                        {(student.student_class_code || log?.users?.class_code) && (
+                                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-blue-50 text-blue-700 border-blue-200 font-medium">
+                                            {student.student_class_code || log?.users?.class_code}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className={`h-7 w-7 p-0 text-[11px] font-black transition-all active:scale-95 ${
+                                          effectiveStatus === 'Hadir'
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                            : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                        }`}
+                                        onClick={() => handleSelectDraftStatus(student.student_id, 'Hadir')}
+                                        disabled={savingBatch}
+                                        title="Pilih Hadir (H)"
+                                      >
+                                        H
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className={`h-7 w-7 p-0 text-[11px] font-black transition-all active:scale-95 ${
+                                          effectiveStatus === 'Izin'
+                                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                            : 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'
+                                        }`}
+                                        onClick={() => handleSelectDraftStatus(student.student_id, 'Izin')}
+                                        disabled={savingBatch}
+                                        title="Pilih Izin (I)"
+                                      >
+                                        I
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className={`h-7 w-7 p-0 text-[11px] font-black transition-all active:scale-95 ${
+                                          effectiveStatus === 'Sakit'
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                            : 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                                        }`}
+                                        onClick={() => handleSelectDraftStatus(student.student_id, 'Sakit')}
+                                        disabled={savingBatch}
+                                        title="Pilih Sakit (S)"
+                                      >
+                                        S
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className={`h-7 w-7 p-0 text-[11px] font-black transition-all active:scale-95 ${
+                                          effectiveStatus === 'Alpha'
+                                            ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                                            : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
+                                        }`}
+                                        onClick={() => handleSelectDraftStatus(student.student_id, 'Alpha')}
+                                        disabled={savingBatch}
+                                        title="Pilih Alpha (A)"
+                                      >
+                                        A
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+
+                          {/* TOMBOL SIMPAN ABSENSI KELAS */}
+                          <Button
+                            onClick={handleSaveBatchAttendance}
+                            disabled={savingBatch || Object.keys(draftAttendance).length === 0}
+                            className="w-full font-bold shadow-sm transition-all"
+                          >
+                            {savingBatch ? "Menyimpan..." : Object.keys(draftAttendance).length > 0 
+                              ? `Simpan Absensi (${Object.keys(draftAttendance).length} Perubahan)`
+                              : "Simpan Absensi Kelas"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* FORM INPUT MANUAL NIM (FALLBACK) */}
+                <Card className="shadow-xs border bg-slate-50/40">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-slate-700">Input Manual per NIM (Fallback)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">NIM Praktikan</Label>
+                      <Input placeholder="Masukkan NIM..." value={targetNim} onChange={e => setTargetNim(e.target.value)} className="bg-white h-8 text-xs" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Status</Label>
+                        <Select value={targetStatus} onValueChange={setTargetStatus}>
+                          <SelectTrigger className="bg-white h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Hadir">Hadir</SelectItem>
+                            <SelectItem value="Izin">Izin</SelectItem>
+                            <SelectItem value="Sakit">Sakit</SelectItem>
+                            <SelectItem value="Alpha">Alpha</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Ket (Opsional)</Label>
+                        <Input placeholder="..." value={targetNote} onChange={e => setTargetNote(e.target.value)} className="bg-white h-8 text-xs" />
+                      </div>
+                    </div>
+                    <Button onClick={handleStaffHelp} disabled={loading} size="sm" className="w-full text-xs h-8">Simpan Kehadiran</Button>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
 
