@@ -468,7 +468,7 @@ export default function KetersediaanAsisten() {
                                     <UploadCloud className="w-4 h-4"/> Upload Jadwal Kuliah
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    AI akan mengekstrak jam kosong dari KRS/Jadwal.
+                                    AI akan mengekstrak jam kosong dari KRS/Jadwal (rentang jam 06:00 - 22:00).
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -516,6 +516,7 @@ export default function KetersediaanAsisten() {
                                                             <SelectContent>
                                                                 <SelectItem value="gemini-3-flash">Gemini 3 Flash (High)</SelectItem>
                                                                 <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                                                                <SelectItem value="stepfun-3.7-flash">Stepfun 3.7 Flash (Bynara Router)</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     </div>

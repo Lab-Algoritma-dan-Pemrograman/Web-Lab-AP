@@ -2,30 +2,19 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { jwtVerify } from 'jose';
 
 /**
- * Vercel Serverless Function: Analyze schedule using Gemini AI
+ * Vercel Serverless Function: Analyze schedule using Gemini AI or Bynara Router
  * 
  * POST /api/analyze-schedule
- * Body: { fileBase64: string, mimeType: string }
+ * Body: { fileBase64: string, mimeType: string, model: string }
  * Returns: { slots: Array<{ day_of_week: string, start_time: string, end_time: string }> }
- * 
- * GEMINI_API_KEY is read from process.env (Vercel Environment Variable),
- * NOT from the frontend bundle.
  */
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Read API key from server-side env
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error("GEMINI_API_KEY is not set in environment variables");
-    return res.status(500).json({ error: "Server configuration error" });
-  }
-
-  // Verify dynamic JWT Bearer token instead of static APP_INTERNAL_SECRET
+  // Verify dynamic JWT Bearer token
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: "Unauthorized: Missing session token" });
@@ -48,7 +37,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
   }
 
-  // Only assistants or coordinators are allowed to analyze schedule
   if (userRole !== 'asisten' && userRole !== 'koordinator') {
     return res.status(403).json({ error: "Forbidden: Hanya staf/asisten yang dapat melakukan analisis jadwal KRS" });
   }
@@ -59,68 +47,111 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "fileBase64 and mimeType are required" });
   }
 
-  // Model Mapping (Translate friendly names to API identifiers)
-  // pastikan hanya ada 2 model, yakni gemini 3 flash dan 2.5 flash
-  let targetModel = "gemini-3-flash"; // Default
-  if (model === "gemini-3-flash") targetModel = "gemini-3-flash";
-  if (model === "gemini-2.5-flash") targetModel = "gemini-2.5-flash";
-
   const prompt = `
     Anda adalah sistem penjadwalan cerdas. 
     Berikut adalah gambar/dokumen KRS atau Jadwal Kuliah seorang mahasiswa.
     Tugas Anda:
-    1. Jam operasional asisten laboratorium adalah hari Senin sampai Sabtu, dari pukul 07:20 hingga 17:40.
-    2. Analisis jadwal tersebut dan carilah JAM KOSONG (waktu di mana mahasiswa tersebut TIDAK ADA jadwal kuliah) dalam rentang jam operasional tersebut.
+    1. Jam operasional asisten laboratorium adalah hari Senin sampai Sabtu, dari pukul 06:00 hingga 22:00.
+    2. Analisis jadwal tersebut dan carilah JAM KOSONG (waktu di mana mahasiswa tersebut TIDAK ADA jadwal kuliah) dalam rentang jam operasional tersebut (06:00 - 22:00).
     3. Abaikan hari Minggu.
-    4. Jika ada rentang waktu kosong yang saling berurutan di hari yang sama, gabungkan rentang tersebut menjadi satu waktu. (Contoh: kosong jam 07:20-10:00 dan 10:00-12:00 digabung jadi 07:20-12:00).
+    4. Jika ada rentang waktu kosong yang saling berurutan di hari yang sama, gabungkan rentang tersebut menjadi satu waktu. (Contoh: kosong jam 06:00-10:00 dan 10:00-12:00 digabung jadi 06:00-12:00).
     
-    Format jam harus hh:mm (contoh: 07:20, 13:30, 17:40).
+    Format jam harus hh:mm (contoh: 06:00, 13:30, 22:00).
 
     KEMBALIKAN HANYA ARRAY JSON VALID TANPA TEKS LAIN ATAU MARKDOWN BACKTICKS!
     Contoh format output wajib:
     [
-        {"day_of_week": "Senin", "start_time": "07:20", "end_time": "12:00"},
-        {"day_of_week": "Rabu", "start_time": "13:00", "end_time": "17:40"}
+        {"day_of_week": "Senin", "start_time": "06:00", "end_time": "12:00"},
+        {"day_of_week": "Rabu", "start_time": "13:00", "end_time": "22:00"}
     ]
   `;
 
   try {
-    // Use Gemini API directly via REST with dynamic model
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+    let responseText = "";
 
-    const geminiBody = {
-      contents: [
-        {
-          parts: [
-            { text: prompt },
+    if (model === "stepfun-3.7-flash") {
+      const bynaraApiKey = process.env.BYNARA_API_KEY || process.env.ROUTER_BYNARA_API_KEY;
+      if (!bynaraApiKey) {
+        console.error("BYNARA_API_KEY is not set in environment variables");
+        return res.status(500).json({ error: "BYNARA_API_KEY belum dikonfigurasi di server" });
+      }
+
+      const bynaraRes = await fetch("https://router.bynara.id/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${bynaraApiKey}`
+        },
+        body: JSON.stringify({
+          model: "stepfun-3.7-flash",
+          messages: [
             {
-              inline_data: {
-                mime_type: mimeType,
-                data: fileBase64,
-              },
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${mimeType};base64,${fileBase64}`
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!bynaraRes.ok) {
+        const errorText = await bynaraRes.text();
+        console.error("Bynara API error:", errorText);
+        return res.status(502).json({ error: "Bynara API request failed" });
+      }
+
+      const bynaraData = await bynaraRes.json();
+      responseText = bynaraData?.choices?.[0]?.message?.content || "";
+
+    } else {
+      // Default: Gemini API
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        console.error("GEMINI_API_KEY is not set in environment variables");
+        return res.status(500).json({ error: "GEMINI_API_KEY belum dikonfigurasi di server" });
+      }
+
+      let targetModel = "gemini-3-flash";
+      if (model === "gemini-2.5-flash") targetModel = "gemini-2.5-flash";
+
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${geminiApiKey}`;
+
+      const geminiRes = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: fileBase64,
+                  },
+                },
+              ],
             },
           ],
-        },
-      ],
-    };
+        }),
+      });
 
-    const geminiRes = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiBody),
-    });
+      if (!geminiRes.ok) {
+        const errorText = await geminiRes.text();
+        console.error("Gemini API error:", errorText);
+        return res.status(502).json({ error: "Gemini API request failed" });
+      }
 
-    if (!geminiRes.ok) {
-      const errorText = await geminiRes.text();
-      console.error("Gemini API error:", errorText);
-      return res.status(502).json({ error: "Gemini API request failed" });
+      const geminiData = await geminiRes.json();
+      responseText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }
-
-    const geminiData = await geminiRes.json();
-
-    // Extract text from response
-    const responseText =
-      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // Clean and parse JSON
     const cleanJson = responseText
@@ -136,7 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ slots });
   } catch (err: any) {
-    console.error("Gemini analysis failed:", err);
+    console.error("Schedule analysis failed:", err);
     return res.status(500).json({ error: "Failed to analyze schedule" });
   }
 }

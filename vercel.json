@@ -21,7 +21,7 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/((?!api|src|node_modules|@vite|@react-refresh|logo.png|vite.svg).*$)",
+      "source": "/((?!api|src|node_modules|@vite|@react-refresh|manifest\\.json|sw\\.js|robots\\.txt|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ],
