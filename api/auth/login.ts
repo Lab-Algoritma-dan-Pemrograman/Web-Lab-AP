@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { SignJWT } from 'jose';
 import { randomUUID } from 'crypto';
+import bcrypt from 'bcryptjs';
 
 // ponytail: lightweight in-memory rate limiter per warm serverless container instance
 const loginAttempts = new Map<string, { count: number; resetTime: number }>();
@@ -86,12 +87,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: "Username tidak ditemukan atau password salah!" });
     }
 
+    // 2. Verifikasi bcrypt di server (Postgres tidak punya bcrypt native)
+    const passwordHash = userData.password;
+    delete userData.password;  // jangan pernah kirim hash ke client
+    if (!passwordHash || !bcrypt.compareSync(password, passwordHash)) {
+      return res.status(401).json({ error: "Username tidak ditemukan atau password salah!" });
+    }
+
     if (!userData.is_active) {
       return res.status(403).json({ error: "Akun Anda sedang dinonaktifkan." });
     }
 
-    // 2. Cek Shift Aktif (Khusus Praktikan)
-    if (userData.role === 'praktikan') {
+    // 2b. Cek Shift Aktif (Khusus Praktikan) — hanya ketika shift terisi
+    if (userData.role === 'praktikan' && userData.shift !== null && userData.shift !== undefined) {
       const { data: settings } = await supabaseServer
         .from('system_settings')
         .select('active_shift')
