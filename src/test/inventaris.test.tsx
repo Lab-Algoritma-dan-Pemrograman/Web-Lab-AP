@@ -27,8 +27,8 @@ describe("Inventaris & Sewa Barang (Rent Items) Feature across Roles", () => {
 
   it("should render rental catalog and personal request lists", async () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 10, username: "praktikan1", full_name: "Budi Praktikan", role: "praktikan" },
-      role: "praktikan",
+      user: { id: 10, username: "praktikan1", full_name: "Budi Praktikan", role: "mahasiswa" },
+      role: "mahasiswa",
       allowedPaths: [],
       loading: false,
       login: vi.fn(),

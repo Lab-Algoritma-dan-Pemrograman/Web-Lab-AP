@@ -63,11 +63,11 @@ function AppRoutes() {
       <Route path="/sewa-barang" element={<ProtectedRoute><SewaBarang /></ProtectedRoute>} />
       
       {/* KRITIK SARAN: Diakses Praktikan (Kirim) & Koordinator (Baca) */}
-      <Route path="/kritik-saran" element={<ProtectedRoute allowedRoles={["praktikan", "koordinator"]}><KritikSaran /></ProtectedRoute>} />
+      <Route path="/kritik-saran" element={<ProtectedRoute allowedRoles={["mahasiswa", "koordinator"]}><KritikSaran /></ProtectedRoute>} />
 
       {/* ASISTEN & KOORDINATOR */}
-      <Route path="/jadwal-saya" element={<ProtectedRoute allowedRoles={["asisten","praktikan","koordinator"]}><JadwalSaya /></ProtectedRoute>} />
-      <Route path="/penunjang-praktikum" element={<ProtectedRoute allowedRoles={["asisten","praktikan","koordinator"]} requiredMenuKey="/penunjang-praktikum"><PenunjangPraktikum /></ProtectedRoute>} />
+      <Route path="/jadwal-saya" element={<ProtectedRoute allowedRoles={["asisten","mahasiswa","koordinator"]}><JadwalSaya /></ProtectedRoute>} />
+      <Route path="/penunjang-praktikum" element={<ProtectedRoute allowedRoles={["asisten","mahasiswa","koordinator"]} requiredMenuKey="/penunjang-praktikum"><PenunjangPraktikum /></ProtectedRoute>} />
 
       <Route path="/manajemen-user" element={<ProtectedRoute allowedRoles={["koordinator","asisten"]} requiredMenuKey="/manajemen-user"><ManajemenUser /></ProtectedRoute>} />
       <Route path="/validasi-absensi" element={<ProtectedRoute allowedRoles={["asisten", "koordinator"]} requiredMenuKey="/validasi-absensi"><ValidasiAbsensi /></ProtectedRoute>} />

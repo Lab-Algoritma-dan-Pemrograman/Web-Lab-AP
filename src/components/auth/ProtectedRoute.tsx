@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedRoles?: ("praktikan" | "asisten" | "koordinator" | "penyewa")[];
+  allowedRoles?: ("mahasiswa" | "asisten" | "koordinator" | "peminjam")[];
   requiredMenuKey?: string;
 }
 

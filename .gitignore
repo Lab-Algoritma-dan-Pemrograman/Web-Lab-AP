@@ -37,3 +37,6 @@ dist-ssr
 
 # Scratch directory
 scratch/
+
+# Bun-only: cegah npm lockfile liar
+package-lock.json

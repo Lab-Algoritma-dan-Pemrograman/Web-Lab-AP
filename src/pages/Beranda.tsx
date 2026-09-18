@@ -479,7 +479,7 @@ export default function Beranda() {
 
   return (
     <DashboardLayout>
-      {role === "praktikan" && <PraktikanDashboard />}
+      {role === "mahasiswa" && <PraktikanDashboard />}
       {role === "asisten" && <AsistenDashboard />}
       {role === "koordinator" && <KoordinatorDashboard />}
       {!role && <PraktikanDashboard />}

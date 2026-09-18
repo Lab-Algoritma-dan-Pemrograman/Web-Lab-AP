@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let scheduleClass = "";
     let scheduleMajor = "";
 
-    if (finalRole === 'praktikan') {
+    if (finalRole === 'mahasiswa') {
       const { data: scheduleData } = await supabaseServer
         .from("group_members")
         .select("schedules(class_code, major)")

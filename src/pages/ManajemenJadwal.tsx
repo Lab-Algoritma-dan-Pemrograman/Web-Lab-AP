@@ -242,7 +242,7 @@ export default function ManajemenJadwal() {
                     </Select>
                 </div>
 
-                {user?.role !== 'praktikan' && (
+                {user?.role !== 'mahasiswa' && (
                     <div className="flex gap-2 w-full sm:w-auto">
                         {/* TOMBOL IMPORT EXCEL */}
                         <div className="flex gap-1">

@@ -25,10 +25,10 @@ describe("Beranda (Dashboard) Feature across Roles", () => {
     vi.clearAllMocks();
   });
 
-  it("should render PraktikanDashboard when role is 'praktikan'", async () => {
+  it("should render PraktikanDashboard when role is 'mahasiswa'", async () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 1, username: "praktikan1", full_name: "Budi Praktikan", role: "praktikan" },
-      role: "praktikan",
+      user: { id: 1, username: "praktikan1", full_name: "Budi Praktikan", role: "mahasiswa" },
+      role: "mahasiswa",
       allowedPaths: [],
       loading: false,
       login: vi.fn(),

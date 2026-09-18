@@ -99,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2b. Cek Shift Aktif (Khusus Praktikan) — hanya ketika shift terisi
-    if (userData.role === 'praktikan' && userData.shift !== null && userData.shift !== undefined) {
+    if (userData.role === 'mahasiswa' && userData.shift !== null && userData.shift !== undefined) {
       const { data: settings } = await supabaseServer
         .from('system_settings')
         .select('active_shift')

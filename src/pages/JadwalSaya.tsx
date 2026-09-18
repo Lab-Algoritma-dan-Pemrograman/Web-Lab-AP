@@ -33,7 +33,7 @@ export default function JadwalSaya() {
       try {
           const payload: any[] = [];
           
-          if (role === 'praktikan') {
+          if (role === 'mahasiswa') {
               combinedData.forEach(item => {
                   payload.push({
                       schedule_id: item.schedule_id,
@@ -80,7 +80,7 @@ export default function JadwalSaya() {
       const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
       if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
 
-      if (user.role === 'praktikan') {
+      if (user.role === 'mahasiswa') {
         const transformed = (data || []).map((row: any) => ({
           ...row,
           schedule: {
@@ -99,7 +99,7 @@ export default function JadwalSaya() {
           }
         }));
         setSchedulesData(transformed);
-        syncToDatabase(transformed, 'praktikan');
+        syncToDatabase(transformed, 'mahasiswa');
       } else {
         // Group by schedule for assistant view
         const grouped = (data || []).reduce((acc: any[], current: any) => {
@@ -358,7 +358,7 @@ export default function JadwalSaya() {
                 <BookOpen className="text-primary" /> Jadwal Praktikum Saya
                 </h1>
                 <p className="text-muted-foreground">
-                {user?.role === 'praktikan' 
+                {user?.role === 'mahasiswa' 
                     ? "Berikut adalah jadwal kelas praktikum beserta asisten pembimbing Anda." 
                     : "Berikut adalah daftar kelas dan praktikan yang Anda bimbing."}
                 </p>
@@ -394,7 +394,7 @@ export default function JadwalSaya() {
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
         ) : (
-          user?.role === 'praktikan' ? renderPraktikanView() : renderAsistenView()
+          user?.role === 'mahasiswa' ? renderPraktikanView() : renderAsistenView()
         )}
       </div>
     </DashboardLayout>

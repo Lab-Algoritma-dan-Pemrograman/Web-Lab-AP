@@ -200,7 +200,7 @@ export default function KritikSaran() {
               Kritik & Saran
             </h1>
             <p className="text-muted-foreground">
-                {user?.role === 'praktikan' 
+                {user?.role === 'mahasiswa' 
                     ? "Sampaikan masukan untuk kemajuan laboratorium." 
                     : "Kelola dan pantau masukan dari praktikan."}
             </p>
@@ -274,7 +274,7 @@ export default function KritikSaran() {
                 </Card>
 
                 {/* FORM INPUT KRITIK (HANYA PRAKTIKAN) */}
-                {user?.role === 'praktikan' && (
+                {user?.role === 'mahasiswa' && (
                   <Card className="border-l-4 border-l-primary shadow-md">
                     <CardHeader>
                       <CardTitle>Kirim Masukan Baru</CardTitle>
@@ -318,7 +318,7 @@ export default function KritikSaran() {
                 <Card className="flex-1 shadow-md">
                   <CardHeader className="pb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b bg-gray-50/50">
                     <CardTitle className="text-lg">
-                      {user?.role === 'praktikan' ? "Riwayat Masukan Saya" : "Kotak Masuk (Semua Masukan)"}
+                      {user?.role === 'mahasiswa' ? "Riwayat Masukan Saya" : "Kotak Masuk (Semua Masukan)"}
                     </CardTitle>
                     
                     {/* Filter Kategori HANYA untuk Koordinator & Asisten Berhak */}

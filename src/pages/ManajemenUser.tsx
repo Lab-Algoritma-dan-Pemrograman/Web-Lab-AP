@@ -47,7 +47,7 @@ interface UserData {
   password?: string;
   full_name: string;
   phone_number?: string; // TAMBAHAN: Kolom No HP
-  role: "koordinator" | "asisten" | "praktikan" | "penyewa";
+  role: "koordinator" | "asisten" | "mahasiswa" | "peminjam";
   nim?: string;
   assistant_code?: string;
   division?: string;
@@ -62,7 +62,7 @@ const DEFAULT_FORM: UserData = {
   password: "",
   full_name: "",
   phone_number: "", // Default kosong
-  role: "praktikan",
+  role: "mahasiswa",
   is_active: true,
   nim: "",
   class_code: "",
@@ -292,9 +292,9 @@ export default function ManajemenUser() {
         phone_number: formData.phone_number, // Simpan No HP
         role: formData.role,
         is_active: formData.is_active,
-        shift: formData.role === 'praktikan' ? formData.shift : null, // Simpan Shift
-        nim: formData.role === 'praktikan' ? formData.username : null,
-        class_code: formData.role === 'praktikan' ? formData.class_code : null,
+        shift: formData.role === 'mahasiswa' ? formData.shift : null, // Simpan Shift
+        nim: formData.role === 'mahasiswa' ? formData.username : null,
+        class_code: formData.role === 'mahasiswa' ? formData.class_code : null,
         division: (formData.role === 'asisten' || formData.role === 'koordinator') ? formData.division : null,
         assistant_code: formData.role === 'asisten' ? formData.assistant_code : null,
       };
@@ -450,7 +450,7 @@ export default function ManajemenUser() {
             password: String(u),
             full_name: row['nama'] || row['nama lengkap'],
             phone_number: row['no hp'] || row['telepon'] || row['whatsapp'] ? String(row['no hp'] || row['telepon'] || row['whatsapp']) : null,
-            role: 'praktikan',
+            role: 'mahasiswa',
             nim: String(u),
             class_code: row['kelas'],
             shift: row['shift'] ? String(row['shift']) : null,
@@ -510,7 +510,7 @@ export default function ManajemenUser() {
   const canEdit = (target: UserData) => {
     if (!currentUser) return false;
     if (currentUser.role === 'koordinator') return true;
-    if (currentUser.role === 'asisten') return target.id === currentUser.id || target.role === 'praktikan';
+    if (currentUser.role === 'asisten') return target.id === currentUser.id || target.role === 'mahasiswa';
     return false;
   };
 
@@ -600,8 +600,8 @@ export default function ManajemenUser() {
                   <SelectTrigger><Filter className="w-4 h-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Pilih Peran" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Semua Peran</SelectItem>
-                    <SelectItem value="praktikan">Praktikan</SelectItem>
-                    <SelectItem value="penyewa">Penyewa Umum</SelectItem>
+                    <SelectItem value="mahasiswa">Praktikan</SelectItem>
+                    <SelectItem value="peminjam">Penyewa Umum</SelectItem>
                     <SelectItem value="asisten">Asisten</SelectItem>
                     <SelectItem value="koordinator">Koordinator</SelectItem>
                   </SelectContent>
@@ -667,7 +667,7 @@ export default function ManajemenUser() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {u.role === 'praktikan' ? (
+                            {u.role === 'mahasiswa' ? (
                               <Badge variant="outline" className={`font-bold ${u.shift === '1' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-purple-200 text-purple-700 bg-purple-50'}`}>
                                 Shift {u.shift || "-"}
                               </Badge>
@@ -676,12 +676,12 @@ export default function ManajemenUser() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {u.role === 'praktikan' ? (
+                            {u.role === 'mahasiswa' ? (
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-semibold text-xs border border-blue-200 bg-blue-50 px-2 py-0.5 rounded-md w-fit">Kelas: {u.class_code || "-"}</span>
                                 <div className="flex items-center gap-1 text-muted-foreground text-xs mt-1"><GraduationCap className="w-3 h-3" /><span>{getJurusanByNIM(u.nim)}</span></div>
                               </div>
-                            ) : u.role === 'penyewa' ? (
+                            ) : u.role === 'peminjam' ? (
                                <div className="flex flex-col gap-1">
                                  <Badge variant="outline" className="w-fit text-[10px] bg-slate-50 text-slate-500 border-slate-200">PENYEWA UMUM</Badge>
                                  <span className="text-[10px] text-muted-foreground italic ml-1">Katalog Publik Aktif</span>
@@ -693,7 +693,7 @@ export default function ManajemenUser() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell><Badge variant={u.role === 'koordinator' ? 'destructive' : u.role === 'asisten' ? 'default' : u.role === 'penyewa' ? 'outline' : 'secondary'}>{u.role.toUpperCase()}</Badge></TableCell>
+                          <TableCell><Badge variant={u.role === 'koordinator' ? 'destructive' : u.role === 'asisten' ? 'default' : u.role === 'peminjam' ? 'outline' : 'secondary'}>{u.role.toUpperCase()}</Badge></TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center items-center gap-2">
                               <Switch
@@ -734,7 +734,7 @@ export default function ManajemenUser() {
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Username / NIM</Label><Input value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="202314..." required disabled={isEdit && currentUser?.role !== 'koordinator'} /></div>
-                <div className="space-y-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val: any) => setFormData({ ...formData, role: val })} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="praktikan">Praktikan</SelectItem><SelectItem value="penyewa">Penyewa Umum</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val: any) => setFormData({ ...formData, role: val })} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mahasiswa">Praktikan</SelectItem><SelectItem value="peminjam">Penyewa Umum</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
               </div>
 
               {/* Row: Nama & No HP */}
@@ -765,7 +765,7 @@ export default function ManajemenUser() {
                 </div>
               </div>
 
-              {formData.role === 'praktikan' && (
+              {formData.role === 'mahasiswa' && (
                 <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-md">
                   <div className="space-y-2">
                     <Label>Kelas</Label>

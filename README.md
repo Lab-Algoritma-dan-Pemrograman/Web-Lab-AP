@@ -20,9 +20,12 @@ Sistem Informasi Manajemen Laboratorium dan Praktikum Terpadu untuk mengelola in
 ## Pengembangan Lokal
 
 1. Clone repositori ini.
-2. Jalankan `npm install` untuk menginstall dependensi.
+2. Jalankan `bun install` untuk menginstall dependensi.
 3. Buat file `.env` dan masukkan konfigurasi Supabase Anda.
-4. Jalankan server pengembangan dengan `npm run dev`.
+4. Jalankan server pengembangan dengan `bun run dev`.
+
+> Proyek ini memakai **Bun**, bukan npm. Jangan jalankan `npm install` — dia bikin
+> `package-lock.json` liar yang tidak dipakai CI dan bisa bentrok dengan `bun.lock`.
 
 ## Deployment
 

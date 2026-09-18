@@ -139,7 +139,7 @@ export default function Absensi() {
 
       // Sumber kebenaran: ambil mahasiswa dari tabel users yang class_code DAN major-nya cocok
       const praktikanForClass = (allUsersData || []).filter((u: any) => {
-        if (u.role !== 'praktikan') return false;
+        if (u.role !== 'mahasiswa') return false;
         if (targetSched?.class_code && u.class_code !== targetSched.class_code) return false;
         if (targetSched?.major && u.major !== targetSched.major) return false;
         return true;
