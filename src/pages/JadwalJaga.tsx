@@ -50,12 +50,21 @@ export default function JadwalJaga() {
   const [submittingLeave, setSubmittingLeave] = useState(false);
   const [leaveAssignmentId, setLeaveAssignmentId] = useState("");
 
-  const taskOptions = ["Operator", "Pemateri", "PJ Absen", "PJ Pretest/Posttest", "Dokumentasi"];
+  const taskOptions = [
+    "Operator",
+    "Pemateri",
+    "Pre/Post Test",
+    "Program Keterampilan",
+    "Absen"
+  ];
   const activityOptions = [
-      "Praktikum Modul 1", "Praktikum Modul 2", "Praktikum Modul 3",
-      "Praktikum Modul 4", "Praktikum Modul 5", "Praktikum Modul 6",
-      "Responsi / Pretest", "Posttest / Evaluasi", "Ujian Praktikum (UTS)",
-      "Ujian Praktikum (UAS)", "Praktikum Susulan (Inhal)", "Persiapan / Briefing", "Lainnya"
+    "Pengarahan",
+    "Praktikum Modul 1",
+    "Modul 2",
+    "Modul 3&4",
+    "Modul 5",
+    "Modul 6",
+    "Ujian Praktik"
   ];
 
   const [notifPermission, setNotifPermission] = useState<string>("default");
@@ -818,7 +827,18 @@ export default function JadwalJaga() {
                             <div className="space-y-4 py-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2"><Label>Tanggal Bertugas</Label><Input type="date" value={activityDate} onChange={(e) => setActivityDate(e.target.value)} /></div>
-                                    <div className="space-y-2"><Label>Kegiatan</Label><Select value={activityName} onValueChange={setActivityName}><SelectTrigger><SelectValue placeholder="Pilih..."/></SelectTrigger><SelectContent>{activityOptions.map(act => <SelectItem key={act} value={act}>{act}</SelectItem>)}</SelectContent></Select></div>
+                                    <div className="space-y-2">
+                                        <Label>Kegiatan</Label>
+                                        <Select value={activityName} onValueChange={setActivityName}>
+                                            <SelectTrigger><SelectValue placeholder="Pilih..."/></SelectTrigger>
+                                            <SelectContent>
+                                                {activityOptions.map(act => <SelectItem key={act} value={act}>{act}</SelectItem>)}
+                                                {activityName && !activityOptions.includes(activityName) && (
+                                                    <SelectItem key={activityName} value={activityName}>{activityName}</SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Target Kelas</Label>
@@ -837,7 +857,15 @@ export default function JadwalJaga() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Tugas</Label>
-                                        <Select value={selectedRole} onValueChange={setSelectedRole}><SelectTrigger><SelectValue placeholder="Pilih..."/></SelectTrigger><SelectContent>{taskOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
+                                        <Select value={selectedRole} onValueChange={setSelectedRole}>
+                                            <SelectTrigger><SelectValue placeholder="Pilih..."/></SelectTrigger>
+                                            <SelectContent>
+                                                {taskOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                                {selectedRole && !taskOptions.includes(selectedRole) && (
+                                                    <SelectItem key={selectedRole} value={selectedRole}>{selectedRole}</SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                                 <Button onClick={handleSaveAssignment} disabled={loading} className="w-full mt-2">{loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : "Simpan Perubahan"}</Button>

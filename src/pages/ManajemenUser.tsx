@@ -347,7 +347,8 @@ export default function ManajemenUser() {
           p_phone_number: payload.phone_number,
           p_class_code: payload.class_code,
           p_shift: payload.shift,
-          p_is_active: payload.is_active
+          p_is_active: payload.is_active,
+          p_major: formData.major || null
         });
         if (insertError) throw insertError;
       }
@@ -456,7 +457,8 @@ export default function ManajemenUser() {
             shift: row['shift'] ? String(row['shift']) : null,
             is_active: true,
             assistant_code: null,
-            division: null
+            division: null,
+            major: row['jurusan'] || row['prodi'] || row['program studi'] || null
           };
         }).filter(Boolean);
 
@@ -486,14 +488,16 @@ export default function ManajemenUser() {
         "Nama": "Ahmad Praktikan",
         "No HP": "081234567890",
         "Kelas": "S1-A",
-        "Shift": "1"
+        "Shift": "1",
+        "Jurusan": "S1 Teknik Tenaga Listrik"
       },
       {
         "NIM": "202414002",
         "Nama": "Budi Praktikan",
         "No HP": "081298765432",
         "Kelas": "S1-B",
-        "Shift": "2"
+        "Shift": "2",
+        "Jurusan": "S1 Teknik Sistem Energi"
       }
     ];
 
