@@ -82,11 +82,13 @@ export default function ManajemenKelas() {
           p_schedule_id: schedule.id 
         });
         
-        const formattedStudents = (mhs || []).map((s: any) => ({
-          ...s,
-          users: { full_name: s.student_name, nim: s.student_nim },
-          assistant: { full_name: s.assistant_name }
-        }));
+        const formattedStudents = (mhs || [])
+          .filter((s: any) => !s.student_class_code || s.student_class_code === schedule.class_code)
+          .map((s: any) => ({
+            ...s,
+            users: { full_name: s.student_name, nim: s.student_nim },
+            assistant: { full_name: s.assistant_name }
+          }));
         setStudents(formattedStudents);
 
         // 2.3 Fetch Available Assistants via RPC
