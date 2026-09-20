@@ -193,6 +193,7 @@ GRANT EXECUTE ON FUNCTION public.sync_students_to_group_secure(BIGINT, BIGINT, T
 
 
 -- STEP 4: Update get_group_members_secure dengan defensive filter kelas
+DROP FUNCTION IF EXISTS public.get_group_members_secure(BIGINT, BIGINT);
 CREATE OR REPLACE FUNCTION public.get_group_members_secure(p_viewer_id BIGINT, p_schedule_id BIGINT)
 RETURNS TABLE (
     id BIGINT, 
