@@ -450,7 +450,7 @@ export default function ManajemenKelas() {
                                                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pilih Asisten"/></SelectTrigger>
                                                 <SelectContent>
                                                     {availableAssistants.length === 0 ? <div className="p-2 text-xs text-center text-red-500">Tidak ada yg free :(</div> :
-                                                    availableAssistants.map(av => <SelectItem key={av.user_id} value={av.user_id}>{av.users?.full_name}</SelectItem>)}
+                                                    availableAssistants.map(av => <SelectItem key={av.user_id} value={String(av.user_id)}>{av.users?.full_name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                             <Button size="sm" className="w-full" onClick={handleAddAssistant} disabled={!selectedAssistantId}>Tambah Tim</Button>
@@ -499,7 +499,10 @@ export default function ManajemenKelas() {
                                             </thead>
                                             <tbody className="divide-y">
                                                 {students.length === 0 ? <tr><td colSpan={2} className="p-8 text-center text-gray-400">Data masih kosong.<br/>Klik tombol 'Sync User'.</td></tr> :
-                                                students.map(s => (
+                                                students.map(s => {
+                                                    const asstIdStr = s.assistant_id ? String(s.assistant_id) : "unassigned";
+                                                    const isAssistantInList = assignedAssistants.some(a => String(a.assistant_id) === asstIdStr);
+                                                    return (
                                                     <tr key={s.id} className="hover:bg-gray-50">
                                                         <td className="p-3">
                                                             <div className="font-medium">{s.users?.full_name || "Nama tidak ditemukan"}</div>
@@ -508,7 +511,7 @@ export default function ManajemenKelas() {
                                                         <td className="p-3 w-[250px]">
                                                             {hasEditAccess ? (
                                                                 <Select 
-                                                                    value={s.assistant_id ? s.assistant_id : "unassigned"} 
+                                                                    value={asstIdStr} 
                                                                     onValueChange={(val) => handleUpdateStudentAssistant(s.id, val)}
                                                                 >
                                                                     <SelectTrigger className="h-8 text-xs w-full bg-white border-gray-200">
@@ -517,8 +520,13 @@ export default function ManajemenKelas() {
                                                                     <SelectContent>
                                                                         <SelectItem value="unassigned" className="text-red-500 font-medium">-- Lepas Pembimbing --</SelectItem>
                                                                         {assignedAssistants.map(a => (
-                                                                            <SelectItem key={a.assistant_id} value={a.assistant_id}>{a.users?.full_name}</SelectItem>
+                                                                            <SelectItem key={a.assistant_id} value={String(a.assistant_id)}>{a.users?.full_name}</SelectItem>
                                                                         ))}
+                                                                        {!isAssistantInList && s.assistant_id && (
+                                                                            <SelectItem key={s.assistant_id} value={asstIdStr}>
+                                                                                {s.assistant?.full_name || `Asisten ID #${s.assistant_id}`}
+                                                                            </SelectItem>
+                                                                        )}
                                                                     </SelectContent>
                                                                 </Select>
                                                             ) : (
@@ -529,7 +537,7 @@ export default function ManajemenKelas() {
                                                             )}
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                );})}
                                             </tbody>
                                         </table>
                                     </div>

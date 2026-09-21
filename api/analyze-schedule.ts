@@ -9,6 +9,32 @@ import { jwtVerify } from 'jose';
  * Returns: { slots: Array<{ day_of_week: string, start_time: string, end_time: string }> }
  */
 
+function extractSlotsFromJson(responseText: string): any[] | null {
+  if (!responseText) return null;
+
+  // 1. Try direct parse after stripping markdown fences
+  const cleanText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  try {
+    const parsed = JSON.parse(cleanText);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {
+    // Continue to regex search
+  }
+
+  // 2. Regex search for array structure [ { ... } ]
+  const arrayMatch = responseText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  if (arrayMatch) {
+    try {
+      const parsed = JSON.parse(arrayMatch[0]);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      // Continue
+    }
+  }
+
+  return null;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -73,7 +99,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const bynaraApiKey = process.env.BYNARA_API_KEY || process.env.ROUTER_BYNARA_API_KEY;
       if (!bynaraApiKey) {
         console.error("BYNARA_API_KEY is not set in environment variables");
-        return res.status(500).json({ error: "BYNARA_API_KEY belum dikonfigurasi di server" });
+        return res.status(500).json({ error: "BYNARA_API_KEY belum dikonfigurasi di Vercel Environment Variables" });
+      }
+
+      if (mimeType === "application/pdf") {
+        return res.status(400).json({ 
+          error: "Model Stepfun 3.7 Flash hanya mendukung file gambar (JPG/PNG). Untuk file PDF silakan gunakan model Gemini." 
+        });
       }
 
       const bynaraRes = await fetch("https://router.bynara.id/v1/chat/completions", {
@@ -103,12 +135,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!bynaraRes.ok) {
         const errorText = await bynaraRes.text();
-        console.error("Bynara API error:", errorText);
-        return res.status(502).json({ error: "Bynara API request failed" });
+        console.error("Bynara API error:", bynaraRes.status, errorText);
+        return res.status(502).json({ error: `Bynara API error (${bynaraRes.status}): ${errorText.substring(0, 150)}` });
       }
 
       const bynaraData = await bynaraRes.json();
-      responseText = bynaraData?.choices?.[0]?.message?.content || "";
+      const messageContent = bynaraData?.choices?.[0]?.message?.content;
+      
+      if (typeof messageContent === 'string') {
+        responseText = messageContent;
+      } else if (Array.isArray(messageContent)) {
+        responseText = messageContent.map((c: any) => c.text || c.content || '').join('');
+      } else {
+        responseText = JSON.stringify(messageContent || '');
+      }
 
     } else {
       // Default: Gemini API
@@ -145,29 +185,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!geminiRes.ok) {
         const errorText = await geminiRes.text();
-        console.error("Gemini API error:", errorText);
-        return res.status(502).json({ error: "Gemini API request failed" });
+        console.error("Gemini API error:", geminiRes.status, errorText);
+        return res.status(502).json({ error: `Gemini API error (${geminiRes.status})` });
       }
 
       const geminiData = await geminiRes.json();
       responseText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }
 
-    // Clean and parse JSON
-    const cleanJson = responseText
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
+    const slots = extractSlotsFromJson(responseText);
 
-    const slots = JSON.parse(cleanJson);
-
-    if (!Array.isArray(slots)) {
-      return res.status(422).json({ error: "AI returned invalid format", raw: responseText });
+    if (!slots) {
+      console.error("Failed to parse slots from response. Raw responseText:", responseText);
+      return res.status(422).json({ 
+        error: "AI berhasil merespons tetapi format data tidak dapat diproses. Pastikan gambar KRS/Jadwal terlihat jelas.",
+        raw: responseText.substring(0, 300) 
+      });
     }
 
     return res.status(200).json({ slots });
   } catch (err: any) {
     console.error("Schedule analysis failed:", err);
-    return res.status(500).json({ error: "Failed to analyze schedule" });
+    return res.status(500).json({ error: err.message || "Failed to analyze schedule" });
   }
 }
