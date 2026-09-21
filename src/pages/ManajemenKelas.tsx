@@ -83,7 +83,7 @@ export default function ManajemenKelas() {
         });
         
         const formattedStudents = (mhs || [])
-          .filter((s: any) => !s.student_class_code || s.student_class_code === schedule.class_code)
+          .filter((s: any) => !s.student_class_code || s.student_class_code === schedule.class_code || s.student_class_code.endsWith(' ' + schedule.class_code))
           .map((s: any) => ({
             ...s,
             users: { full_name: s.student_name, nim: s.student_nim },
