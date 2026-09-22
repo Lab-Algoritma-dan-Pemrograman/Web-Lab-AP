@@ -32,33 +32,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 1. Verify Handshake
     const { data: handshake, error: handshakeError } = await supabaseServer
       .from("sso_handshakes")
-      .select("user_id, users!inner(nim, username, full_name, role)")
+      .select("user_id, code, expires_at")
       .eq("code", handshake_code)
       .gt("expires_at", new Date().toISOString())
-      .single();
+      .maybeSingle();
 
     if (handshakeError || !handshake) {
-      console.warn("Invalid or expired handshake:", handshake_code);
+      console.warn("Invalid or expired handshake:", handshake_code, handshakeError);
       return res.status(401).json({ error: "Sesi verifikasi kadaluarsa. Harap coba lagi." });
+    }
+
+    // Ambil data user secara mandiri (aman dari perbedaan relasi FK)
+    const { data: userRecord, error: userError } = await supabaseServer
+      .from("users")
+      .select("id, nim, username, full_name, nama, role, class_code, major")
+      .eq("id", handshake.user_id)
+      .maybeSingle();
+
+    if (userError || !userRecord) {
+      return res.status(404).json({ error: "Data pengguna tidak ditemukan di database" });
     }
 
     // 2. Consume Handshake (Delete so it can't be reused)
     await supabaseServer.from("sso_handshakes").delete().eq("code", handshake_code);
 
-    const userData: any = handshake.users;
-    const finalNim = userData.nim || userData.username; // Use username as fallback for NIM
-    const finalNama = userData.full_name;
-    const finalRole = userData.role || "";
+    const finalNim = userRecord.nim || userRecord.username;
+    const finalNama = userRecord.full_name || userRecord.nama;
+    const finalRole = userRecord.role || "";
 
     if (!finalNim || !finalNama) {
       return res.status(400).json({ error: "Data pengguna tidak lengkap di database" });
     }
 
     // Ambil data jadwal untuk mendapatkan kelas (schedule_class) dan jurusan (schedule_major)
-    let scheduleClass = "";
-    let scheduleMajor = "";
+    let scheduleClass = userRecord.class_code || "";
+    let scheduleMajor = userRecord.major || "";
 
-    if (finalRole === 'mahasiswa') {
+    if (finalRole === 'mahasiswa' || finalRole === 'praktikan') {
       const { data: scheduleData } = await supabaseServer
         .from("group_members")
         .select("schedules(class_code, major)")
@@ -70,8 +80,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const rawSchedule = (scheduleData as any).schedules;
         const target = Array.isArray(rawSchedule) ? rawSchedule[0] : rawSchedule;
         if (target) {
-          scheduleClass = target.class_code || "";
-          scheduleMajor = target.major || "";
+          scheduleClass = target.class_code || scheduleClass;
+          scheduleMajor = target.major || scheduleMajor;
         }
       }
     } else if (finalRole === 'asisten' || finalRole === 'koordinator') {
@@ -86,8 +96,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const rawSchedule = (scheduleData as any).schedules;
         const target = Array.isArray(rawSchedule) ? rawSchedule[0] : rawSchedule;
         if (target) {
-          scheduleClass = target.class_code || "";
-          scheduleMajor = target.major || "";
+          scheduleClass = target.class_code || scheduleClass;
+          scheduleMajor = target.major || scheduleMajor;
         }
       }
     }

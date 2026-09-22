@@ -183,8 +183,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }, { onConflict: 'nim' });
 
     if (dbUpsertError) {
-      console.error("Failed to upsert progress to main DB:", dbUpsertError);
-      return res.status(500).json({ error: 'Gagal memperbarui progres ke database utama Web Lab AP' });
+      console.warn("Upsert onConflict failed, falling back to check & update/insert:", dbUpsertError.message);
+      const { data: existing } = await mainSupabase
+        .from('elearning_progress')
+        .select('id')
+        .eq('nim', computedProgress.nim)
+        .maybeSingle();
+
+      if (existing) {
+        await mainSupabase
+          .from('elearning_progress')
+          .update({
+            student_name: computedProgress.student_name,
+            completed_lessons: computedProgress.completed_lessons,
+            lessons_completed: computedProgress.completed_lessons,
+            total_lessons: computedProgress.total_lessons,
+            completion_percentage: computedProgress.completion_percentage,
+            is_completed: computedProgress.is_completed,
+            completed_levels: computedProgress.completed_levels,
+            current_level: computedProgress.current_level,
+            last_accessed_at: computedProgress.last_accessed_at,
+            updated_at: new Date().toISOString()
+          })
+          .eq('nim', computedProgress.nim);
+      } else {
+        await mainSupabase
+          .from('elearning_progress')
+          .insert({
+            nim: computedProgress.nim,
+            student_name: computedProgress.student_name,
+            completed_lessons: computedProgress.completed_lessons,
+            lessons_completed: computedProgress.completed_lessons,
+            total_lessons: computedProgress.total_lessons,
+            completion_percentage: computedProgress.completion_percentage,
+            is_completed: computedProgress.is_completed,
+            completed_levels: computedProgress.completed_levels,
+            current_level: computedProgress.current_level,
+            last_accessed_at: computedProgress.last_accessed_at,
+            updated_at: new Date().toISOString()
+          });
+      }
     }
 
     // 6. Kembalikan data progres yang berhasil dikalkulasi
