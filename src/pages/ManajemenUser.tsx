@@ -296,7 +296,7 @@ export default function ManajemenUser() {
         role: isPraktikan ? 'praktikan' : formData.role,
         is_active: formData.is_active,
         shift: isPraktikan ? (formData.shift || null) : null,
-        nim: isPraktikan ? (formData.username || null) : null,
+        nim: formData.nim || formData.username || null,
         class_code: isPraktikan ? (formData.class_code || null) : null,
         division: isStaff ? (formData.division || null) : null,
         assistant_code: formData.role === 'asisten' ? (formData.assistant_code || null) : null,
