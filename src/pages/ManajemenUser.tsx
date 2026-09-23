@@ -239,8 +239,8 @@ export default function ManajemenUser() {
 
   const handleSaveAccess = async () => {
     if (!currentUser) return;
-    if (currentUser.role !== 'koordinator' && currentUser.role !== 'admin') {
-      toast.error("Akses Ditolak", { description: "Hanya Koordinator/Admin yang bisa mengelola hak akses divisi." });
+    if (currentUser.role !== 'koordinator') {
+      toast.error("Akses Ditolak", { description: "Hanya Koordinator yang bisa mengelola hak akses divisi." });
       return;
     }
     setLoadingAccess(true);
@@ -579,9 +579,9 @@ export default function ManajemenUser() {
           <div className="flex gap-2">
             <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
 
-            {(currentUser?.role === 'koordinator' || currentUser?.role === 'asisten' || currentUser?.role === 'admin') && (
+            {(currentUser?.role === 'koordinator' || currentUser?.role === 'asisten') && (
               <>
-                {(currentUser?.role === 'koordinator' || currentUser?.role === 'admin') && (
+                {currentUser?.role === 'koordinator' && (
                   <Button variant="secondary" onClick={() => { setSelectedDivision(""); setIsAccessOpen(true); }}>
                     <ShieldCheck className="w-4 h-4 mr-2" /> Kelola Akses Divisi
                   </Button>

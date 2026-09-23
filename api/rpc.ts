@@ -4,6 +4,8 @@ import { jwtVerify } from 'jose';
 
 // ---- Normalisasi role: satu titik untuk semua RPC ----
 // DB menyimpan 'mahasiswa'/'kordas'/'admin'; whitelist memakai role kanonik.
+// `admin` = asisten di SIAKAD (di E-Learning mereka tetap 'admin', ditangani penerima).
+// `superadmin` BUKAN role (itu username) -> sengaja tidak dipetakan: fail closed.
 const ROLE_ALIASES: Record<string, string> = {
   mahasiswa: 'praktikan',
   mhs: 'praktikan',
@@ -11,9 +13,7 @@ const ROLE_ALIASES: Record<string, string> = {
   kordas: 'koordinator',
   korda: 'koordinator',
   coordinator: 'koordinator',
-  superadmin: 'admin',
-  super_admin: 'admin',
-  administrator: 'admin',
+  admin: 'asisten',
 };
 const canonRole = (r: string): string => ROLE_ALIASES[r] ?? r;
 
@@ -148,8 +148,6 @@ ROLE_PERMISSIONS.koordinator = [
   'sync_class_rosters_secure'
 ];
 
-// admin = role tersendiri (bukan alias koordinator): superset izin koordinator
-ROLE_PERMISSIONS.admin = [ ...ROLE_PERMISSIONS.koordinator ];
 
 // ponytail: lightweight in-memory rate limiter per warm serverless container instance
 const loginAttempts = new Map<string, { count: number; resetTime: number }>();
@@ -270,7 +268,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Jika user terverifikasi (dari JWT), timpa/suntikkan parameter identitas secara paksa
   if (userId !== null) {
     // ponytail: generic identity parameter injection to prevent spoofing
-    const isStaff = ['asisten', 'koordinator', 'admin'].includes(userRole);
+    const isStaff = ['asisten', 'koordinator'].includes(userRole);
 
     if ('p_viewer_id' in params) params['p_viewer_id'] = userId;
     if ('p_caller_id' in params || fnName === 'request_reschedule_secure') params['p_caller_id'] = userId;

@@ -1,7 +1,15 @@
-// src/lib/roles.ts  —  SATU SUMBER KEBENARAN untuk nama role
-// Tambahkan file baru ini, lalu impor di AppSidebar.tsx, ProtectedRoute.tsx, dan tempat lain.
+// src/lib/roles.ts — SATU SUMBER KEBENARAN untuk nama role di SIAKAD
+//
+// Kolom users.role di DB memakai kosakata yang berbeda dari yang dipakai kode.
+// Peta ini menyatukannya.
+//
+// CATATAN PENTING:
+// - `admin` BUKAN role tersendiri di SIAKAD. 4 user ber-role 'admin' sebenarnya
+//   asisten (punya assistant_code + terdaftar di group_assistants). Di E-Learning
+//   mereka tetap 'admin' — itu ditangani sisi penerima, bukan di sini.
+// - `superadmin` bukan role, melainkan USERNAME (superadmin_ap, role koordinator).
+//   Sengaja TIDAK dipetakan: role tak dikenal harus gagal (fail closed).
 
-/** Alias -> role kanonik. admin BUKAN alias koordinator (keputusan produk). */
 export const ROLE_ALIASES: Record<string, string> = {
   mahasiswa: 'praktikan',
   mhs: 'praktikan',
@@ -9,24 +17,22 @@ export const ROLE_ALIASES: Record<string, string> = {
   kordas: 'koordinator',
   korda: 'koordinator',
   coordinator: 'koordinator',
-  superadmin: 'admin',
-  super_admin: 'admin',
-  administrator: 'admin',
+  admin: 'asisten',        // di SIAKAD, admin = asisten
 };
 
-/** Role kanonik (5): admin | koordinator | asisten | praktikan | penyewa */
-export const CANON_ROLES = ['admin', 'koordinator', 'asisten', 'praktikan', 'penyewa'] as const;
+/** Role kanonik di SIAKAD. */
+export const CANON_ROLES = ['koordinator', 'asisten', 'praktikan', 'penyewa'] as const;
 
 export const canonRole = (r?: string | null): string =>
   ROLE_ALIASES[(r ?? '').toLowerCase().trim()] ?? (r ?? '').toLowerCase().trim();
 
-/** admin & koordinator selalu boleh; selain itu dicek terhadap whitelist. */
+/** koordinator selalu boleh; selain itu dicek terhadap whitelist. */
 export const roleAllowed = (role: string | undefined | null, allowed: string[]): boolean => {
   const r = canonRole(role);
-  if (r === 'admin' || r === 'koordinator') return true;
+  if (r === 'koordinator') return true;
   return allowed.map(canonRole).includes(r);
 };
 
-/** Staff = admin | koordinator | asisten */
+/** Staff = koordinator | asisten */
 export const isStaffRole = (role?: string | null): boolean =>
-  ['admin', 'koordinator', 'asisten'].includes(canonRole(role));
+  ['koordinator', 'asisten'].includes(canonRole(role));
