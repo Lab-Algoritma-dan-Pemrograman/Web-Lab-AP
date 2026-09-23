@@ -125,12 +125,15 @@ export default function ManajemenUser() {
       if (error) throw error;
       setUsers(data as UserData[]);
 
-      // Ekstrak Divisi unik dari data user asisten
-      const uniqueDivisions = Array.from(new Set(
-        (data as UserData[])
-          .filter(u => u.role === 'asisten' && u.division)
-          .map(u => u.division as string)
-      )).sort();
+      // Ambil daftar divisi dari master tabel `divisi` (bukan hanya dari user asisten)
+      // agar semua divisi (termasuk yang belum punya asisten) bisa dikelola.
+      const { data: divData } = await supabase
+        .from('divisi')
+        .select('kode')
+        .order('kode');
+      const uniqueDivisions = (divData ?? [])
+        .map((d: any) => d.kode as string)
+        .filter(Boolean);
       setDivisions(uniqueDivisions);
 
     } catch (error) {
@@ -236,8 +239,8 @@ export default function ManajemenUser() {
 
   const handleSaveAccess = async () => {
     if (!currentUser) return;
-    if (currentUser.role !== 'koordinator') {
-      toast.error("Akses Ditolak", { description: "Hanya Koordinator yang bisa mengelola hak akses divisi." });
+    if (currentUser.role !== 'koordinator' && currentUser.role !== 'admin') {
+      toast.error("Akses Ditolak", { description: "Hanya Koordinator/Admin yang bisa mengelola hak akses divisi." });
       return;
     }
     setLoadingAccess(true);
@@ -578,7 +581,7 @@ export default function ManajemenUser() {
 
             {(currentUser?.role === 'koordinator' || currentUser?.role === 'asisten') && (
               <>
-                {currentUser?.role === 'koordinator' && (
+                {(currentUser?.role === 'koordinator' || currentUser?.role === 'admin') && (
                   <Button variant="secondary" onClick={() => { setSelectedDivision(""); setIsAccessOpen(true); }}>
                     <ShieldCheck className="w-4 h-4 mr-2" /> Kelola Akses Divisi
                   </Button>

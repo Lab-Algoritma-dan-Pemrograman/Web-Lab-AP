@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { unsubscribeWebPush } from "@/lib/notifications";
+import { canonRole } from "@/lib/roles";
 
 export interface LabUser {
   id: number;
   username: string;
   full_name: string;
-  role: "mahasiswa" | "asisten" | "koordinator" | "peminjam";
+  role: string;
   nim?: string;
   assistant_code?: string;
   division?: string;
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: Number(dbUser.id),
             username: dbUser.username,
             full_name: dbUser.full_name,
-            role: dbUser.role,
+            role: canonRole(dbUser.role),
             nim: dbUser.nim || undefined,
             assistant_code: dbUser.assistant_code || undefined,
             division: dbUser.division || undefined,
@@ -102,10 +103,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (userData: LabUser, token: string) => {
     // Simpan di localStorage sebagai fallback (httpOnly cookie sudah di-set oleh server)
     localStorage.setItem("lab_jwt_token", token);
-    setUser(userData);
+    // Normalisasi role ke bentuk kanonik agar konsisten di seluruh UI
+    const normalized: LabUser = { ...userData, role: canonRole(userData.role) };
+    setUser(normalized);
 
-    if (userData.role === 'asisten' && userData.division) {
-      const paths = await fetchAllowedPaths(userData.id, userData.division);
+    if (normalized.role === 'asisten' && normalized.division) {
+      const paths = await fetchAllowedPaths(normalized.id, normalized.division);
       setAllowedPaths(paths);
     }
   };

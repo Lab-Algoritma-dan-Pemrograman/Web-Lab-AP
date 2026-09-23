@@ -5,6 +5,7 @@ import {
   MessageSquare, QrCode, CalendarDays, GraduationCap, PackageSearch, ListChecks, History
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { roleAllowed, canonRole } from "@/lib/roles";
 import { supabase } from "@/integrations/supabase/client"; 
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -110,16 +111,20 @@ export function AppSidebar() {
 
   // --- FILTER MENU ---
   const filteredMenu = menuItems.filter((item) => {
-    if (!user || !item.roles.includes(user.role)) return false;
-    if (user.role === 'koordinator') return true;
-    if (user.role === 'mahasiswa') return true;
-    if (user.role === 'peminjam') return true; // Penyewa can access everything in their roles list
-    if (user.role === 'asisten') {
+    if (!user) return false;
+    const r = canonRole(user.role);
+    // admin & koordinator: seluruh menu
+    if (r === 'admin' || r === 'koordinator') return true;
+    // praktikan & penyewa: menu umum sesuai roles list
+    if (r === 'praktikan' || r === 'penyewa') return roleAllowed(r, item.roles);
+    // asisten: roles list + pembatasan menu_key divisi
+    if (r === 'asisten') {
+        if (!roleAllowed(r, item.roles)) return false;
         // /absensi & /buat-qr selalu tampil untuk semua asisten
         if (item.url === '/absensi' || item.url === '/buat-qr') return true;
         if (item.url === '/absensi' && isPJAbsenToday) return true;
         if (RESTRICTED_MENUS.includes(item.url)) return allowedPaths.includes(item.url);
-        return true; 
+        return true;
     }
     return false;
   });
