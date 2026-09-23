@@ -47,7 +47,7 @@ interface UserData {
   password?: string;
   full_name: string;
   phone_number?: string; // TAMBAHAN: Kolom No HP
-  role: "koordinator" | "asisten" | "praktikan" | "mahasiswa" | "peminjam";
+  role: string;
   nim?: string;
   assistant_code?: string;
   division?: string;
@@ -127,7 +127,7 @@ export default function ManajemenUser() {
 
       // Ambil daftar divisi dari master tabel `divisi` (bukan hanya dari user asisten)
       // agar semua divisi (termasuk yang belum punya asisten) bisa dikelola.
-      const { data: divData } = await supabase
+      const { data: divData } = await (supabase as any)
         .from('divisi')
         .select('kode')
         .order('kode');
@@ -579,7 +579,7 @@ export default function ManajemenUser() {
           <div className="flex gap-2">
             <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
 
-            {(currentUser?.role === 'koordinator' || currentUser?.role === 'asisten') && (
+            {(currentUser?.role === 'koordinator' || currentUser?.role === 'asisten' || currentUser?.role === 'admin') && (
               <>
                 {(currentUser?.role === 'koordinator' || currentUser?.role === 'admin') && (
                   <Button variant="secondary" onClick={() => { setSelectedDivision(""); setIsAccessOpen(true); }}>
