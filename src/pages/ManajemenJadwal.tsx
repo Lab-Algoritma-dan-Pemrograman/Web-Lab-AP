@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"; 
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, CalendarDays, Clock, Save, Info, Pencil, Filter, FileSpreadsheet, Download } from "lucide-react";
+import { Loader2, Plus, Trash2, CalendarDays, Clock, Save, Pencil, Filter, FileSpreadsheet, Download } from "lucide-react";
 import * as XLSX from 'xlsx'; // Pastikan sudah install: npm install xlsx
 
 export default function ManajemenJadwal() {
@@ -195,7 +195,7 @@ export default function ManajemenJadwal() {
         p_major: major,
         p_class_code: classCode,
         p_type: 'praktikum',
-        p_status: isAdminOrSecretary ? 'approved' : 'pending'
+        p_status: 'approved' // hanya koordinator/sekretaris yang lolos gerbang backend
       });
 
       if (error) throw error;
@@ -242,7 +242,7 @@ export default function ManajemenJadwal() {
                     </Select>
                 </div>
 
-                {user?.role !== 'mahasiswa' && (
+                {isAdminOrSecretary && (
                     <div className="flex gap-2 w-full sm:w-auto">
                         {/* TOMBOL IMPORT EXCEL */}
                         <div className="flex gap-1">
@@ -320,7 +320,7 @@ export default function ManajemenJadwal() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader><DialogTitle>{isEditMode ? "Edit Jadwal" : "Buat Jadwal Baru"}</DialogTitle></DialogHeader>
-                {user?.role === 'asisten' && user?.division?.toLowerCase() !== 'sekretaris' && <div className="bg-blue-50 text-blue-700 p-2 text-xs rounded mb-2"><Info className="w-3 h-3 inline mr-1"/>Perlu ACC Koordinator.</div>}
+                {/* Hanya koordinator/sekretaris yang bisa membuka dialog ini (backend menolak selain itu). */}
                 <div className="grid gap-4 py-2">
                     <div className="space-y-1"><Label>Nama Mata Kuliah / Sesi</Label><Input placeholder="Contoh: Praktikum Algoritma" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
                     <div className="grid grid-cols-2 gap-4">
