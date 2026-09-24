@@ -1,27 +1,78 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { jwtVerify } from "jose";
 
-const VAPID_PUBLIC_KEY = process.env.VITE_VAPID_PUBLIC_KEY || "BIrsvU55B5AXjGVqi1kVqKgINewqYRiIFE5wDBAapS17GQiA8Xx5hphZ40Q4d-u83wt5zGYzjzqQuzbufcz7XuU";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "HcUZLw1hhIKxj2Hy9JWLP_9AVsgK-ee6J8YhCX9hw9g";
+// PUBLIC key aman dibundel (dikirim ke browser saat subscribe) — fallback ke
+// key hasil rotasi supaya push tetap hidup walau env VITE_ belum diset.
+// PRIVATE key WAJIB dari env (MEDIUM-04, kunci lama bocor lewat repo publik).
+const VAPID_PUBLIC_KEY =
+  process.env.VITE_VAPID_PUBLIC_KEY ||
+  process.env.VAPID_PUBLIC_KEY ||
+  "BKAXOmOt7QXutFWQp9GEPf17gU0BkTAd_xzAeQtIWONnnnUo7XUI3m4hunhgqaY1bbuKMKw3GUq44jD5Xd2Dpc0";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
 const VAPID_SUBJECT = "mailto:admin@lab-ap.web.id";
 
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
+
+/** Ambil token dari httpOnly cookie (lab_session) atau Authorization header. */
+function extractToken(req: VercelRequest): string | null {
+  const cookieHeader = (req.headers.cookie as string) || '';
+  const cookies = Object.fromEntries(
+    cookieHeader.split(';').map(c => {
+      const [k, ...v] = c.trim().split('=');
+      return [k.trim(), v.join('=')];
+    })
+  );
+  if (cookies['lab_session']) return cookies['lab_session'];
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) return auth.split(' ')[1];
+  return null;
+}
+
+/** Hanya staf (asisten/koordinator/admin) atau cron ber-secret yang boleh kirim push. */
+async function authorize(req: VercelRequest, res: VercelResponse): Promise<boolean> {
+  // 1. Cron internal: header x-cron-secret harus cocok CRON_SECRET
+  const cronSecret = req.headers['x-cron-secret'];
+  const expected = process.env.CRON_SECRET;
+  if (expected && cronSecret && cronSecret === expected) return true;
+
+  // 2. User login: JWT wajib + role staf
+  const token = extractToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized: Missing session token" });
+    return false;
+  }
+  const secretKey = process.env.JWT_SECRET;
+  if (!secretKey) {
+    res.status(500).json({ error: "Server configuration error" });
+    return false;
+  }
+  try {
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secretKey));
+    const role = String((payload.role as string) || '').toLowerCase();
+    const isStaff = ['asisten', 'koordinator', 'admin', 'kordas'].includes(role);
+    if (!isStaff) {
+      res.status(403).json({ error: "Forbidden: Hanya staf yang boleh mengirim notifikasi" });
+      return false;
+    }
+    return true;
+  } catch {
+    res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
+    return false;
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
-  );
-
   if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+
+  if (!(await authorize(req, res))) return;
 
   const { targetUserId, title, body, url } = req.body || {};
 

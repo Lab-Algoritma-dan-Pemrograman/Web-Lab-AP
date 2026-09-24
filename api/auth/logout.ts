@@ -50,5 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  return res.status(200).json({ success: true });
+  // LOW-01: 204 tanpa body — endpoint ini memang no-op selain menghapus cookie,
+  // jadi tidak perlu mengembalikan informasi apa pun ke pemanggil tanpa auth.
+  return res.status(204).end();
 }

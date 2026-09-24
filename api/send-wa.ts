@@ -1,20 +1,61 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
+import { jwtVerify } from "jose";
+
+/** Ambil token dari httpOnly cookie (lab_session) atau Authorization header. */
+function extractToken(req: VercelRequest): string | null {
+  const cookieHeader = (req.headers.cookie as string) || '';
+  const cookies = Object.fromEntries(
+    cookieHeader.split(';').map(c => {
+      const [k, ...v] = c.trim().split('=');
+      return [k.trim(), v.join('=')];
+    })
+  );
+  if (cookies['lab_session']) return cookies['lab_session'];
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) return auth.split(' ')[1];
+  return null;
+}
+
+/** Hanya staf (asisten/koordinator/admin) atau cron ber-secret yang boleh kirim WA. */
+async function authorize(req: VercelRequest, res: VercelResponse): Promise<boolean> {
+  const cronSecret = req.headers['x-cron-secret'];
+  const expected = process.env.CRON_SECRET;
+  if (expected && cronSecret && cronSecret === expected) return true;
+
+  const token = extractToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized: Missing session token" });
+    return false;
+  }
+  const secretKey = process.env.JWT_SECRET;
+  if (!secretKey) {
+    res.status(500).json({ error: "Server configuration error" });
+    return false;
+  }
+  try {
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secretKey));
+    const role = String((payload.role as string) || '').toLowerCase();
+    const isStaff = ['asisten', 'koordinator', 'admin', 'kordas'].includes(role);
+    if (!isStaff) {
+      res.status(403).json({ error: "Forbidden: Hanya staf yang boleh mengirim WhatsApp" });
+      return false;
+    }
+    return true;
+  } catch {
+    res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
+    return false;
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
-  );
-
   if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+
+  if (!(await authorize(req, res))) return;
 
   const { targetPhone, targetUserId, message } = req.body || {};
 
