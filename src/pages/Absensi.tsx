@@ -138,9 +138,11 @@ export default function Absensi() {
       });
 
       // Sumber kebenaran: ambil mahasiswa dari tabel users yang class_code DAN major-nya cocok
+      // Format class_code BEDA antar tabel: users pakai "TE B"/"TSE B"/"TL A", schedules pakai "B"/"A" dst.
+      // Jadi jangan bandingkan ketat — pakai isMatchingClassCode() yang sudah menangani kedua format.
       const praktikanForClass = (allUsersData || []).filter((u: any) => {
         if (u.role !== 'mahasiswa') return false;
-        if (targetSched?.class_code && u.class_code !== targetSched.class_code) return false;
+        if (targetSched?.class_code && !isMatchingClassCode(u.class_code, targetSched.class_code, targetSched.title)) return false;
         if (targetSched?.major && u.major !== targetSched.major) return false;
         return true;
       });
