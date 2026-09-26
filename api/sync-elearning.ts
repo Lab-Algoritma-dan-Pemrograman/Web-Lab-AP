@@ -2,13 +2,20 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { jwtVerify } from 'jose';
 
-// ponytail: read e-learning database URL from env, default to fallback
-const ELEARNING_SUPABASE_URL = process.env.ELEARNING_SUPABASE_URL || process.env.VITE_ELEARNING_SUPABASE_URL || "https://tvsawtkevzfqobsfkiag.supabase.co";
+// URL project E-Learning WAJIB dari env. Sebelumnya ada fallback hardcoded ke
+// project lama (tvsawtkevzfqobsfkiag); fallback itu membuat endpoint diam-diam
+// membaca progres dari DB yang salah sehingga angka di SIAKAD tak pernah cocok.
+const ELEARNING_SUPABASE_URL = process.env.ELEARNING_SUPABASE_URL || process.env.VITE_ELEARNING_SUPABASE_URL;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Hanya izinkan POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!ELEARNING_SUPABASE_URL) {
+    console.error("ELEARNING_SUPABASE_URL is missing on the server env");
+    return res.status(500).json({ error: 'Konfigurasi server belum lengkap: ELEARNING_SUPABASE_URL belum di-set di environment.' });
   }
 
   // 1. Verifikasi Keamanan JWT Token Web Lab AP
