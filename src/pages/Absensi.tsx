@@ -449,8 +449,9 @@ export default function Absensi() {
     fetchDeletionHistory();
     
     // Fetch WA Templates & Active Shift Setting
+    // RPC-nya hanya untuk staff; praktikan mendapat 400 "Akses ditolak." (sudah sejak lama).
     const fetchSettings = async () => {
-        if (!user) return;
+        if (!user || !isStaff) return;
         const { data } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
         if (data && data.length > 0) {
           setWaTemplates(data[0].wa_templates);

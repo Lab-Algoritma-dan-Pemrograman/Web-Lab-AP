@@ -108,17 +108,6 @@ function PraktikanDashboard() {
   const [stats, setStats] = useState({ totalKelas: 0, attendanceRate: 0, totalFeedback: 0 });
   const [jadwal, setJadwal] = useState<any[]>([]);
   const [absensi, setAbsensi] = useState<any[]>([]);
-  const [waTemplates, setWaTemplates] = useState<any>(null);
-
-  const waText = (schedule: any) => buildWaText(waTemplates, {
-    greeting: getGreeting(),
-    honorific: getHonorific(schedule.assistant?.assistant_code) || "Kak",
-    assistant: schedule.assistant?.full_name,
-    student: user?.full_name,
-    nim: user?.username,
-    major: schedule.major,
-    kelas: schedule.class_code
-  });
 
   useEffect(() => {
       const fetchData = async () => {
@@ -130,9 +119,6 @@ function PraktikanDashboard() {
           // 2. Fetch Recent Attendance via Secure RPC
           const { data: attendanceData } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
           setAbsensi((attendanceData || []).slice(0, 4));
-
-          const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
-          if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
 
           // 3. Jadwal saya (route praktikan diizinkan get_personal_schedules_secure;
           //    get_group_members_secure wajib p_schedule_id sehingga selalu kosong).
@@ -224,7 +210,15 @@ function PraktikanDashboard() {
                       </p>
                       {schedule.assistant.phone_number && (
                         <a
-                          href={getWaLink(schedule.assistant.phone_number, waText(schedule))}
+                          href={getWaLink(schedule.assistant.phone_number, buildWaText(null, {
+                            greeting: getGreeting(),
+                            honorific: getHonorific(schedule.assistant.assistant_code) || "Kak",
+                            assistant: schedule.assistant.full_name,
+                            student: user?.full_name,
+                            nim: user?.username,
+                            major: schedule.major,
+                            kelas: schedule.class_code
+                          }))}
                           target="_blank" rel="noreferrer"
                           className="text-xs font-bold text-[#25D366] shrink-0"
                         >

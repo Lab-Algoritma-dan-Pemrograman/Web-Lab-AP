@@ -88,10 +88,13 @@ export default function JadwalSaya() {
     try {
       const { data, error } = await supabase.rpc('get_personal_schedules_secure', { p_viewer_id: user.id });
       if (error) throw error;
-      
-      // Fetch WA Templates
-      const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
-      if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
+
+      // Pengaturan lengkap (templates WA) hanya untuk staff — RPC-nya menolak praktikan
+      // dengan 400 "Akses ditolak.", jadi jangan dipanggil dari sesi praktikan.
+      if (!isPraktikan) {
+        const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
+        if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
+      }
 
       if (isPraktikan) {
         // Satu baris per jadwal: student_id di baris ini selalu user sendiri.
@@ -110,7 +113,8 @@ export default function JadwalSaya() {
           assistant: {
             id: row.assistant_id,
             full_name: row.assistant_name,
-            phone_number: row.assistant_phone
+            phone_number: row.assistant_phone,
+            assistant_code: row.assistant_code
           }
         }));
         setSchedulesData(transformed);
