@@ -125,16 +125,20 @@ export default function ManajemenUser() {
       if (error) throw error;
       setUsers(data as UserData[]);
 
-      // Ambil daftar divisi dari master tabel `divisi` (bukan hanya dari user asisten)
-      // agar semua divisi (termasuk yang belum punya asisten) bisa dikelola.
-      const { data: divData } = await (supabase as any)
-        .from('divisi')
-        .select('kode')
-        .order('kode');
-      const uniqueDivisions = (divData ?? [])
-        .map((d: any) => d.kode as string)
-        .filter(Boolean);
-      setDivisions(uniqueDivisions);
+      // Daftar divisi diturunkan dari data user yang baru saja diambil.
+      // ponytail: tabel `divisi` cuma ada di DB lokal dan tak diberi GRANT untuk
+      // role anon di produksi, jadi akses `.from()` selalu 401 di sana.
+      // Pakai nilai apa adanya (tanpa ubah huruf besar/kecil): auth.tsx mencari
+      // hak akses memakai user.division persis seperti tersimpan di tabel users,
+      // jadi menyimpan dengan casing lain bikin menu asisten tak pernah cocok.
+      // Tambah RPC khusus hanya bila perlu mengelola divisi yang belum punya
+      // asisten sama sekali.
+      const byLower = new Map<string, string>();
+      for (const u of (data as UserData[]) || []) {
+        const div = (u.division || '').trim();
+        if (div && !byLower.has(div.toLowerCase())) byLower.set(div.toLowerCase(), div);
+      }
+      setDivisions(Array.from(byLower.values()).sort());
 
     } catch (error) {
       console.error(error);
@@ -225,11 +229,18 @@ export default function ManajemenUser() {
   const fetchDivisionAccess = async (divName: string) => {
     if (!currentUser) return;
     setLoadingAccess(true);
-    const { data } = await supabase.rpc('get_division_access_secure', {
+    // Tanpa pemeriksaan error, sesi mati / RPC ditolak tampil sebagai daftar
+    // kosong ("0 menu") sehingga terlihat seperti data hak akses hilang.
+    const { data, error } = await supabase.rpc('get_division_access_secure', {
       p_viewer_id: currentUser.id,
       p_division: divName
     });
-    setAccessList(data ? data.map((d: any) => d.menu_key) : []);
+    if (error) {
+      setAccessList([]);
+      toast.error("Gagal memuat hak akses: " + error.message);
+    } else {
+      setAccessList(data ? data.map((d: any) => d.menu_key) : []);
+    }
     setLoadingAccess(false);
   };
 

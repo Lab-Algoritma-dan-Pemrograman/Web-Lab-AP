@@ -37,18 +37,20 @@ export default function KritikSaran() {
   const [filterCategory, setFilterCategory] = useState("all");
 
   const checkAccess = async () => {
-      if (user?.role === 'koordinator') { 
-          setHasEditAccess(true); 
-          return; 
+      if (user?.role === 'koordinator') {
+          setHasEditAccess(true);
+          return;
       }
+      // ponytail: akses tabel langsung selalu 401 di produksi (role anon tidak
+      // diberi GRANT untuk public.division_access). check_menu_access_secure
+      // sudah menangani lookup divisi + menu yang sama, lewat jalur RPC.
       if (user?.division) {
-          const { data } = await supabase
-              .from('division_access')
-              .select('*')
-              .eq('division', user.division)
-              .eq('menu_key', '/kritik-saran');
-              
-          if (data && data.length > 0) {
+          const { data } = await supabase.rpc('check_menu_access_secure', {
+              p_viewer_id: user.id,
+              p_menu_key: '/kritik-saran'
+          });
+
+          if (data === true) {
               setHasEditAccess(true);
           }
       }
