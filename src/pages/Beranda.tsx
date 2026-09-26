@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { canonRole } from "@/lib/roles";
 import { supabase } from "@/integrations/supabase/client";
+import { getGreeting, getHonorific, getWaLink, buildWaText } from "@/lib/wa";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,6 +108,17 @@ function PraktikanDashboard() {
   const [stats, setStats] = useState({ totalKelas: 0, attendanceRate: 0, totalFeedback: 0 });
   const [jadwal, setJadwal] = useState<any[]>([]);
   const [absensi, setAbsensi] = useState<any[]>([]);
+  const [waTemplates, setWaTemplates] = useState<any>(null);
+
+  const waText = (schedule: any) => buildWaText(waTemplates, {
+    greeting: getGreeting(),
+    honorific: getHonorific(schedule.assistant?.assistant_code) || "Kak",
+    assistant: schedule.assistant?.full_name,
+    student: user?.full_name,
+    nim: user?.username,
+    major: schedule.major,
+    kelas: schedule.class_code
+  });
 
   useEffect(() => {
       const fetchData = async () => {
@@ -118,16 +131,23 @@ function PraktikanDashboard() {
           const { data: attendanceData } = await supabase.rpc('get_attendance_logs_secure', { p_viewer_id: user.id });
           setAbsensi((attendanceData || []).slice(0, 4));
 
-          // 3. Fetch My Groups via Secure RPC
-          const { data: memberData } = await supabase.rpc('get_group_members_secure', { p_viewer_id: user.id });
-          const schedules = (memberData || []).map((m: any) => ({
-            title: m.schedule_title,
-            day_of_week: m.schedule_day,
-            start_time: m.schedule_time,
-            end_time: m.schedule_time, // Placeholder for end time if not in RPC
-            class_code: m.schedule_class_code
-          }));
-          setJadwal(schedules);
+          const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
+          if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
+
+          // 3. Jadwal saya (route praktikan diizinkan get_personal_schedules_secure;
+          //    get_group_members_secure wajib p_schedule_id sehingga selalu kosong).
+          const { data: scheduleData } = await supabase.rpc('get_personal_schedules_secure', { p_viewer_id: user.id });
+          setJadwal((scheduleData || [])
+            .filter((r: any) => String(r.student_id) === String(user.id))
+            .map((r: any) => ({
+              title: r.schedule_title,
+              day_of_week: r.schedule_day,
+              start_time: r.schedule_start,
+              end_time: r.schedule_end,
+              class_code: r.schedule_class,
+              major: r.schedule_major,
+              assistant: { full_name: r.assistant_name, phone_number: r.assistant_phone }
+            })));
           
           setStats({ 
             totalKelas: globalStats?.total_kelas || 0, 
@@ -189,12 +209,30 @@ function PraktikanDashboard() {
             <div className="space-y-3">
               {jadwal.length === 0 ? <p className="text-sm text-muted-foreground">Belum ada jadwal plotting.</p> :
               jadwal.map((schedule, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-foreground">{schedule.title}</p>
-                    <p className="text-xs text-muted-foreground">{schedule.day_of_week} • {schedule.start_time?.slice(0,5)} - {schedule.end_time?.slice(0,5)}</p>
+                <div key={i} className="flex flex-col gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-foreground">{schedule.title}</p>
+                      <p className="text-xs text-muted-foreground">{schedule.day_of_week} • {schedule.start_time?.slice(0,5)} - {schedule.end_time?.slice(0,5)}</p>
+                    </div>
+                    <Badge variant="secondary">Kelas {schedule.class_code}</Badge>
                   </div>
-                  <Badge variant="secondary">Kelas {schedule.class_code}</Badge>
+                  {schedule.assistant?.full_name && (
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                      <p className="text-xs text-muted-foreground truncate">
+                        Asisten: <span className="font-semibold text-foreground">{schedule.assistant.full_name}</span>
+                      </p>
+                      {schedule.assistant.phone_number && (
+                        <a
+                          href={getWaLink(schedule.assistant.phone_number, waText(schedule))}
+                          target="_blank" rel="noreferrer"
+                          className="text-xs font-bold text-[#25D366] shrink-0"
+                        >
+                          Chat WA
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -475,14 +513,18 @@ function KoordinatorDashboard() {
 
 // --- MAIN COMPONENT ---
 export default function Beranda() {
-  const { role } = useAuth();
+  const { user } = useAuth();
+  // role kanonik; fallback praktikan menjaga perilaku lama saat role belum terisi.
+  const role = canonRole(user?.role) || "praktikan";
 
   return (
     <DashboardLayout>
-      {role === "mahasiswa" && <PraktikanDashboard />}
+      {role === "praktikan" && <PraktikanDashboard />}
       {role === "asisten" && <AsistenDashboard />}
       {role === "koordinator" && <KoordinatorDashboard />}
-      {!role && <PraktikanDashboard />}
+      {role === "penyewa" && (
+        <p className="text-sm text-muted-foreground">Gunakan menu Sewa &amp; Pinjam untuk mengajukan peminjaman barang laboratorium.</p>
+      )}
     </DashboardLayout>
   );
 }

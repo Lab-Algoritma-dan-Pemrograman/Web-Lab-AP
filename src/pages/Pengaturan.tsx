@@ -172,7 +172,7 @@ export default function Pengaturan() {
                       rows={7}
                       value={procedureAsText()}
                       onChange={e => handleProcedureChange(e.target.value)}
-                      placeholder={"Pendaftaran Akun: Daftarkan akun menggunakan NIM/ID yang valid.\nMasuk Sistem: Login ke portal dengan NIM dan password saat shift aktif.\nPresensi Kehadiran: Lakukan presensi di menu kehadiran tepat waktu.\nModul & Peminjaman: Unduh file penunjang atau ajukan sewa barang lab."}
+                      placeholder={"Pendaftaran Akun: Daftarkan akun menggunakan NIM/ID yang valid.\nMasuk Sistem: Login ke portal dengan NIM dan password saat shift aktif.\nPresensi Kehadiran: Lakukan presensi di menu kehadiran tepat waktu.\nModul & Peminjaman: Unduh modul di menu E-Learning atau ajukan sewa barang lab."}
                    />
                    <div className="flex items-start gap-1.5 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-700">
                       <Info className="w-3 h-3 mt-0.5 shrink-0"/>

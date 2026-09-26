@@ -43,7 +43,7 @@ describe("Manajemen (Management) Page across Roles", () => {
               id: 10,
               username: "202414001",
               full_name: "Budi Praktikan",
-              role: "mahasiswa",
+              role: "praktikan",
               nim: "202414001",
               class_code: "IF-A",
               shift: "1",

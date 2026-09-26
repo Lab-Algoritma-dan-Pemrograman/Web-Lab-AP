@@ -11,9 +11,11 @@
 //   Sengaja TIDAK dipetakan: role tak dikenal harus gagal (fail closed).
 
 export const ROLE_ALIASES: Record<string, string> = {
-  mahasiswa: 'praktikan',
+  praktikan: 'praktikan',
   mhs: 'praktikan',
+  mahasiswa: 'praktikan',
   peminjam: 'penyewa',
+  penyewa: 'penyewa',
   kordas: 'koordinator',
   korda: 'koordinator',
   coordinator: 'koordinator',

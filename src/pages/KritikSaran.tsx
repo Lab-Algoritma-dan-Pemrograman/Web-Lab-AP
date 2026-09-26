@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { canonRole } from "@/lib/roles";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { confirm } from "@/lib/confirm";
@@ -200,7 +201,7 @@ export default function KritikSaran() {
               Kritik & Saran
             </h1>
             <p className="text-muted-foreground">
-                {user?.role === 'mahasiswa' 
+                {canonRole(user?.role) === 'praktikan' 
                     ? "Sampaikan masukan untuk kemajuan laboratorium." 
                     : "Kelola dan pantau masukan dari praktikan."}
             </p>
@@ -274,7 +275,7 @@ export default function KritikSaran() {
                 </Card>
 
                 {/* FORM INPUT KRITIK (HANYA PRAKTIKAN) */}
-                {user?.role === 'mahasiswa' && (
+                {canonRole(user?.role) === 'praktikan' && (
                   <Card className="border-l-4 border-l-primary shadow-md">
                     <CardHeader>
                       <CardTitle>Kirim Masukan Baru</CardTitle>
@@ -318,7 +319,7 @@ export default function KritikSaran() {
                 <Card className="flex-1 shadow-md">
                   <CardHeader className="pb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b bg-gray-50/50">
                     <CardTitle className="text-lg">
-                      {user?.role === 'mahasiswa' ? "Riwayat Masukan Saya" : "Kotak Masuk (Semua Masukan)"}
+                      {canonRole(user?.role) === 'praktikan' ? "Riwayat Masukan Saya" : "Kotak Masuk (Semua Masukan)"}
                     </CardTitle>
                     
                     {/* Filter Kategori HANYA untuk Koordinator & Asisten Berhak */}

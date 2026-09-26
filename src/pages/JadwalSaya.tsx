@@ -8,40 +8,53 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Calendar, Clock, User, Users, MessageCircle, BookOpen, Filter } from "lucide-react";
+import { Loader2, Calendar, Clock, User, Users, MessageCircle, BookOpen, Filter, MapPin } from "lucide-react";
+import { canonRole } from "@/lib/roles";
+import { getGreeting, getHonorific, getWaLink, buildWaText } from "@/lib/wa";
 
 export default function JadwalSaya() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [schedulesData, setSchedulesData] = useState<any[]>([]);
   const [waTemplates, setWaTemplates] = useState<any>(null);
+  /** kelompok[schedule_id] = daftar praktikan satu kelompok bimbingan */
+  const [kelompok, setKelompok] = useState<Record<string, any[]>>({});
+  // role sudah kanonik dari auth; 'mahasiswa' hanya jaring pengaman untuk data lama.
+  const isPraktikan = canonRole(user?.role) === 'praktikan' || user?.role === 'mahasiswa';
 
   // --- STATE FILTER ---
   const [filterDay, setFilterDay] = useState("all");
   const [filterMajor, setFilterMajor] = useState("all");
   const [filterClass, setFilterClass] = useState("all");
 
-  const getWaLink = (phone: string | null, text: string = "") => {
-    if (!phone) return '#';
-    let cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  // --- KELOMPOK BIMBINGAN (sumber: group_members lewat proxy RPC ber-JWT) ---
+  // Jalur .from() memakai anon key dan RLS group_members memfilternya (hasil selalu kosong),
+  // jadi wajib lewat RPC: praktikan memakai student_id sendiri sebagai penonton.
+  const fetchKelompok = async (scheduleIds: number[]) => {
+    const map: Record<string, any[]> = {};
+    for (const sid of scheduleIds) {
+      const { data, error } = await supabase.rpc('get_group_members_secure', {
+        p_viewer_id: user!.id,
+        p_schedule_id: sid
+      });
+      if (error) throw error;
+      map[sid] = (data || []).map((m: any) => ({
+        id: m.id,
+        student_id: m.student_id,
+        assistant_id: m.assistant_id,
+        student: { id: m.student_id, full_name: m.student_name, username: m.student_nim,
+                   shift: m.student_shift, class_code: m.student_class_code, phone_number: null }
+      }));
+    }
+    setKelompok(map);
   };
 
   // --- FUNGSI AUTO-SYNC KE TABEL AGREGAT (class_rosters) ---
   const syncToDatabase = async (combinedData: any[], role: string) => {
       try {
           const payload: any[] = [];
-          
-          if (role === 'mahasiswa') {
-              combinedData.forEach(item => {
-                  payload.push({
-                      schedule_id: item.schedule_id,
-                      assistant_id: item.assistant_id,
-                      student_id: item.student_id
-                  });
-              });
-          } else if (role === 'asisten') {
+
+          if (role === 'asisten') {
               combinedData.forEach(item => {
                   if (item.students && item.students.length > 0) {
                       item.students.forEach((studentObj: any) => {
@@ -80,7 +93,9 @@ export default function JadwalSaya() {
       const { data: settingsData } = await supabase.rpc('get_system_settings_full_secure', { p_viewer_id: user.id });
       if (settingsData && settingsData.length > 0) setWaTemplates(settingsData[0].wa_templates);
 
-      if (user.role === 'mahasiswa') {
+      if (isPraktikan) {
+        // Satu baris per jadwal: student_id di baris ini selalu user sendiri.
+        // Kelompok bimbingan diambil manual dari group_members (lihat fetchKelompok).
         const transformed = (data || []).map((row: any) => ({
           ...row,
           schedule: {
@@ -99,9 +114,9 @@ export default function JadwalSaya() {
           }
         }));
         setSchedulesData(transformed);
-        syncToDatabase(transformed, 'mahasiswa');
+        await fetchKelompok(transformed.map((t: any) => t.schedule_id));
       } else {
-        // Group by schedule for assistant view
+        // Satu baris per praktikan bimbingan; dikelompokkan per kelas.
         const grouped = (data || []).reduce((acc: any[], current: any) => {
           let schedule = acc.find(a => a.schedule_id === current.schedule_id);
           if (!schedule) {
@@ -128,14 +143,16 @@ export default function JadwalSaya() {
                 full_name: current.student_name,
                 username: current.student_nim,
                 shift: current.student_shift,
-                phone_number: null 
+                phone_number: null
               }
             });
           }
           return acc;
         }, []);
         setSchedulesData(grouped);
-        syncToDatabase(grouped, 'asisten');
+        // ponytail: class_rosters hanya dipakai fitur koordinator; RPC-nya khusus
+        // koordinator, jadi asisten tak perlu memanggilnya sama sekali.
+        if (user.role === 'koordinator') syncToDatabase(grouped, 'asisten');
       }
     } catch (error: any) {
       toast.error("Gagal memuat jadwal: " + error.message);
@@ -185,8 +202,24 @@ export default function JadwalSaya() {
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSchedules.map((item, idx) => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {filteredSchedules.map((item, idx) => {
+          const temanKelompok = (kelompok[item.schedule_id] || []).filter(
+            (m: any) => m.assistant_id === item.assistant?.id
+          );
+          const greeting = getGreeting();
+          const honorific = getHonorific(item.assistant?.assistant_code);
+          const waText = buildWaText(waTemplates, {
+            greeting,
+            honorific: honorific || "Kak",
+            assistant: item.assistant?.full_name || "Asisten",
+            student: user?.full_name,
+            nim: user?.username,
+            major: item.schedule?.major,
+            kelas: item.schedule?.class_code
+          });
+
+          return (
           <Card key={idx} className="border-l-4 border-l-blue-600 shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
@@ -194,75 +227,75 @@ export default function JadwalSaya() {
                   Kelas {item.schedule?.class_code || "-"}
                 </Badge>
                 <div className="flex flex-col items-end gap-1">
-                  <Badge variant="secondary" className="truncate max-w-[120px]">{item.schedule?.major}</Badge>
+                  <Badge variant="secondary" className="truncate max-w-[160px]">{item.schedule?.major}</Badge>
                   {item.student_shift && <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Shift {item.student_shift}</Badge>}
                 </div>
               </div>
               <CardTitle className="text-xl mt-2">{item.schedule?.title || "Praktikum"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center text-sm text-gray-700">
-                <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span className="font-medium">{item.schedule?.day_of_week}</span>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-700">
+                <span className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-muted-foreground" /><span className="font-medium">{item.schedule?.day_of_week}</span></span>
+                <span className="flex items-center"><Clock className="w-4 h-4 mr-2 text-muted-foreground" />{item.schedule?.start_time?.slice(0,5)} - {item.schedule?.end_time?.slice(0,5)}</span>
+                {item.schedule?.room && <span className="flex items-center"><MapPin className="w-4 h-4 mr-2 text-muted-foreground" />{item.schedule.room}</span>}
               </div>
-              <div className="flex items-center text-sm text-gray-700">
-                <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span>{item.schedule?.start_time?.slice(0,5)} - {item.schedule?.end_time?.slice(0,5)}</span>
-              </div>
+
+              {/* KONTAK ASISTEN PEMBIMBING */}
               <div className="pt-4 mt-2 border-t">
-                <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Asisten Pembimbing:</div>
-                <div className="flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
-                  <span className="font-bold text-gray-900 truncate">{item.assistant?.full_name || "Belum ditentukan"}</span>
-                </div>
-              </div>
-            </CardContent>
-            {item.assistant?.phone_number && (
-              <CardFooter className="bg-gray-50 pt-4 rounded-b-lg">
-                {(() => {
-                  const getGreeting = () => {
-                    const hour = new Date().getHours();
-                    if (hour >= 5 && hour < 11) return "Pagi";
-                    if (hour >= 11 && hour < 15) return "Siang";
-                    if (hour >= 15 && hour < 19) return "Sore";
-                    return "Malam";
-                  };
-
-                  const getHonorific = () => {
-                    const code = item.assistant?.assistant_code || "";
-                    if (code.startsWith('P')) return "Kak";
-                    if (code.startsWith('L')) return "Bang";
-                    return "Kak"; // Default fallback
-                  };
-
-                  const greeting = getGreeting();
-                  const honorific = getHonorific();
-                  
-                  let chatText = `Selamat ${greeting} ${honorific} ${item.assistant?.full_name}, Mohon maaf mengganggu waktunya. Saya ${user?.full_name} dengan NIM ${user?.username} dari jurusan ${item.schedule?.major} kelas ${item.schedule?.class_code}.`;
-                  
-                  if (waTemplates?.chat_asisten) {
-                    chatText = waTemplates.chat_asisten
-                      .replace(/{{waktu}}/g, greeting)
-                      .replace(/{{panggilan}}/g, honorific)
-                      .replace(/{{nama_asisten}}/g, item.assistant?.full_name || "")
-                      .replace(/{{nama_praktikan}}/g, user?.full_name || "")
-                      .replace(/{{nim}}/g, user?.username || "")
-                      .replace(/{{jurusan}}/g, item.schedule?.major || "")
-                      .replace(/{{kelas}}/g, item.schedule?.class_code || "");
-                  }
-                  
-                  return (
-                    <a href={getWaLink(item.assistant.phone_number, chatText)} target="_blank" rel="noreferrer" className="w-full">
-                      <Button className="w-full bg-[#25D366] hover:bg-[#1ebd5c] text-white shadow-sm hover:shadow-md transition-all">
-                        <MessageCircle className="w-4 h-4 mr-2" /> Chat Asisten via WA
+                <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Asisten Pembimbing:</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <User className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-bold text-gray-900 truncate">{item.assistant?.full_name || "Belum ditentukan"}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.assistant?.phone_number ? `+${getWaLink(item.assistant.phone_number).match(/wa\.me\/(\d+)/)?.[1] || ""}` : "Nomor WA belum tersedia"}
+                      </p>
+                    </div>
+                  </div>
+                  {item.assistant?.phone_number && (
+                    <a href={getWaLink(item.assistant.phone_number, waText)} target="_blank" rel="noreferrer">
+                      <Button size="sm" className="bg-[#25D366] hover:bg-[#1ebd5c] text-white shadow-sm">
+                        <MessageCircle className="w-4 h-4 mr-2" /> Chat Asisten
                       </Button>
                     </a>
-                  );
-                })()}
-              </CardFooter>
-            )}
+                  )}
+                </div>
+              </div>
+
+              {/* KELOMPOK BIMBINGAN */}
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-2">
+                    <Users className="w-4 h-4" /> Kelompok Bimbingan Saya
+                  </div>
+                  <Badge variant="outline" className="bg-white">{temanKelompok.length} Mahasiswa</Badge>
+                </div>
+                {temanKelompok.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">Data kelompok belum diplotting.</p>
+                ) : (
+                  <ol className="space-y-1.5">
+                    {temanKelompok.map((m: any, i: number) => (
+                      <li key={m.id} className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm ${m.student_id === user?.id ? "bg-blue-50 border border-blue-200" : "bg-muted/50"}`}>
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                          <span className={`truncate ${m.student_id === user?.id ? "font-black text-blue-800" : "font-medium"}`}>
+                            {m.student?.full_name}{m.student_id === user?.id && " (Saya)"}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono text-xs text-muted-foreground">{m.student?.username || "-"}</span>
+                          {m.student?.shift && <Badge variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">Shift {m.student.shift}</Badge>}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -358,8 +391,7 @@ export default function JadwalSaya() {
                 <BookOpen className="text-primary" /> Jadwal Praktikum Saya
                 </h1>
                 <p className="text-muted-foreground">
-                {user?.role === 'mahasiswa' 
-                    ? "Berikut adalah jadwal kelas praktikum beserta asisten pembimbing Anda." 
+                {isPraktikan ? "Jadwal praktikum Anda, kontak asisten pembimbing, dan daftar kelompok bimbingan Anda."
                     : "Berikut adalah daftar kelas dan praktikan yang Anda bimbing."}
                 </p>
             </div>
@@ -394,7 +426,7 @@ export default function JadwalSaya() {
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
         ) : (
-          user?.role === 'mahasiswa' ? renderPraktikanView() : renderAsistenView()
+          isPraktikan ? renderPraktikanView() : renderAsistenView()
         )}
       </div>
     </DashboardLayout>

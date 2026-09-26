@@ -25,10 +25,10 @@ describe("Beranda (Dashboard) Feature across Roles", () => {
     vi.clearAllMocks();
   });
 
-  it("should render PraktikanDashboard when role is 'mahasiswa'", async () => {
+  it("should render PraktikanDashboard when role is 'praktikan'", async () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 1, username: "praktikan1", full_name: "Budi Praktikan", role: "mahasiswa" },
-      role: "mahasiswa",
+      user: { id: 1, username: "praktikan1", full_name: "Budi Praktikan", role: "praktikan" },
+      role: "praktikan",
       allowedPaths: [],
       loading: false,
       login: vi.fn(),
@@ -42,7 +42,7 @@ describe("Beranda (Dashboard) Feature across Roles", () => {
       if (rpcName === "get_attendance_logs_secure") {
         return Promise.resolve({ data: [], error: null }) as any;
       }
-      if (rpcName === "get_group_members_secure") {
+      if (rpcName === "get_personal_schedules_secure" || rpcName === "get_system_settings_full_secure") {
         return Promise.resolve({ data: [], error: null }) as any;
       }
       return Promise.resolve({ data: null, error: null }) as any;

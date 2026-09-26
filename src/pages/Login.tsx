@@ -46,7 +46,7 @@ export default function Login() {
   const [signupUsername, setSignupUsername] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupPhone, setSignupPhone] = useState("");
-  const [signupRole, setSignupRole] = useState<"mahasiswa" | "peminjam">("mahasiswa");
+  const [signupRole, setSignupRole] = useState<"praktikan" | "penyewa">("praktikan");
 
   // --- LOGIKA LOGIN ---
   const handleLogin = async (e: React.FormEvent) => {
@@ -106,7 +106,7 @@ export default function Login() {
       return;
     }
 
-    if (signupRole === 'peminjam' && !signupPhone) {
+    if (signupRole === 'penyewa' && !signupPhone) {
       toast.error("Mohon Isi WhatsApp!", { description: "Nomor WA wajib diisi agar asisten bisa menghubungi Anda untuk verifikasi identitas." });
       setIsLoading(false);
       return;
@@ -129,7 +129,7 @@ export default function Login() {
         p_password: signupPassword,
         p_full_name: signupName,
         p_role: signupRole,
-        p_nim: signupRole === 'mahasiswa' ? signupUsername : null,
+        p_nim: signupRole === 'praktikan' ? signupUsername : null,
         p_assistant_code: null,
         p_phone_number: signupPhone || null,
         p_is_active: true
@@ -402,15 +402,15 @@ export default function Login() {
                   </div>
                   <Select
                     value={signupRole}
-                    onValueChange={(value: "mahasiswa" | "peminjam") => setSignupRole(value)}
+                    onValueChange={(value: "praktikan" | "penyewa") => setSignupRole(value)}
                     disabled={isLoading}
                   >
                     <SelectTrigger className="w-full pl-11 py-3.5 h-auto rounded-2xl font-bold transition-all text-sm border-2 bg-slate-50 border-slate-200 text-slate-800 focus:outline-none focus:border-maroon focus:bg-white focus:ring-4 focus:ring-maroon/5 focus:shadow-sm">
                       <SelectValue placeholder="Pilih peran Anda" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mahasiswa">Praktikan (Mahasiswa)</SelectItem>
-                      <SelectItem value="peminjam">Penyewa (Umum)</SelectItem>
+                      <SelectItem value="praktikan">Praktikan (Mahasiswa)</SelectItem>
+                      <SelectItem value="penyewa">Penyewa (Umum)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -440,7 +440,7 @@ export default function Login() {
               {/* WhatsApp */}
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                  Nomor WhatsApp {signupRole === 'peminjam' && <span className="text-red-500">*</span>}
+                  Nomor WhatsApp {signupRole === 'penyewa' && <span className="text-red-500">*</span>}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-300">
@@ -451,7 +451,7 @@ export default function Login() {
                     placeholder="Contoh: 081234567890"
                     value={signupPhone}
                     onChange={(e) => setSignupPhone(e.target.value)}
-                    required={signupRole === 'peminjam'}
+                    required={signupRole === 'penyewa'}
                     disabled={isLoading}
                     className="w-full pl-11 py-3.5 rounded-2xl font-bold transition-all text-sm border-2 bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-300 focus:outline-none focus:border-maroon focus:bg-white focus:ring-4 focus:ring-maroon/5 focus:shadow-sm pr-4 disabled:opacity-50"
                   />
@@ -461,7 +461,7 @@ export default function Login() {
               {/* NIM / Username */}
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                  {signupRole === 'mahasiswa' ? 'NIM' : 'Username'}
+                  {signupRole === 'praktikan' ? 'NIM' : 'Username'}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-300">
@@ -469,7 +469,7 @@ export default function Login() {
                   </div>
                   <input
                     type="text"
-                    placeholder={signupRole === 'mahasiswa' ? "Contoh: 202511090" : "Masukkan Username"}
+                    placeholder={signupRole === 'praktikan' ? "Contoh: 202511090" : "Masukkan Username"}
                     value={signupUsername}
                     onChange={(e) => setSignupUsername(e.target.value)}
                     required
@@ -701,7 +701,7 @@ export default function Login() {
                   <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-600 shrink-0">4</span>
                   <div>
                     <strong className="text-slate-900 block font-bold">Modul & Peminjaman</strong>
-                    Unduh file penunjang praktikum atau ajukan sewa inventaris barang lab langsung melalui halaman khusus.
+                    Unduh modul praktikum melalui menu E-Learning atau ajukan sewa inventaris barang lab langsung melalui halaman khusus.
                   </div>
                 </div>
               </>

@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 
 import { triggerServerWebPush } from "@/lib/notifications";
 import { getDailyQuote } from "@/lib/quotes";
+import { canonRole } from "@/lib/roles";
 
 export default function ValidasiAbsensi() {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ export default function ValidasiAbsensi() {
   const getWaLink = (phone: string | null, targetName?: string, isApproved?: boolean) => {
     if (!phone) return "#";
     const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
-    const quote = getDailyQuote("mahasiswa");
+    const quote = getDailyQuote("praktikan");
     let msg = `Halo *${targetName || "Praktikan"}*,\n\nPermohonan reschedule praktikum kamu telah diproses.\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/absensi\n\n✨ "${quote}"`;
     if (isApproved !== undefined) {
       msg = `Halo *${targetName || "Praktikan"}*,\n\nPermohonan reschedule praktikum kamu telah ${isApproved ? "DISETUJUI ✅" : "DITOLAK ❌"}.\n\n🌐 *Buka Web Lab AP:* https://www.lab-ap.web.id/absensi\n\n✨ "${quote}"`;
@@ -57,14 +58,14 @@ export default function ValidasiAbsensi() {
     // Pending: Only License requests (status !== Hadir && no reschedule intent)
     const pending = formatted.filter((l: any) => 
       l.verification_status === 'pending' && 
-      l.user_role === 'mahasiswa' && 
+      canonRole(l.user_role) === 'praktikan' && 
       !l.reschedule_schedule_id &&
       l.status !== 'Hadir'
     );
 
     // History & Reschedule Pool: Needs to include logs with pending reschedules
     const history = formatted.filter((l: any) => 
-      l.user_role === 'mahasiswa' && (
+      canonRole(l.user_role) === 'praktikan' && (
         (['approved', 'rejected'].includes(l.verification_status)) ||
         (l.reschedule_status === 'pending')
       )

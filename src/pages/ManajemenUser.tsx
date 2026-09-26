@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { canonRole } from "@/lib/roles";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { confirm } from "@/lib/confirm";
 import * as XLSX from "xlsx";
@@ -34,7 +35,6 @@ const MASTER_MENUS = [
   { key: "/inventaris", label: "Inventaris Barang" },
   { key: "/manajemen-user", label: "Manajemen User" },
   { key: "/laporan-keuangan", label: "Laporan Keuangan" },
-  { key: "/penunjang-praktikum", label: "Penunjang Praktikum" },
   { key: "/ketersediaan", label: "Input Jadwal Free" },
   { key: "/e-learning", label: "Modul E-Learning" },
   { key: "/absensi", label: "Kelola Absensi (Export & Hapus)" },
@@ -288,7 +288,7 @@ export default function ManajemenUser() {
 
     setSaving(true);
     try {
-      const isPraktikan = formData.role === 'praktikan' || formData.role === 'mahasiswa';
+      const isPraktikan = canonRole(formData.role) === 'praktikan';
       const isStaff = formData.role === 'asisten' || formData.role === 'koordinator';
 
       const payload: any = {
@@ -457,7 +457,7 @@ export default function ManajemenUser() {
             password: String(u),
             full_name: row['nama'] || row['nama lengkap'],
             phone_number: row['no hp'] || row['telepon'] || row['whatsapp'] ? String(row['no hp'] || row['telepon'] || row['whatsapp']) : null,
-            role: 'mahasiswa',
+            role: 'praktikan',
             nim: String(u),
             class_code: row['kelas'],
             shift: row['shift'] ? String(row['shift']) : null,
@@ -519,7 +519,7 @@ export default function ManajemenUser() {
   const openEdit = (user: UserData) => { 
     setFormData({ 
       ...user, 
-      role: (user.role === 'mahasiswa' || user.role === 'praktikan') ? 'praktikan' : user.role,
+      role: canonRole(user.role),
       password: "" 
     }); 
     setIsEdit(true); 
@@ -529,7 +529,7 @@ export default function ManajemenUser() {
   const canEdit = (target: UserData) => {
     if (!currentUser) return false;
     if (currentUser.role === 'koordinator') return true;
-    if (currentUser.role === 'asisten') return target.id === currentUser.id || target.role === 'praktikan' || target.role === 'mahasiswa';
+    if (currentUser.role === 'asisten') return target.id === currentUser.id || canonRole(target.role) === 'praktikan';
     return false;
   };
 
@@ -619,8 +619,8 @@ export default function ManajemenUser() {
                   <SelectTrigger><Filter className="w-4 h-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Pilih Peran" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Semua Peran</SelectItem>
-                    <SelectItem value="mahasiswa">Praktikan</SelectItem>
-                    <SelectItem value="peminjam">Penyewa Umum</SelectItem>
+                    <SelectItem value="praktikan">Praktikan</SelectItem>
+                    <SelectItem value="penyewa">Penyewa Umum</SelectItem>
                     <SelectItem value="asisten">Asisten</SelectItem>
                     <SelectItem value="koordinator">Koordinator</SelectItem>
                   </SelectContent>
@@ -686,7 +686,7 @@ export default function ManajemenUser() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {(u.role === 'praktikan' || u.role === 'mahasiswa') ? (
+                            {(canonRole(u.role) === 'praktikan') ? (
                               <Badge variant="outline" className={`font-bold ${u.shift === '1' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-purple-200 text-purple-700 bg-purple-50'}`}>
                                 Shift {u.shift || "-"}
                               </Badge>
@@ -695,7 +695,7 @@ export default function ManajemenUser() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {(u.role === 'praktikan' || u.role === 'mahasiswa') ? (
+                            {(canonRole(u.role) === 'praktikan') ? (
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-semibold text-xs border border-blue-200 bg-blue-50 px-2 py-0.5 rounded-md w-fit">Kelas: {u.class_code || "-"}</span>
                                 <div className="flex items-center gap-1 text-muted-foreground text-xs mt-1"><GraduationCap className="w-3 h-3" /><span>{getJurusanByNIM(u.nim || u.username)}</span></div>
@@ -712,7 +712,7 @@ export default function ManajemenUser() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell><Badge variant={u.role === 'koordinator' ? 'destructive' : u.role === 'asisten' ? 'default' : u.role === 'peminjam' ? 'outline' : 'secondary'}>{(u.role === 'mahasiswa' ? 'PRAKTIKAN' : u.role).toUpperCase()}</Badge></TableCell>
+                          <TableCell><Badge variant={u.role === 'koordinator' ? 'destructive' : u.role === 'asisten' ? 'default' : u.role === 'penyewa' ? 'outline' : 'secondary'}>{canonRole(u.role).toUpperCase()}</Badge></TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center items-center gap-2">
                               <Switch
@@ -753,7 +753,7 @@ export default function ManajemenUser() {
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Username / NIM</Label><Input value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="202314..." required disabled={isEdit && currentUser?.role !== 'koordinator'} /></div>
-                <div className="space-y-2"><Label>Role</Label><Select value={formData.role === 'mahasiswa' ? 'praktikan' : formData.role} onValueChange={(val: any) => setFormData({ ...formData, role: val })} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="praktikan">Praktikan</SelectItem><SelectItem value="peminjam">Penyewa Umum</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Role</Label><Select value={canonRole(formData.role)} onValueChange={(val: any) => setFormData({ ...formData, role: val })} disabled={currentUser?.role === 'asisten'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="praktikan">Praktikan</SelectItem><SelectItem value="penyewa">Penyewa Umum</SelectItem>{(currentUser?.role === 'koordinator' || formData.role === 'asisten') && <SelectItem value="asisten">Asisten</SelectItem>}{currentUser?.role === 'koordinator' && <SelectItem value="koordinator">Koordinator</SelectItem>}</SelectContent></Select></div>
               </div>
 
               {/* Row: Nama & No HP */}
@@ -784,7 +784,7 @@ export default function ManajemenUser() {
                 </div>
               </div>
 
-              {(formData.role === 'praktikan' || formData.role === 'mahasiswa') && (
+              {canonRole(formData.role) === 'praktikan' && (
                 <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-md">
                   <div className="space-y-2">
                     <Label>Kelas</Label>

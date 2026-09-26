@@ -66,8 +66,8 @@ describe("Authentication & RBAC (Role-Based Access Control)", () => {
 
   it("should render children if user has the allowed role", () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 1, username: "praktikan1", full_name: "Praktikan Satu", role: "mahasiswa" },
-      role: "mahasiswa",
+      user: { id: 1, username: "praktikan1", full_name: "Praktikan Satu", role: "praktikan" },
+      role: "praktikan",
       allowedPaths: [],
       loading: false,
       login: vi.fn(),
@@ -81,7 +81,7 @@ describe("Authentication & RBAC (Role-Based Access Control)", () => {
           <Route
             path="/protected"
             element={
-              <ProtectedRoute allowedRoles={["mahasiswa"]}>
+              <ProtectedRoute allowedRoles={["praktikan"]}>
                 <div>Protected Content</div>
               </ProtectedRoute>
             }
@@ -95,8 +95,8 @@ describe("Authentication & RBAC (Role-Based Access Control)", () => {
 
   it("should redirect to '/beranda' if user role is not allowed", () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 1, username: "praktikan1", full_name: "Praktikan Satu", role: "mahasiswa" },
-      role: "mahasiswa",
+      user: { id: 1, username: "praktikan1", full_name: "Praktikan Satu", role: "praktikan" },
+      role: "praktikan",
       allowedPaths: [],
       loading: false,
       login: vi.fn(),

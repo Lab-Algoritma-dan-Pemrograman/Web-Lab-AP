@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { canonRole } from "@/lib/roles";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { confirm } from "@/lib/confirm";
@@ -23,12 +24,12 @@ export default function Absensi() {
   const [activeTab, setActiveTab] = useState("scan");
 
   // Semua Asisten, Koordinator, Sekretaris, K3 dianggap sebagai Staff di halaman ini (Bisa input manual)
-  const isStaff = ['asisten', 'koordinator', 'sekretaris', 'k3'].includes(user?.role || '');
+  const isStaff = ['asisten', 'koordinator', 'sekretaris', 'k3'].includes(canonRole(user?.role));
   const [isPJAbsenToday, setIsPJAbsenToday] = useState(false);
 
   // Hanya Koordinator atau PJ Absen yang bisa lihat tabel rekap semua user
   // PERBARUAN: Semua asisten + koor bisa lihat tabel rekap & total hadir
-  const isStaffTableMode = ['asisten', 'koordinator', 'sekretaris', 'k3'].includes(user?.role || '');
+  const isStaffTableMode = ['asisten', 'koordinator', 'sekretaris', 'k3'].includes(canonRole(user?.role));
 
   // State Khusus untuk Hak Akses EXPORT & DELETE (FULL ACCESS)
   const [hasExportAccess, setHasExportAccess] = useState(false);
@@ -139,7 +140,7 @@ export default function Absensi() {
 
       // Sumber kebenaran: ambil mahasiswa dari tabel users yang class_code DAN major-nya cocok
       const praktikanForClass = (allUsersData || []).filter((u: any) => {
-        if (u.role !== 'mahasiswa') return false;
+        if (canonRole(u.role) !== 'praktikan') return false;
         if (targetSched?.class_code && u.class_code !== targetSched.class_code) return false;
         if (targetSched?.major && u.major !== targetSched.major) return false;
         return true;
@@ -150,7 +151,7 @@ export default function Absensi() {
 
       const finalList = praktikanForClass.map((u: any) => {
         // Ambil data tambahan dari group_members jika ada (misalnya asisten kelas)
-        const gm = (groupData || []).find((m: any) => m.student_nim === u.username || String(m.student_id) === String(u.id));
+        const gm = (groupData || []).find((m: any) => String(m.student_id) === String(u.id));
         return {
           id: u.id,
           schedule_id: schedId,

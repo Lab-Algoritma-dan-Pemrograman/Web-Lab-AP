@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Home, BookOpen, PenTool, Calendar, Users, Settings, LogOut, 
+  Home, Calendar, Users, Settings, LogOut, 
   Box, FileText, User, CalendarCheck, CheckCircle, ClipboardCheck,
   MessageSquare, QrCode, CalendarDays, GraduationCap, PackageSearch, ListChecks, History
 } from "lucide-react";
@@ -29,7 +29,6 @@ const RESTRICTED_MENUS = [
   "/validasi-absensi", 
   "/inventaris", 
   "/laporan-keuangan",
-  "/penunjang-praktikum",
   "/e-learning",
   "/ketersediaan",
   "/manajemen-sewa",
@@ -82,19 +81,18 @@ export function AppSidebar() {
 
   // Definisi Menu Lengkap
   const menuItems = [
-    { title: "Beranda", url: "/beranda", icon: Home, roles: ["mahasiswa", "asisten", "koordinator", "peminjam"] },
-    { title: "Profil Saya", url: "/profil", icon: User, roles: ["mahasiswa", "asisten", "koordinator", "peminjam"] },
+    { title: "Beranda", url: "/beranda", icon: Home, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
+    { title: "Profil Saya", url: "/profil", icon: User, roles: ["praktikan", "asisten", "koordinator", "penyewa"] },
     
-    { title: "Sewa & Pinjam", url: "/sewa-barang", icon: PackageSearch, roles: ["peminjam"] },
+    { title: "Sewa & Pinjam", url: "/sewa-barang", icon: PackageSearch, roles: ["penyewa"] },
     { title: "Manajemen Sewa", url: "/manajemen-sewa", icon: ListChecks, roles: ["asisten", "koordinator"] },
 
-    { title: "Absensi", url: "/absensi", icon: CalendarCheck, roles: ["mahasiswa", "asisten", "koordinator"] },
+    { title: "Absensi", url: "/absensi", icon: CalendarCheck, roles: ["praktikan", "asisten", "koordinator"] },
     { title: "Buat QR Absen", url: "/buat-qr", icon: QrCode, roles: ["asisten", "koordinator"] },
-    { title: "Kritik & Saran", url: "/kritik-saran", icon: MessageSquare, roles: ["mahasiswa", "koordinator"] },
-    { title: "Penunjang Praktikum", url: "/penunjang-praktikum", icon: BookOpen, roles: ["mahasiswa", "asisten","koordinator"] },
-    { title: "E-Learning", url: "/e-learning", icon: GraduationCap, roles: ["mahasiswa", "asisten", "koordinator"] },
+    { title: "Kritik & Saran", url: "/kritik-saran", icon: MessageSquare, roles: ["praktikan", "koordinator"] },
+    { title: "E-Learning", url: "/e-learning", icon: GraduationCap, roles: ["praktikan", "asisten", "koordinator"] },
 
-    { title: "Jadwal Saya", url: "/jadwal-saya", icon: Calendar, roles: ["mahasiswa","asisten","koordinator"] }, 
+    { title: "Jadwal Saya", url: "/jadwal-saya", icon: Calendar, roles: ["praktikan","asisten","koordinator"] }, 
     { title: "Manajemen User", url: "/manajemen-user", icon: Users, roles: ["koordinator", "asisten"] },
     { title: "Manajemen Jadwal", url: "/manajemen-jadwal", icon: CalendarDays, roles: ["asisten", "koordinator"] },
     

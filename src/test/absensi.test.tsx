@@ -43,8 +43,8 @@ describe("Absensi (Attendance) Feature across Roles", () => {
 
   it("should render scan and izin tabs for praktikan", async () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 10, username: "123456", full_name: "Budi Santoso", role: "mahasiswa" },
-      role: "mahasiswa",
+      user: { id: 10, username: "123456", full_name: "Budi Santoso", role: "praktikan" },
+      role: "praktikan",
       allowedPaths: [],
       loading: false,
       login: vi.fn(),
@@ -108,7 +108,7 @@ describe("Absensi (Attendance) Feature across Roles", () => {
               status: "Hadir",
               user_full_name: "Budi Santoso",
               user_username: "123456",
-              user_role: "mahasiswa",
+              user_role: "praktikan",
             },
           ],
           error: null,

@@ -668,5 +668,4 @@ export const MASTER_MENUS = [
   { key: "/inventaris", label: "Inventaris Barang" },
   { key: "/manajemen-user", label: "Manajemen User" },
   { key: "/laporan-keuangan", label: "Laporan Keuangan" },
-  { key: "/penunjang-praktikum", label: "Penunjang Praktikum" },
 ];
