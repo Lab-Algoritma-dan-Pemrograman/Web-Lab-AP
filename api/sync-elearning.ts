@@ -203,10 +203,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? Math.min(100, Math.round((openCompletedCount / openLessonsCount) * 10000) / 100)
       : 0;
 
-    // XP mengikuti aturan E-Learning: 60 per pelajaran tuntas (kolom lessons.xp_reward,
-    // default 60). Tidak ada bonus modul/level — completeLesson() hanya menambah xpReward.
-    const totalXp = completedLessonIds.length * 60;
-
     let lastAccessed: string | null = null;
     if (sessionData?.last_heartbeat) {
       lastAccessed = sessionData.last_heartbeat;
@@ -229,11 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       is_completed: openLessonsCount > 0 && openCompletedCount >= openLessonsCount,
       completed_levels: completedLevels,
       current_level: currentLevelTitle || 'Belum Mulai',
-      last_accessed_at: lastAccessed,
-      // Info tambahan untuk tampilan: cakupan seluruh kurikulum + XP leaderboard.
-      curriculum_lessons: totalLessonsCount,
-      curriculum_completed: completedLessonIds.length,
-      total_xp: totalXp
+      last_accessed_at: lastAccessed
     };
 
     // 5. Simpan Hasilnya ke Database Utama Web Lab AP (Bypass RLS secara aman dari server)
