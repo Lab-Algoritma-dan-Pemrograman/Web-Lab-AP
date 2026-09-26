@@ -17,7 +17,7 @@ export default function JadwalSaya() {
   const [loading, setLoading] = useState(true);
   const [schedulesData, setSchedulesData] = useState<any[]>([]);
   const [waTemplates, setWaTemplates] = useState<any>(null);
-  /** kelompok[schedule_id] = daftar praktikan satu kelompok bimbingan */
+  /** kelompok[schedule_id] = daftar praktikan pada jadwal itu */
   const [kelompok, setKelompok] = useState<Record<string, any[]>>({});
   // role sudah kanonik dari auth; 'mahasiswa' hanya jaring pengaman untuk data lama.
   const isPraktikan = canonRole(user?.role) === 'praktikan' || user?.role === 'mahasiswa';
@@ -27,9 +27,10 @@ export default function JadwalSaya() {
   const [filterMajor, setFilterMajor] = useState("all");
   const [filterClass, setFilterClass] = useState("all");
 
-  // --- KELOMPOK BIMBINGAN (sumber: group_members lewat proxy RPC ber-JWT) ---
+  // --- ANGGOTA KELOMPOK (sumber: group_members lewat proxy RPC ber-JWT) ---
   // Jalur .from() memakai anon key dan RLS group_members memfilternya (hasil selalu kosong),
-  // jadi wajib lewat RPC: praktikan memakai student_id sendiri sebagai penonton.
+  // jadi wajib lewat RPC. get_group_members_secure tidak mengembalikan kolom
+  // telepon sama sekali, jadi nomor HP teman sekelompok tidak pernah bisa tampil.
   const fetchKelompok = async (scheduleIds: number[]) => {
     const map: Record<string, any[]> = {};
     for (const sid of scheduleIds) {
@@ -43,7 +44,7 @@ export default function JadwalSaya() {
         student_id: m.student_id,
         assistant_id: m.assistant_id,
         student: { id: m.student_id, full_name: m.student_name, username: m.student_nim,
-                   shift: m.student_shift, class_code: m.student_class_code, phone_number: null }
+                   shift: m.student_shift, class_code: m.student_class_code }
       }));
     }
     setKelompok(map);
@@ -98,7 +99,7 @@ export default function JadwalSaya() {
 
       if (isPraktikan) {
         // Satu baris per jadwal: student_id di baris ini selalu user sendiri.
-        // Kelompok bimbingan diambil manual dari group_members (lihat fetchKelompok).
+        // Daftar anggota kelompok diambil lewat RPC per jadwal (lihat fetchKelompok).
         const transformed = (data || []).map((row: any) => ({
           ...row,
           schedule: {
@@ -146,8 +147,7 @@ export default function JadwalSaya() {
                 id: current.student_id,
                 full_name: current.student_name,
                 username: current.student_nim,
-                shift: current.student_shift,
-                phone_number: null
+                shift: current.student_shift
               }
             });
           }
@@ -208,9 +208,12 @@ export default function JadwalSaya() {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredSchedules.map((item, idx) => {
-          const temanKelompok = (kelompok[item.schedule_id] || []).filter(
-            (m: any) => m.assistant_id === item.assistant?.id
-          );
+          // Bila praktikan belum diplotting ke asisten mana pun (assistant_id NULL),
+          // tampilkan seluruh anggota jadwalnya daripada daftar kosong.
+          const anggota = kelompok[item.schedule_id] || [];
+          const temanKelompok = item.assistant?.id
+            ? anggota.filter((m: any) => m.assistant_id === item.assistant.id)
+            : anggota;
           const greeting = getGreeting();
           const honorific = getHonorific(item.assistant?.assistant_code);
           const waText = buildWaText(waTemplates, {
@@ -267,11 +270,11 @@ export default function JadwalSaya() {
                 </div>
               </div>
 
-              {/* KELOMPOK BIMBINGAN */}
+              {/* KELOMPOK SAYA */}
               <div className="pt-4 border-t">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-2">
-                    <Users className="w-4 h-4" /> Kelompok Bimbingan Saya
+                    <Users className="w-4 h-4" /> Kelompok Saya
                   </div>
                   <Badge variant="outline" className="bg-white">{temanKelompok.length} Mahasiswa</Badge>
                 </div>

@@ -28,7 +28,7 @@ const asPraktikan = () => vi.mocked(useAuth).mockReturnValue({
 describe("JadwalSaya untuk praktikan", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("menampilkan jadwal, kontak asisten pembimbing, dan kelompok bimbingan", async () => {
+  it("menampilkan jadwal, kontak asisten pembimbing, dan Kelompok Saya", async () => {
     asPraktikan();
 
     vi.mocked(supabase.rpc).mockImplementation((fn: string) => {
@@ -67,8 +67,9 @@ describe("JadwalSaya untuk praktikan", () => {
     expect(screen.getByText("NAUFAL RAIHAN SAPUTRA")).toBeInTheDocument();
     expect(screen.getByText("Chat Asisten")).toBeInTheDocument();
 
-    // Hanya praktikan dengan asisten_id sama yang masuk kelompok (2 dari 3 baris).
-    expect(screen.getByText(/Kelompok Bimbingan Saya/)).toBeInTheDocument();
+    // Hanya praktikan dengan assistant_id sama yang masuk kelompok (2 dari 3 baris).
+    expect(screen.getByText(/Kelompok Saya/)).toBeInTheDocument();
+    expect(screen.queryByText(/Kelompok Bimbingan/)).not.toBeInTheDocument();
     expect(screen.getByText("2 Mahasiswa")).toBeInTheDocument();
     expect(screen.getByText("202615001")).toBeInTheDocument();
     expect(screen.getByText("202615006")).toBeInTheDocument();
