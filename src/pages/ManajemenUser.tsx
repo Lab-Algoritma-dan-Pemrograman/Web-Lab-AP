@@ -663,14 +663,14 @@ export default function ManajemenUser() {
                           onChange={toggleSelectAll}
                         />
                       </TableHead>
-                      <TableHead className="w-[1%] whitespace-nowrap pr-6">Nama Lengkap</TableHead>
-                      <TableHead className="w-[1%] whitespace-nowrap pr-6">NIM / Username</TableHead>
-                      <TableHead className="w-[1%] whitespace-nowrap pr-6">Kontak</TableHead>
-                      <TableHead className="w-[100px]">Shift</TableHead>
-                      <TableHead className="min-w-[150px]">Detail (Kelas)</TableHead>
-                      <TableHead className="w-[100px]">Role</TableHead>
-                      <TableHead className="text-center w-[120px]">Status</TableHead>
-                      <TableHead className="text-center w-[120px]">Aksi</TableHead>
+                      <TableHead className="whitespace-nowrap pr-6">Nama Lengkap</TableHead>
+                      <TableHead className="whitespace-nowrap pr-6">NIM / Username</TableHead>
+                      <TableHead className="whitespace-nowrap pr-6">Kontak</TableHead>
+                      <TableHead className="w-[80px]">Shift</TableHead>
+                      <TableHead className="whitespace-nowrap">Detail (Kelas)</TableHead>
+                      <TableHead className="w-[90px]">Role</TableHead>
+                      <TableHead className="text-center whitespace-nowrap">Status</TableHead>
+                      <TableHead className="text-center whitespace-nowrap">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
