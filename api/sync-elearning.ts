@@ -87,59 +87,125 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('nim', userNim)
       .maybeSingle();
 
-    // 4. Kalkulasi Progres Belajar (Sama seperti logika frontend sebelumnya)
+    // 4. Kalkulasi Progres Belajar
+    // Basis SAMA dengan beranda E-Learning: hanya level yang sudah terbuka (tidak
+    // terkunci). Kita TIDAK memakai embed levels→modules→lessons untuk memetakan
+    // lesson ke level, karena tabel `lessons` hanya punya kolom `module_id`
+    // ('c-level-1-m1'), sehingga embed itu mengembalikan 0 lessons.
+    const { data: modulesData, error: modulesError } = await elearningSupabase
+      .from('modules')
+      .select('id, level_id, sort_order');
+
+    if (modulesError) {
+      console.error("Failed to fetch modules from E-Learning DB:", modulesError);
+      return res.status(502).json({ error: 'Gagal mengambil struktur modul dari E-Learning' });
+    }
+
+    const { data: lessonsData, error: lessonsError } = await elearningSupabase
+      .from('lessons')
+      .select('id, module_id, sort_order');
+
+    if (lessonsError) {
+      console.error("Failed to fetch lessons from E-Learning DB:", lessonsError);
+      return res.status(502).json({ error: 'Gagal mengambil daftar pelajaran dari E-Learning' });
+    }
+
+    const moduleToLevel: Record<string, string> = {};
+    for (const m of modulesData || []) moduleToLevel[m.id] = m.level_id;
+
+    // level_id -> daftar lesson id (urut sesuai sort_order)
+    const lessonsByLevel: Record<string, string[]> = {};
+    for (const lsn of lessonsData || []) {
+      const lvl = moduleToLevel[lsn.module_id];
+      if (!lvl) continue;
+      (lessonsByLevel[lvl] ||= []).push(lsn.id);
+    }
+
     const completedLessonIds = (progressData || [])
       .filter(p => p.completed)
       .map(p => p.lesson_id);
+    const completedSet = new Set(completedLessonIds);
 
-    let totalLessonsCount = 0;
-    let completedLessonsCount = completedLessonIds.length;
+    // Override akses per user (level_access_overrides), id level seperti
+    // 'level-3'; entry lama ber-id 'c-level-2' tidak lagi cocok dan diabaikan,
+    // sama seperti perilaku frontend.
+    const { data: userRow } = await elearningSupabase
+      .from('users')
+      .select('level_access_overrides')
+      .eq('nim', userNim)
+      .maybeSingle();
+    const overrides: Record<string, string> = (userRow?.level_access_overrides as any) || {};
+
+    const effectiveMode = (lvl: any): string => {
+      const ov = overrides[lvl.id];
+      if (ov && ov !== 'auto') return ov;
+      if (lvl.access_mode) return lvl.access_mode;
+      if (lvl.locked === true) return 'locked';
+      return 'auto';
+    };
+
+    // Lock auto: SEMUA level sebelumnya harus tuntas, kecuali yang di-'unlocked'.
+    const isLevelLocked = (idx: number, sortedLevels: any[]): boolean => {
+      const lvl = sortedLevels[idx];
+      const ov = overrides[lvl.id];
+      if (ov === 'locked') return true;
+      if (ov === 'unlocked') return false;
+      if (lvl.access_mode === 'locked') return true;
+      if (lvl.access_mode === 'unlocked') return false;
+      if (lvl.locked === true) return true;
+      if (idx === 0) return false;
+      for (let i = 0; i < idx; i++) {
+        const prev = sortedLevels[i];
+        if (effectiveMode(prev) === 'unlocked') continue;
+        if ((lessonsByLevel[prev.id] || []).some(id => !completedSet.has(id))) return true;
+      }
+      return false;
+    };
+
+    const sortedLevels = [...(levelsData || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+    let totalLessonsCount = 0;       // seluruh kurikulum (transparansi)
+    let openLessonsCount = 0;        // hanya level terbuka — basis persentase
+    let openCompletedCount = 0;
     const completedLevels: string[] = [];
     let currentLevelTitle: string | null = null;
 
-    if (levelsData) {
-      const sortedLevels = [...levelsData].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-      
-      for (const lvl of sortedLevels) {
-        let lvlTotal = 0;
-        let lvlDone = 0;
-        
-        const sortedModules = [...(lvl.modules || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-        
-        for (const mod of sortedModules) {
-          const sortedLessons = [...(mod.lessons || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-          
-          for (const lsn of sortedLessons) {
-            lvlTotal++;
-            totalLessonsCount++;
-            if (completedLessonIds.includes(lsn.id)) {
-              lvlDone++;
-            }
-          }
-        }
-        
-        if (lvlTotal > 0 && lvlDone >= lvlTotal) {
-          completedLevels.push(lvl.title);
-        } else if (lvlDone > 0 && !currentLevelTitle) {
-          currentLevelTitle = lvl.title;
-        }
-      }
-      
-      if (!currentLevelTitle) {
-        const firstIncomplete = sortedLevels.find(lvl => {
-          const lvlLessons = (lvl.modules || []).flatMap((m: any) => m.lessons || []);
-          const lvlTotal = lvlLessons.length;
-          const lvlDone = lvlLessons.filter((l: any) => completedLessonIds.includes(l.id)).length;
-          return lvlTotal > 0 && lvlDone < lvlTotal;
-        });
-        if (firstIncomplete) {
-          currentLevelTitle = firstIncomplete.title;
-        }
+    for (let i = 0; i < sortedLevels.length; i++) {
+      const lvl = sortedLevels[i];
+      const ids = lessonsByLevel[lvl.id] || [];
+      const done = ids.filter(id => completedSet.has(id)).length;
+      totalLessonsCount += ids.length;
+
+      if (isLevelLocked(i, sortedLevels)) continue;   // level terkunci: tak dihitung
+
+      openLessonsCount += ids.length;
+      openCompletedCount += done;
+
+      if (ids.length > 0 && done >= ids.length) {
+        completedLevels.push(lvl.title);
+      } else if (done > 0 && !currentLevelTitle) {
+        currentLevelTitle = lvl.title;
       }
     }
 
-    const completionPercent = totalLessonsCount > 0 ? (completedLessonsCount / totalLessonsCount) * 105 : 0; 
-    const finalPercentage = Math.min(100, Math.round(completionPercent * 100) / 100);
+    if (!currentLevelTitle) {
+      const firstOpenIncomplete = sortedLevels.find((lvl, i) => {
+        if (isLevelLocked(i, sortedLevels)) return false;
+        const ids = lessonsByLevel[lvl.id] || [];
+        return ids.length > 0 && !ids.every(id => completedSet.has(id));
+      });
+      if (firstOpenIncomplete) currentLevelTitle = firstOpenIncomplete.title;
+    }
+
+    // Persentase harus sebanding dengan kartu E-Learning: pembilang dan penyebut
+    // sama-sama dihitung atas level yang terbuka.
+    const finalPercentage = openLessonsCount > 0
+      ? Math.min(100, Math.round((openCompletedCount / openLessonsCount) * 10000) / 100)
+      : 0;
+
+    // XP mengikuti aturan E-Learning: 60 per pelajaran tuntas (kolom lessons.xp_reward,
+    // default 60). Tidak ada bonus modul/level — completeLesson() hanya menambah xpReward.
+    const totalXp = completedLessonIds.length * 60;
 
     let lastAccessed: string | null = null;
     if (sessionData?.last_heartbeat) {
@@ -152,16 +218,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // completedLessonsCount = pelajaran tuntas DI LEVEL TERBUKA (pembilang yang
+    // sebanding dengan penyebut openLessonsCount).
     const computedProgress = {
       nim: userNim,
       student_name: userName,
-      completed_lessons: completedLessonsCount,
-      total_lessons: totalLessonsCount,
+      completed_lessons: openCompletedCount,
+      total_lessons: openLessonsCount,
       completion_percentage: finalPercentage,
-      is_completed: totalLessonsCount > 0 && completedLessonsCount >= totalLessonsCount,
+      is_completed: openLessonsCount > 0 && openCompletedCount >= openLessonsCount,
       completed_levels: completedLevels,
       current_level: currentLevelTitle || 'Belum Mulai',
-      last_accessed_at: lastAccessed
+      last_accessed_at: lastAccessed,
+      // Info tambahan untuk tampilan: cakupan seluruh kurikulum + XP leaderboard.
+      curriculum_lessons: totalLessonsCount,
+      curriculum_completed: completedLessonIds.length,
+      total_xp: totalXp
     };
 
     // 5. Simpan Hasilnya ke Database Utama Web Lab AP (Bypass RLS secara aman dari server)
