@@ -68,7 +68,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'get_feedback_secure',
     'get_schedules_secure',
     'get_system_settings_full_secure',
-    'save_push_subscription_secure'
+    'save_push_subscription_secure',
+    'delete_push_subscription_secure'
   ],
   penyewa: [
     'get_user_profile',
@@ -145,7 +146,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'update_rental_status_secure',
     'upsert_external_link_secure',
     'delete_external_link_secure',
-    'save_push_subscription_secure'
+    'save_push_subscription_secure',
+    'delete_push_subscription_secure'
   ],
   koordinator: []
 };

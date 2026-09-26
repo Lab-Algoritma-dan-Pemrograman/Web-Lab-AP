@@ -62,6 +62,10 @@ export const subscribeToWebPush = async (user: any) => {
 
     const subJson = sub.toJSON();
     if (subJson.endpoint && subJson.keys?.p256dh && subJson.keys?.auth) {
+      // Satu jalur saja: proxy /api/rpc menyuntik p_caller_id dari JWT, dan
+      // hanya RPC ini yang punya GRANT di produksi. Fallback upsert langsung ke
+      // tabel dulu tersembunyi di dalam `if (error)`, jadi kegagalannya (401 anon
+      // key) tercatat sebagai "berhasil" di log.
       const { error } = await supabase.rpc("save_push_subscription_secure", {
         p_caller_id: Number(user.id),
         p_endpoint: subJson.endpoint,
@@ -71,15 +75,8 @@ export const subscribeToWebPush = async (user: any) => {
       });
 
       if (error) {
-        console.warn("RPC save_push_subscription_secure warning, trying fallback upsert:", error.message);
-        await supabase.from("push_subscriptions").upsert({
-          user_id: Number(user.id),
-          endpoint: subJson.endpoint,
-          p256dh: subJson.keys.p256dh,
-          auth: subJson.keys.auth,
-          user_agent: navigator.userAgent,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "endpoint" });
+        console.error("Gagal menyimpan langganan VAPID Web Push:", error.message);
+        return;
       }
 
       console.log("VAPID Web Push subscription saved successfully for user:", user.id);
@@ -99,7 +96,16 @@ export const unsubscribeWebPush = async (user?: any) => {
     if (reg) {
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        // Lewat RPC: akses tabel langsung selalu 401 di produksi (role anon tidak
+        // diberi GRANT), sehingga token push lama tak pernah terhapus saat logout
+        // dan perangkat yang sama tetap menerima notifikasi pengguna sebelumnya.
+        if (user?.id) {
+          const { error } = await supabase.rpc("delete_push_subscription_secure", {
+            p_caller_id: Number(user.id),
+            p_endpoint: sub.endpoint,
+          });
+          if (error) console.error("Gagal menghapus langganan push dari DB:", error.message);
+        }
         await sub.unsubscribe();
         console.log("VAPID Push subscription removed on logout");
       }
