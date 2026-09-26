@@ -39,13 +39,17 @@ export default function JadwalSaya() {
         p_schedule_id: sid
       });
       if (error) throw error;
-      map[sid] = (data || []).map((m: any) => ({
-        id: m.id,
-        student_id: m.student_id,
-        assistant_id: m.assistant_id,
-        student: { id: m.student_id, full_name: m.student_name, username: m.student_nim,
-                   shift: m.student_shift, class_code: m.student_class_code }
-      }));
+      // RPC sudah membatasi ke rekan satu asisten. Jadi cukup buang baris milik
+      // sendiri (kartu ini sudah menampilkan identitas pemanggil di header).
+      map[sid] = (data || [])
+        .filter((m: any) => String(m.student_id) !== String(user!.id))
+        .map((m: any) => ({
+          id: m.id,
+          student_id: m.student_id,
+          assistant_id: m.assistant_id,
+          student: { id: m.student_id, full_name: m.student_name, username: m.student_nim,
+                     shift: m.student_shift, class_code: m.student_class_code }
+        }));
     }
     setKelompok(map);
   };
@@ -208,12 +212,8 @@ export default function JadwalSaya() {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredSchedules.map((item, idx) => {
-          // Bila praktikan belum diplotting ke asisten mana pun (assistant_id NULL),
-          // tampilkan seluruh anggota jadwalnya daripada daftar kosong.
-          const anggota = kelompok[item.schedule_id] || [];
-          const temanKelompok = item.assistant?.id
-            ? anggota.filter((m: any) => m.assistant_id === item.assistant.id)
-            : anggota;
+          // Scope satu asisten sudah dijamin RPC (termasuk kasus assistant_id NULL).
+          const temanKelompok = kelompok[item.schedule_id] || [];
           const greeting = getGreeting();
           const honorific = getHonorific(item.assistant?.assistant_code);
           const waText = buildWaText(waTemplates, {
@@ -276,10 +276,10 @@ export default function JadwalSaya() {
                   <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-2">
                     <Users className="w-4 h-4" /> Kelompok Saya
                   </div>
-                  <Badge variant="outline" className="bg-white">{temanKelompok.length} Mahasiswa</Badge>
+                  <Badge variant="outline" className="bg-white">{temanKelompok.length} orang</Badge>
                 </div>
                 {temanKelompok.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">Data kelompok belum diplotting.</p>
+                  <p className="text-sm text-muted-foreground italic">Belum ada rekan satu kelompok yang diplotting.</p>
                 ) : (
                   <ol className="space-y-1.5">
                     {temanKelompok.map((m: any, i: number) => (

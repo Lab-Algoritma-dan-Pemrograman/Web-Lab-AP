@@ -48,12 +48,12 @@ describe("JadwalSaya untuk praktikan", () => {
       }
       if (fn === "get_system_settings_full_secure") return Promise.resolve({ data: [], error: null }) as any;
       if (fn === "get_group_members_secure") {
-        // Seluruh kelas, termasuk praktikan bimbingan asisten lain.
+        // Kondisi setelah migration: hanya rekan satu asisten (1859), termasuk
+        // baris pemanggil sendiri yang harus disaring UI.
         return Promise.resolve({
           data: [
-            { id: 2059, student_id: 1891, assistant_id: 1859, student_name: "BARQY MUNAWWIR", student_nim: "202615001", student_shift: "1", student_class_code: "C" },
-            { id: 2060, student_id: 1892, assistant_id: 1859, student_name: "KATARINA SHANEITTA", student_nim: "202615006", student_shift: "1", student_class_code: "C" },
-            { id: 2099, student_id: 1950, assistant_id: 1744, student_name: "ORANG LAIN", student_nim: "202615099", student_shift: "2", student_class_code: "C" },
+            { id: 2059, student_id: 1891, assistant_id: 1859, student_name: "BARQY MUNAWWIR", student_nim: "202615001", student_shift: "1", student_class_code: "C", viewer_assistant_id: 1859 },
+            { id: 2060, student_id: 1892, assistant_id: 1859, student_name: "KATARINA SHANEITTA", student_nim: "202615006", student_shift: "1", student_class_code: "C", viewer_assistant_id: 1859 },
           ],
           error: null,
         }) as any;
@@ -67,12 +67,13 @@ describe("JadwalSaya untuk praktikan", () => {
     expect(screen.getByText("NAUFAL RAIHAN SAPUTRA")).toBeInTheDocument();
     expect(screen.getByText("Chat Asisten")).toBeInTheDocument();
 
-    // Hanya praktikan dengan assistant_id sama yang masuk kelompok (2 dari 3 baris).
+    // RPC mengembalikan 2 baris (diri sendiri + 1 rekan); baris diri sendiri dibuang.
     expect(screen.getByText(/Kelompok Saya/)).toBeInTheDocument();
     expect(screen.queryByText(/Kelompok Bimbingan/)).not.toBeInTheDocument();
-    expect(screen.getByText("2 Mahasiswa")).toBeInTheDocument();
-    expect(screen.getByText("202615001")).toBeInTheDocument();
+    expect(screen.getByText("1 orang")).toBeInTheDocument();
+    expect(screen.queryByText("202615001")).not.toBeInTheDocument();
     expect(screen.getByText("202615006")).toBeInTheDocument();
-    expect(screen.queryByText("202615099")).not.toBeInTheDocument();
+    // Beberapa elemen boleh memuat nomor asisten (teks + href), jadi pakai getAllBy.
+    expect(screen.getAllByText(/6281282030818/).length).toBeGreaterThan(0);
   });
 });
