@@ -139,15 +139,16 @@ export default function Absensi() {
       });
 
       // Sumber kebenaran: ambil mahasiswa dari tabel users yang class_code DAN major-nya cocok
+      // Format class_code BEDA antar tabel: users pakai "TE B"/"TSE B"/"TL A", schedules pakai "B"/"A" dst.
+      // Jadi jangan bandingkan ketat — pakai isMatchingClassCode() yang sudah menangani kedua format.
       const praktikanForClass = (allUsersData || []).filter((u: any) => {
         if (canonRole(u.role) !== 'praktikan') return false;
-        if (targetSched?.class_code && u.class_code !== targetSched.class_code) return false;
+        if (targetSched?.class_code && !isMatchingClassCode(u.class_code, targetSched.class_code, targetSched.title)) return false;
         if (targetSched?.major && u.major !== targetSched.major) return false;
         return true;
       });
 
-      // Buat set NIM dari group_members untuk enrichment info asisten, dll.
-      const groupMemberNims = new Set((groupData || []).map((m: any) => m.student_nim));
+      const groupMemberIds = new Set((groupData || []).map((m: any) => String(m.student_id)));
 
       const finalList = praktikanForClass.map((u: any) => {
         // Ambil data tambahan dari group_members jika ada (misalnya asisten kelas)
@@ -163,7 +164,7 @@ export default function Absensi() {
           student_shift: u.shift || "1",
           student_class_code: u.class_code,
           student_major: u.major || targetSched?.major || "",
-          _in_group: groupMemberNims.has(u.username),
+          _in_group: groupMemberIds.has(String(u.id)),
         };
       });
 

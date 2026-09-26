@@ -18,14 +18,30 @@ const ROLE_ALIASES: Record<string, string> = {
 const canonRole = (r: string): string => ROLE_ALIASES[r] ?? r;
 
 // Daftar RPC yang diizinkan untuk diakses secara publik tanpa token JWT
+// C-05: 'login_user' SENGAJA TIDAK di sini — fungsi itu mengembalikan hash
+// password (bcrypt) dan hanya boleh dipanggil server-side dgn service_role
+// (lihat api/auth/login.ts). Login pengguna lewat /api/auth/login, bukan proxy ini.
 const PUBLIC_RPCS = [
   'check_username_exists',
-  'login_user',
   'register_user',
   'get_public_settings',
   'get_qr_session_secure',
   'get_renter_items_secure'
 ];
+
+// C-05: buang field kredensial dari respons SEBELUM dikirim ke klien.
+// Service-role di sisi server tetap menerima objek utuh; klien tidak pernah
+// boleh melihat hash password walau RPC-nya lupa memfilter kolomnya.
+function stripCredentials(data: any): any {
+  const scrub = (row: any) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+    const { password, password_hash, fb_password_hash, fb_password_salt, ...rest } = row;
+    return rest;
+  };
+  if (Array.isArray(data)) return data.map(scrub);
+  if (data && typeof data === 'object') return scrub(data);
+  return data;
+}
 
 // Pemetaan Hak Akses RPC berdasarkan Role User (Zero-Trust RBAC)
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -327,7 +343,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: clientMessage, details: error.message });
     }
 
-    return res.status(200).json(data);
+    return res.status(200).json(stripCredentials(data));
   } catch (err: any) {
     console.error(`Proxy Exception in RPC [${fnName}]:`, err);
     return res.status(500).json({ error: "Internal server error" });

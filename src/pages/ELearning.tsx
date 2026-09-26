@@ -12,7 +12,14 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
+// Fallback hardcode: env Vercel pernah menyimpan URL deployment mati
+// (e-learning-three-sage.vercel.app -> DEPLOYMENT_NOT_FOUND) yang bikin
+// SSO gagal. Domain resmi sekarang = elearning.algohub.web.id.
+// Env lama yang mengarah ke deployment *.vercel.app diabaikan.
+const RAW_ELEARNING_URL = import.meta.env.VITE_ELEARNING_URL || "";
+const ELEARNING_URL = /vercel\.app\/?$/.test(RAW_ELEARNING_URL.trim())
+  ? "https://elearning.algohub.web.id/"
+  : (RAW_ELEARNING_URL.trim() || "https://elearning.algohub.web.id/");
 
 // ===== JWT via Server API (Secret never reaches the browser) =====
 

@@ -3,11 +3,24 @@ import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { getDailyQuote } from "../src/lib/quotes.js";
 
-const VAPID_PUBLIC_KEY = process.env.VITE_VAPID_PUBLIC_KEY || "BIrsvU55B5AXjGVqi1kVqKgINewqYRiIFE5wDBAapS17GQiA8Xx5hphZ40Q4d-u83wt5zGYzjzqQuzbufcz7XuU";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "HcUZLw1hhIKxj2Hy9JWLP_9AVsgK-ee6J8YhCX9hw9g";
+// MEDIUM-04: TIDAK ADA fallback hardcoded. Kunci VAPID private pernah bocor
+// (repo publik) → sudah dirotasi. Kini wajib dari env Vercel; jika kosong,
+// endpoint ini mengirim alert dan berhenti alih-alih memakai kunci bocor.
+// PUBLIC key aman dibundel (memang dipublikasikan ke browser) — fallback ke
+// key hasil rotasi supaya push tetap hidup walau env VITE_ belum diset.
+const VAPID_PUBLIC_KEY =
+  process.env.VITE_VAPID_PUBLIC_KEY ||
+  process.env.VAPID_PUBLIC_KEY ||
+  "BKAXOmOt7QXutFWQp9GEPf17gU0BkTAd_xzAeQtIWONnnnUo7XUI3m4hunhgqaY1bbuKMKw3GUq44jD5Xd2Dpc0";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
 const VAPID_SUBJECT = "mailto:admin@lab-ap.web.id";
 
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  console.error("[cron-check-shifts] VAPID keys belum diset di environment — push tidak akan dikirim.");
+}
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;

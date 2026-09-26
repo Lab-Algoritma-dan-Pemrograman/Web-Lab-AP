@@ -8,7 +8,13 @@ import { toast } from "sonner";
 import { getDailyQuote } from "./quotes";
 import { supabase } from "@/integrations/supabase/client";
 
-export const VAPID_PUBLIC_KEY = "BIrsvU55B5AXjGVqi1kVqKgINewqYRiIFE5wDBAapS17GQiA8Xx5hphZ40Q4d-u83wt5zGYzjzqQuzbufcz7XuU";
+// MEDIUM-04: public key hasil rotasi 2026-09-25 (pasangan private key
+// dirotasi BERSAMA key ini — lihat qa-audit/vapid_rotated_20260925.txt,
+// lalu HAPUS private key dari file itu setelah diset ke Vercel env).
+// Public key aman di-bundle; bisa dioverride env saat build.
+export const VAPID_PUBLIC_KEY =
+  (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY ||
+  "BKAXOmOt7QXutFWQp9GEPf17gU0BkTAd_xzAeQtIWONnnnUo7XUI3m4hunhgqaY1bbuKMKw3GUq44jD5Xd2Dpc0";
 
 export const urlBase64ToUint8Array = (base64String: string) => {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -114,9 +120,13 @@ export const triggerServerWebPush = async (
   url: string = "/jadwal-jaga"
 ) => {
   try {
+    const storedToken = localStorage.getItem("lab_jwt_token");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
     const res = await fetch("/api/send-push", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      headers,
       body: JSON.stringify({
         targetUserId,
         title,
@@ -149,9 +159,13 @@ export const triggerServerWhatsApp = async (
   targetPhone?: string
 ) => {
   try {
+    const storedToken = localStorage.getItem("lab_jwt_token");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
     const res = await fetch("/api/send-wa", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      headers,
       body: JSON.stringify({
         targetUserId,
         targetPhone,
