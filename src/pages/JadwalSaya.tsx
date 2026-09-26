@@ -17,7 +17,7 @@ export default function JadwalSaya() {
   const [loading, setLoading] = useState(true);
   const [schedulesData, setSchedulesData] = useState<any[]>([]);
   const [waTemplates, setWaTemplates] = useState<any>(null);
-  /** kelompok[schedule_id] = daftar praktikan pada jadwal itu */
+  /** kelompok[schedule_id] = rekan satu kelompok bimbingan (tanpa nomor HP) */
   const [kelompok, setKelompok] = useState<Record<string, any[]>>({});
   // role sudah kanonik dari auth; 'mahasiswa' hanya jaring pengaman untuk data lama.
   const isPraktikan = canonRole(user?.role) === 'praktikan' || user?.role === 'mahasiswa';
@@ -39,17 +39,13 @@ export default function JadwalSaya() {
         p_schedule_id: sid
       });
       if (error) throw error;
-      // RPC sudah membatasi ke rekan satu asisten. Jadi cukup buang baris milik
-      // sendiri (kartu ini sudah menampilkan identitas pemanggil di header).
-      map[sid] = (data || [])
-        .filter((m: any) => String(m.student_id) !== String(user!.id))
-        .map((m: any) => ({
-          id: m.id,
-          student_id: m.student_id,
-          assistant_id: m.assistant_id,
-          student: { id: m.student_id, full_name: m.student_name, username: m.student_nim,
-                     shift: m.student_shift, class_code: m.student_class_code }
-        }));
+      map[sid] = (data || []).map((m: any) => ({
+        id: m.id,
+        student_id: m.student_id,
+        assistant_id: m.assistant_id,
+        student: { id: m.student_id, full_name: m.student_name, username: m.student_nim,
+                   shift: m.student_shift, class_code: m.student_class_code }
+      }));
     }
     setKelompok(map);
   };
@@ -212,8 +208,12 @@ export default function JadwalSaya() {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredSchedules.map((item, idx) => {
-          // Scope satu asisten sudah dijamin RPC (termasuk kasus assistant_id NULL).
-          const temanKelompok = kelompok[item.schedule_id] || [];
+          // Bila praktikan belum diplotting ke asisten mana pun (assistant_id NULL),
+          // tampilkan seluruh anggota jadwalnya daripada daftar kosong.
+          const anggota = kelompok[item.schedule_id] || [];
+          const temanKelompok = item.assistant?.id
+            ? anggota.filter((m: any) => m.assistant_id === item.assistant.id)
+            : anggota;
           const greeting = getGreeting();
           const honorific = getHonorific(item.assistant?.assistant_code);
           const waText = buildWaText(waTemplates, {
