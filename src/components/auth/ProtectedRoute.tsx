@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { canonRole, roleAllowed } from "@/lib/roles";
+import { canonRole, roleAllowed, ALWAYS_ALLOWED_MENUS } from "@/lib/roles";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -32,8 +32,14 @@ export default function ProtectedRoute({ children, allowedRoles, requiredMenuKey
     return <Navigate to="/beranda" replace />;
   }
 
-  // Cek Hak Akses Divisi (Khusus Asisten; admin/koordinator bypass)
-  if (canonRole(role) === "asisten" && requiredMenuKey && !allowedPaths.includes(requiredMenuKey)) {
+  // Cek Hak Akses Divisi (Khusus Asisten; admin/koordinator bypass).
+  // ALWAYS_ALLOWED_MENUS dikecualikan: alat kerja dasar semua asisten.
+  if (
+    canonRole(role) === "asisten" &&
+    requiredMenuKey &&
+    !ALWAYS_ALLOWED_MENUS.includes(requiredMenuKey) &&
+    !allowedPaths.includes(requiredMenuKey)
+  ) {
     return <Navigate to="/beranda" replace />;
   }
 

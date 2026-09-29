@@ -5,7 +5,7 @@ import {
   MessageSquare, QrCode, CalendarDays, GraduationCap, PackageSearch, ListChecks, History
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { roleAllowed, canonRole } from "@/lib/roles";
+import { roleAllowed, canonRole, ALWAYS_ALLOWED_MENUS } from "@/lib/roles";
 import { supabase } from "@/integrations/supabase/client"; 
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -118,8 +118,8 @@ export function AppSidebar() {
     // asisten: roles list + pembatasan menu_key divisi
     if (r === 'asisten') {
         if (!roleAllowed(r, item.roles)) return false;
-        // /absensi & /buat-qr selalu tampil untuk semua asisten
-        if (item.url === '/absensi' || item.url === '/buat-qr') return true;
+        // Alat kerja dasar semua asisten selalu tampil, apa pun divisinya.
+        if (ALWAYS_ALLOWED_MENUS.includes(item.url)) return true;
         if (item.url === '/absensi' && isPJAbsenToday) return true;
         if (RESTRICTED_MENUS.includes(item.url)) return allowedPaths.includes(item.url);
         return true;

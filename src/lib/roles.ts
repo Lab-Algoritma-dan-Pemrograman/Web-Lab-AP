@@ -38,3 +38,12 @@ export const roleAllowed = (role: string | undefined | null, allowed: string[]):
 /** Staff = koordinator | asisten */
 export const isStaffRole = (role?: string | null): boolean =>
   ['koordinator', 'asisten'].includes(canonRole(role));
+
+/**
+ * Menu yang selalu terbuka untuk SEMUA asisten, apa pun divisinya.
+ * Dikecualikan dari pembatasan division_access: halaman ini bukan hak akses
+ * per-divisi, tapi alat kerja dasar (absen, QR, materi praktikum).
+ * Dipakai oleh AppSidebar (visibilitas menu) dan ProtectedRoute (akses URL)
+ * agar keduanya tidak bisa berbeda pendapat.
+ */
+export const ALWAYS_ALLOWED_MENUS = ['/absensi', '/buat-qr', '/e-learning'];
