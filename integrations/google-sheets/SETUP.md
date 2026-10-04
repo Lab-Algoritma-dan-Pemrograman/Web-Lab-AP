@@ -45,6 +45,13 @@ Sheet kelas dipilih dari `users.major` + `users.class_code`:
 
 ## Langkah pasang
 
+0. **Jalankan migrasi DB** (sekali saja)
+   - Supabase → SQL Editor → jalankan
+     `supabase/migrations/20261004141500_add_meeting_to_attendance_logs.sql`.
+   - Ini menambah kolom `attendance_logs.meeting` dan parameter `p_meeting` pada
+     `upsert_attendance_log_secure`. Tanpa ini, dropdown Pertemuan di aplikasi
+     akan error dan absen manual tetap tanpa penanda pertemuan.
+
 1. **Buat Google Sheet-nya**
    - Google Drive → New → File upload → `Penilaian Praktikum.xlsx` → Open with Google Sheets.
    - Cek nama sheet tetap: `TL A`, `TE A`…`TE E`, `TSE A`…`TSE C`.
@@ -90,13 +97,17 @@ Sheet kelas dipilih dari `users.major` + `users.class_code`:
 
 ## Catatan / batasan
 
-- **Absen scan QR** → pertemuan dibaca dari judul sesi. Paling akurat.
-- **Absen manual asisten** (`staff_manual`) tidak menyimpan `session_id`, jadi
-  dicocokkan lewat **tanggal** dengan sesi QR kelas yang sama hari itu. Kalau
-  asisten input absen di hari tanpa sesi QR, baris itu dilaporkan sebagai
-  *"absen manual tanpa tanggal sesi yang cocok"* dan tidak dicentang.
-  Kalau ini sering kejadian, langkah lanjutannya: tambah dropdown Pertemuan di
-  halaman Absensi (quick grid) + simpan ke kolom baru — bilang saja kalau mau.
+- **Urutan penentuan kolom** (paling dipercaya dulu):
+  1. kolom `attendance_logs.meeting` — dipilih asisten lewat dropdown **Pertemuan**
+     di halaman Absensi (wajib diisi saat simpan massal);
+  2. judul sesi QR, kalau absen lewat scan QR;
+  3. **tanggal** absen dicocokkan dengan sesi QR kelas yang sama hari itu
+     (dipakai untuk data lama sebelum kolom `meeting` ada).
+- Laporan sync menampilkan asalnya: `Sumber kolom: pilihan Pertemuan=n, judul sesi QR=n, cocok tanggal=n`.
+  Kalau angka "cocok tanggal" masih besar, itu data lama — aman.
+- Baris `Hadir` yang tidak punya pertemuan **dan** tidak punya sesi QR sejenis
+  dilaporkan sebagai *"Absen Hadir tanpa pertemuan & tanpa sesi QR sejenis"* dan
+  tidak dicentang. Solusinya: asisten pilih dropdown Pertemuan saat input.
 - **Izin/Sakit tidak dicentang** (hanya status `Hadir`).
 - Hapus log absen di aplikasi tidak otomatis menghapus centang kecuali
   `OVERWRITE_FALSE = true`.

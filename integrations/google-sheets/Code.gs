@@ -391,7 +391,7 @@ function syncAbsensi(dryRun) {
   /* ---- 1. Tarik data dari Supabase ---- */
   var users = fetchAll_(cfg, 'users', 'id,username,full_name,major,class_code');
   var logs = fetchAll_(cfg, 'attendance_logs',
-    'id,custom_user_id,status,check_in_time,session_id,type',
+    'id,custom_user_id,status,check_in_time,session_id,type,meeting',
     ['check_in_time=gte.' + encodeURIComponent(cfg.syncFrom + 'T00:00:00+07:00')]);
   var sessions = fetchAll_(cfg, 'qr_sessions', 'id,title');
 
@@ -404,11 +404,13 @@ function syncAbsensi(dryRun) {
 
   // (sheetName|nim) → array boolean panjang MEETING_COLUMNS.length
   var marks = {};
-  // sheetName → { tanggal → indeks kolom } — dipakai untuk absen manual tanpa sesi QR
+  // sheetName → { tanggal → { indeksKolom: true } } — dipakai untuk absen lama tanpa penanda pertemuan
   var dateToColumn = {};
   var unmatchedTitles = {};
   var noSheetStudents = {};
   var manualWithoutDate = 0;
+  // Asal-usul kolom: berguna untuk tahu seberapa banyak data yang masih "nebak".
+  var sourceCount = { meeting: 0, sesiQr: 0, tanggal: 0 };
 
   function ensureMarks(sheetName, nim) {
     var key = sheetName + '|' + nim;
@@ -416,7 +418,14 @@ function syncAbsensi(dryRun) {
     return marks[key];
   }
 
-  /* ---- 3. Pass 1: absen ber-QR → tentukan kolom dari judul sesi ---- */
+  function meetingIndexFromLabel_(label) {
+    var key = normalizeLabel_(label);
+    return Object.prototype.hasOwnProperty.call(MEETING_KEY_TO_INDEX, key)
+      ? MEETING_KEY_TO_INDEX[key]
+      : undefined;
+  }
+
+  /* ---- 3. Pass 1: sesi QR → peta tanggal → kolom, per kelas ---- */
   logs.forEach(function (log) {
     var user = userById[String(log.custom_user_id)];
     if (!user) return;
@@ -427,9 +436,9 @@ function syncAbsensi(dryRun) {
     if (!session) return;
 
     var key = meetingKeyFromTitle_(session.title);
-    var idx = MEETING_KEY_TO_INDEX[key];
+    var idx = meetingIndexFromLabel_(key);
     if (idx === undefined) {
-      if (key !== normalizeLabel_(PENGARAHAN_LABEL) && key !== '') {
+      if (key !== '' && key !== normalizeLabel_(PENGARAHAN_LABEL)) {
         unmatchedTitles[key] = (unmatchedTitles[key] || 0) + 1;
       }
       return;
@@ -438,13 +447,11 @@ function syncAbsensi(dryRun) {
     if (!dateToColumn[sheetName]) dateToColumn[sheetName] = {};
     if (!dateToColumn[sheetName][day]) dateToColumn[sheetName][day] = {};
     dateToColumn[sheetName][day][idx] = true;
-
-    if (isPresent_(log.status)) ensureMarks(sheetName, normalizeNim_(user.username))[idx] = true;
   });
 
-  /* ---- 4. Pass 2: absen manual / izin (tanpa session_id) → cocokkan tanggal ---- */
+  /* ---- 4. Pass 2: tiap absen Hadir → kolom ---- */
+  // Urutan prioritas: kolom `meeting` (dipilih asisten) > judul sesi QR > tanggal.
   logs.forEach(function (log) {
-    if (log.session_id && sessionById[String(log.session_id)]) return;
     if (!isPresent_(log.status)) return;
 
     var user = userById[String(log.custom_user_id)];
@@ -452,12 +459,29 @@ function syncAbsensi(dryRun) {
     var sheetName = sheetNameFor_(user.major, user.class_code);
     if (!sheetName) return;
 
-    var day = wibDate_(log.check_in_time, cfg.timezone);
-    var map = dateToColumn[sheetName] && dateToColumn[sheetName][day];
-    if (!map) { manualWithoutDate++; return; }
+    var idx = meetingIndexFromLabel_(log.meeting);
+    var source = 'meeting';
 
-    var row = ensureMarks(sheetName, normalizeNim_(user.username));
-    Object.keys(map).forEach(function (idx) { row[Number(idx)] = true; });
+    if (idx === undefined) {
+      var session = log.session_id ? sessionById[String(log.session_id)] : null;
+      if (session) {
+        idx = meetingIndexFromLabel_(meetingKeyFromTitle_(session.title));
+        source = 'sesiQr';
+      }
+    }
+
+    if (idx === undefined) {
+      var day = wibDate_(log.check_in_time, cfg.timezone);
+      var map = dateToColumn[sheetName] && dateToColumn[sheetName][day];
+      if (!map) { manualWithoutDate++; return; }
+      var row0 = ensureMarks(sheetName, normalizeNim_(user.username));
+      Object.keys(map).forEach(function (k) { row0[Number(k)] = true; });
+      sourceCount.tanggal++;
+      return;
+    }
+
+    ensureMarks(sheetName, normalizeNim_(user.username))[idx] = true;
+    sourceCount[source]++;
   });
 
   /* ---- 5. Tulis ke spreadsheet ---- */
@@ -544,10 +568,14 @@ function syncAbsensi(dryRun) {
     'data sampai ' + Utilities.formatDate(startedAt, cfg.timezone, 'yyyy-MM-dd HH:mm') + ' WIB';
   var foot = ['', 'Users: ' + users.length + ' | log absen: ' + logs.length + ' | sesi QR: ' + sessions.length,
     'Siswa terpetakan: ' + Object.keys(marks).length + ' | baris diproses: ' + totalRowsTouched,
-    'Checkbox TRUE total: ' + totalTrueCells];
+    'Checkbox TRUE total: ' + totalTrueCells,
+    'Sumber kolom: pilihan Pertemuan=' + sourceCount.meeting +
+      ', judul sesi QR=' + sourceCount.sesiQr +
+      ', cocok tanggal=' + sourceCount.tanggal];
 
   if (manualWithoutDate > 0) {
-    foot.push('Absen manual tanpa tanggal sesi yang cocok: ' + manualWithoutDate + ' (perlu diisi pertemuan manual)');
+    foot.push('Absen Hadir tanpa pertemuan & tanpa sesi QR sejenis: ' + manualWithoutDate +
+      ' (asisten perlu memilih dropdown Pertemuan di halaman Absensi)');
   }
   var unmatched = Object.keys(unmatchedTitles);
   if (unmatched.length) {

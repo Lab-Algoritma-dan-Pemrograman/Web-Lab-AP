@@ -119,9 +119,9 @@ const T = (d) => `${d}T01:00:00+00:00`; // 08:00 WIB
 
 const logs = [];
 let logId = 1;
-const add = (nim, sessionId, dateStr, status = 'Hadir', type = 'scan') => logs.push({
+const add = (nim, sessionId, dateStr, status = 'Hadir', type = 'scan', meeting = null) => logs.push({
   id: logId++, custom_user_id: idByNim[nim], status, check_in_time: T(dateStr),
-  session_id: sessionId, type,
+  session_id: sessionId, type, meeting,
 });
 
 // siswa 1: hadir pengarahan + modul 1,2,3,4&5
@@ -139,6 +139,12 @@ sessions.push(S('alias-session', 'Praktikum Modul 1 - Teknik Elektro A'));
 // siswa 6: judul sesi tak dikenal → harus dilaporkan, tidak dicentang
 add(teANims[5], 'weird-session', dayOf.m4, 'Hadir', 'scan');
 sessions.push(S('weird-session', 'Kelas Pengganti - S1 Teknik Elektro A'));
+
+// siswa 7: absen manual DENGAN dropdown Pertemuan (kolom `meeting`) di hari
+// tanpa sesi QR sama sekali → harus tetap masuk kolom 5.0
+add(teANims[7], null, '2026-10-17', 'Hadir', 'staff_manual', 'Modul 5');
+// siswa 7: `meeting` harus menang atas kecocokan tanggal/sesi QR
+add(teANims[7], sessions[3].id, dayOf.m3, 'Hadir', 'scan', 'Ujian Praktik');
 
 /* ------------------------------- GAS stubs ------------------------------- */
 const props = {
@@ -213,6 +219,12 @@ check('siswa5 alias "Praktikum Modul 1"', at(teA, rowOf(teANims[4]), C.m1), true
 check('siswa6 judul tak dikenal', at(teA, rowOf(teANims[5]), C.m34), false);
 check('pengarahan siswa3 tetap apa adanya', at(teA, rowOf(teANims[2]), C.Pengarahan), false);
 check('NIM lain tidak ikut kena', at(teA, rowOf(teANims[6]), C.m1) !== true, true);
+
+// kolom `meeting` (dropdown Pertemuan di halaman Absensi)
+check('siswa7 manual "Modul 5" tanpa sesi QR → kolom 5.0', at(teA, rowOf(teANims[7]), C.m5), true);
+check('siswa7 "Ujian Praktik" menang atas kecocokan tanggal → kolom Ujian', at(teA, rowOf(teANims[7]), C.ujian), true);
+check('siswa7 tidak nyasar ke kolom 3&4', at(teA, rowOf(teANims[7]), C.m34) !== true, true);
+check('laporan menyebut asal kolom', /Sumber kolom:/.test(report), true);
 
 // dry-run harus nol perubahan
 const before = JSON.stringify(teA._grid);
