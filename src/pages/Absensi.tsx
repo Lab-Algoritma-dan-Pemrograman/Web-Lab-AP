@@ -18,6 +18,19 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 
+// Daftar pertemuan praktikum. Dipakai untuk menandai absen manual (dan menjadi
+// dasar sinkronisasi rekap ke spreadsheet: Pengarahan | 1.0 | 2.0 | 3&4 | 5.0 |
+// 6.0 | Ujian Praktik). Samakan dengan activityOptions di JadwalJaga.
+const MEETING_OPTIONS = [
+  "Pengarahan",
+  "Praktikum Modul 1",
+  "Modul 2",
+  "Modul 3&4",
+  "Modul 5",
+  "Modul 6",
+  "Ujian Praktik",
+];
+
 export default function Absensi() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -56,6 +69,7 @@ export default function Absensi() {
   const [draftAttendance, setDraftAttendance] = useState<{ [key: number]: string }>({});
   const [savingBatch, setSavingBatch] = useState(false);
   const [selectedShiftFilter, setSelectedShiftFilter] = useState<string>("all");
+  const [selectedMeeting, setSelectedMeeting] = useState<string>("");
 
   // State Praktikan (Izin Pribadi)
   const [izinReason, setIzinReason] = useState("");
@@ -259,6 +273,10 @@ export default function Absensi() {
       toast.info("Belum ada perubahan status absensi yang dipilih.");
       return;
     }
+    if (!selectedMeeting) {
+      toast.error("Pilih Pertemuan dulu — absen tanpa pertemuan tidak masuk rekap spreadsheet.");
+      return;
+    }
 
     setSavingBatch(true);
     let successCount = 0;
@@ -272,10 +290,11 @@ export default function Absensi() {
           p_caller_id: user.id,
           p_target_user_id: studentUserId,
           p_status: status,
-          p_notes: `Quick input (${status}) oleh ${user.full_name}`,
+          p_notes: `Quick input (${status}) — ${selectedMeeting} — oleh ${user.full_name}`,
           p_check_in: targetDateTime,
           p_is_verified: true,
-          p_type: 'staff_manual'
+          p_type: 'staff_manual',
+          p_meeting: selectedMeeting
         });
         if (error) {
           console.error("Gagal menyimpan absensi user:", studentUserId, error);
@@ -727,10 +746,11 @@ export default function Absensi() {
         p_caller_id: user.id,
         p_target_user_id: usr.id,
         p_status: targetStatus,
-        p_notes: targetNote || "Input manual oleh Aslab",
+        p_notes: targetNote || `Input manual oleh Aslab${selectedMeeting ? ` — ${selectedMeeting}` : ""}`,
         p_check_in: targetDateTime,
         p_is_verified: true,
-        p_type: 'staff_manual'
+        p_type: 'staff_manual',
+        p_meeting: selectedMeeting || null
       });
       if (error) throw error;
       toast.success("Absensi Manual Berhasil!"); setTargetNim(""); setTargetNote("");
@@ -919,6 +939,23 @@ export default function Absensi() {
                         </Select>
                       </div>
 
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-700">Pertemuan</Label>
+                        <Select value={selectedMeeting} onValueChange={setSelectedMeeting}>
+                          <SelectTrigger className="w-full bg-white">
+                            <SelectValue placeholder="Pilih pertemuan..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MEETING_OPTIONS.map((m) => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] leading-snug text-slate-400">
+                          Menentukan kolom checkbox <span className="font-semibold">Kehadiran (10%)</span> yang terisi di spreadsheet rekap.
+                        </p>
+                      </div>
+
                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
                         <Label className="text-xs font-semibold text-slate-600">Filter Shift:</Label>
                         <div className="w-[140px]">
@@ -1091,6 +1128,10 @@ export default function Absensi() {
                     <CardTitle className="text-sm font-semibold text-slate-700">Input Manual per NIM (Fallback)</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    <p className="text-[10px] text-slate-500">
+                      Pertemuan: <span className="font-semibold text-slate-700">{selectedMeeting || "belum dipilih"}</span>
+                      {!selectedMeeting && " (pilih di panel kiri kalau ingin masuk rekap spreadsheet)"}
+                    </p>
                     <div className="space-y-1.5">
                       <Label className="text-xs">NIM Praktikan</Label>
                       <Input placeholder="Masukkan NIM..." value={targetNim} onChange={e => setTargetNim(e.target.value)} className="bg-white h-8 text-xs" />

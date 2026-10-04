@@ -133,9 +133,14 @@ describe("Absensi (Attendance) Feature across Roles", () => {
     );
 
     // Verify manual help form is present for staff
-    expect(screen.getByText("Bantu Absen Manual")).toBeInTheDocument();
+    expect(screen.getByText("Input Manual per NIM (Fallback)")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Masukkan NIM...")).toBeInTheDocument();
     expect(screen.getByText("Simpan Kehadiran")).toBeInTheDocument();
+
+    // Dropdown Pertemuan — penanda kolom rekap spreadsheet (migrasi 20261004141500)
+    expect(screen.getAllByText("Pertemuan").length).toBeGreaterThan(0);
+    expect(screen.getByText("Pilih pertemuan...")).toBeInTheDocument();
+    expect(screen.getByText(/belum dipilih/)).toBeInTheDocument();
 
     // Verify table lists the students
     expect(await screen.findByText("Budi Santoso")).toBeInTheDocument();
