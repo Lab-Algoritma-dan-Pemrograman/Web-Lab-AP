@@ -38,7 +38,7 @@ export default function BuatQR() {
 
   // --- DATA BAKU ---
   const meetingOptions = [
-    "Pengarahan", "Modul 1", "Modul 2", "Modul 3", "Modul 4&5", "Modul 6", "Presentasi"
+    "Pengarahan", "Modul 1", "Modul 2", "Modul 3&4", "Modul 5", "Modul 6", "Ujian Praktik"
   ];
 
   const majorOptions = [

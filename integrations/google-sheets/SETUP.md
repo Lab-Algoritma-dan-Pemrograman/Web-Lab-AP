@@ -30,12 +30,12 @@ Pemetaannya (ubah di `MEETING_KEY_TO_INDEX` dalam `Code.gs` kalau penamaan berub
 | Pengarahan | Pengarahan *(dilewati)* |
 | Modul 1 / Praktikum Modul 1 | 1.0 |
 | Modul 2 | 2.0 |
-| Modul 3 | 3&4 |
-| Modul 4&5 / Modul 5 | 5.0 |
+| Modul 3&4 | 3&4 |
+| Modul 5 | 5.0 |
 | Modul 6 | 6.0 |
-| Presentasi / Ujian Praktik | Ujian Praktik |
+| Ujian Praktik | Ujian Praktik |
 
-Daftar `BuatQR.tsx` memakai `Modul 3` + `Modul 4&5`, sedangkan kolom sheet
+Daftar `BuatQR.tsx` memakai `Modul 3&4` + `Modul 5`, sedangkan kolom sheet
 memakai `3&4` + `5.0`. Dua-duanya berisi 6 pertemuan dengan urutan sama, jadi
 pemetaan di atas **posisional**: pertemuan ke-n → kolom ke-n.
 

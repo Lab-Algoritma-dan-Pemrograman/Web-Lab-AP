@@ -30,7 +30,7 @@ var PENGARAHAN_LABEL = 'Pengarahan';
  * Judul sesi dibuat di halaman "Buat QR" dengan format:
  *     "<Jenis Pertemuan> - <Jurusan> <Kelas>"     contoh: "Modul 1 - S1 Teknik Elektro A"
  *
- * Catatan: daftar di BuatQR memakai "Modul 3" lalu "Modul 4&5", sedangkan
+ * Catatan: daftar di BuatQR memakai "Modul 3&4" lalu "Modul 5", sedangkan
  * kolom spreadsheet memakai "3&4" lalu "5.0". Karena keduanya sama-sama
  * berjumlah 6 pertemuan dengan urutan yang sama, pemetaan di bawah ini
  * bersifat POSISIONAL: pertemuan ke-n → kolom ke-n.
