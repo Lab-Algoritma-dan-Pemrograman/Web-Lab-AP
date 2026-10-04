@@ -18,12 +18,12 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 
-// Daftar pertemuan praktikum. Dipakai untuk menandai absen manual (dan menjadi
-// dasar sinkronisasi rekap ke spreadsheet: Pengarahan | 1.0 | 2.0 | 3&4 | 5.0 |
-// 6.0 | Ujian Praktik). Samakan dengan activityOptions di JadwalJaga.
+// Daftar pertemuan praktikum — samakan dengan meetingOptions di BuatQR dan
+// kolom "Kehadiran (10%)" spreadsheet penilaian:
+// Pengarahan | 1.0 | 2.0 | 3&4 | 5.0 | 6.0 | Ujian Praktik
 const MEETING_OPTIONS = [
   "Pengarahan",
-  "Praktikum Modul 1",
+  "Modul 1",
   "Modul 2",
   "Modul 3&4",
   "Modul 5",
