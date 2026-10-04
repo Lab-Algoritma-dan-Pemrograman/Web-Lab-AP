@@ -482,6 +482,50 @@ function findLayout_(sheet) {
   return { headerRow: headerRow, nimCol: nimCol, columns: columns };
 }
 
+/* --------------------------- IDENTITAS MAHASISWA -------------------------- */
+
+/**
+ * Ambil data user. Nama kolom beda-beda antar-project/versi skema
+ * (mis. `major` vs `division`), jadi daftar kolom dicoba dari yang paling
+ * lengkap lalu mundur sampai ada yang diterima PostgREST.
+ */
+function fetchUsers_(cfg) {
+  var candidates = [
+    'id,username,full_name,nim,major,division,class_code,role',
+    'id,username,full_name,nim,major,class_code,role',
+    'id,username,full_name,major,class_code,role',
+    'id,username,full_name,class_code'
+  ];
+  var lastErr = null;
+  for (var i = 0; i < candidates.length; i++) {
+    try {
+      return fetchAll_(cfg, 'users', candidates[i]);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * NIM praktikan bisa duduk di kolom `nim` ATAU `username` — aplikasinya sendiri
+ * mencocokkan keduanya (`ep.nim = u.nim OR ep.nim = u.username`). Kalau salah
+ * satu saja yang dipakai, separuh mahasiswa akan dilaporkan "tidak ada di DB".
+ */
+function nimCandidates_(user) {
+  var out = [];
+  [user.nim, user.username].forEach(function (v) {
+    var nim = normalizeNim_(v);
+    if (nim && /^\d{6,}$/.test(nim) && out.indexOf(nim) === -1) out.push(nim);
+  });
+  return out;
+}
+
+/** Jurusan bisa ada di `major` atau `division`, tergantung versi skema. */
+function majorOf_(user) {
+  return user.major || user.division || '';
+}
+
 /* ------------------------------- INTI SYNC ------------------------------- */
 
 /**
@@ -503,7 +547,7 @@ function syncAbsensi(dryRun) {
   var startedAt = new Date();
 
   /* ---- 1. Tarik data dari Supabase ---- */
-  var users = fetchAll_(cfg, 'users', 'id,username,full_name,major,class_code');
+  var users = fetchUsers_(cfg);
   var logs = fetchAll_(cfg, 'attendance_logs',
     'id,custom_user_id,status,check_in_time,session_id,type,meeting',
     ['check_in_time=gte.' + encodeURIComponent(cfg.syncFrom + 'T00:00:00+07:00')]);
@@ -531,6 +575,29 @@ function syncAbsensi(dryRun) {
     return marks[key];
   }
 
+  /**
+   * Tandai satu user di sheet-nya. NIM bisa ada di `nim` dan/atau `username`,
+   * jadi keduanya ditandai supaya baris di sheet tetap ketemu walau DB
+   * menyimpan identitasnya di kolom yang berbeda.
+   */
+  function markUser_(sheetName, user, apply) {
+    var nims = nimCandidates_(user);
+    for (var i = 0; i < nims.length; i++) apply(ensureMarks(sheetName, nims[i]));
+  }
+
+  // Statistik identitas: untuk membedakan "user belum ada di DB" dari
+  // "user ada tapi kolom identitasnya lain".
+  var idStats = { tanpaNim: 0, nimDariKolomNim: 0, nimDariUsername: 0, tanpaMajor: 0, majorDariDivision: 0 };
+  users.forEach(function (u) {
+    var nims = nimCandidates_(u);
+    if (!nims.length) idStats.tanpaNim++;
+    var dariNim = normalizeNim_(u.nim);
+    if (dariNim && /^\d{6,}$/.test(dariNim)) idStats.nimDariKolomNim++;
+    else if (nims.length) idStats.nimDariUsername++;
+    if (!u.major && u.division) idStats.majorDariDivision++;
+    if (!majorOf_(u)) idStats.tanpaMajor++;
+  });
+
   function meetingIndexFromLabel_(label) {
     var key = normalizeLabel_(label);
     return Object.prototype.hasOwnProperty.call(MEETING_KEY_TO_INDEX, key)
@@ -542,7 +609,7 @@ function syncAbsensi(dryRun) {
   logs.forEach(function (log) {
     var user = userById[String(log.custom_user_id)];
     if (!user) return;
-    var sheetName = sheetNameFor_(user.major, user.class_code);
+    var sheetName = sheetNameFor_(majorOf_(user), user.class_code);
     if (!sheetName) return;
 
     var session = log.session_id ? sessionById[String(log.session_id)] : null;
@@ -569,7 +636,7 @@ function syncAbsensi(dryRun) {
 
     var user = userById[String(log.custom_user_id)];
     if (!user) return;
-    var sheetName = sheetNameFor_(user.major, user.class_code);
+    var sheetName = sheetNameFor_(majorOf_(user), user.class_code);
     if (!sheetName) return;
 
     var idx = meetingIndexFromLabel_(log.meeting);
@@ -587,13 +654,14 @@ function syncAbsensi(dryRun) {
       var day = wibDate_(log.check_in_time, cfg.timezone);
       var map = dateToColumn[sheetName] && dateToColumn[sheetName][day];
       if (!map) { manualWithoutDate++; return; }
-      var row0 = ensureMarks(sheetName, normalizeNim_(user.username));
-      Object.keys(map).forEach(function (k) { row0[Number(k)] = true; });
+      markUser_(sheetName, user, function (m) {
+        Object.keys(map).forEach(function (k) { m[Number(k)] = true; });
+      });
       sourceCount.tanggal++;
       return;
     }
 
-    ensureMarks(sheetName, normalizeNim_(user.username))[idx] = true;
+    markUser_(sheetName, user, function (m) { m[idx] = true; });
     sourceCount[source]++;
   });
 
@@ -601,6 +669,7 @@ function syncAbsensi(dryRun) {
   var report = [];
   var totalRowsTouched = 0;
   var totalTrueCells = 0;
+  var missingBySheet = {};
 
   ss.getSheets().forEach(function (sheet) {
     var layout = findLayout_(sheet);
@@ -670,6 +739,7 @@ function syncAbsensi(dryRun) {
     }
 
     totalTrueCells += sheetTrue;
+    if (missing.length) missingBySheet[sheet.getName()] = missing;
     var line = '• ' + sheet.getName() + ': ' + numRows + ' baris, ' +
       sheetTrue + ' checkbox terisi' + (dryRun ? '' : ', ' + changed + ' sel diubah');
     if (missing.length) line += ' (' + missing.length + ' NIM tidak ada di DB: ' + missing.slice(0, 5).join(', ') + ')';
@@ -677,9 +747,16 @@ function syncAbsensi(dryRun) {
   });
 
   /* ---- 6. Ringkasan ---- */
+  var host = (cfg.url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || ['', cfg.url])[1];
   var head = (dryRun ? 'SIMULASI — ' : 'SYNC — ') +
     'data sampai ' + Utilities.formatDate(startedAt, cfg.timezone, 'yyyy-MM-dd HH:mm') + ' WIB';
-  var foot = ['', 'Users: ' + users.length + ' | log absen: ' + logs.length + ' | sesi QR: ' + sessions.length,
+  var foot = ['', 'Project: ' + host + ' | sheet: ' + ss.getName(),
+    'Users: ' + users.length + ' | log absen: ' + logs.length + ' | sesi QR: ' + sessions.length,
+    'Identitas user: NIM di kolom nim=' + idStats.nimDariKolomNim +
+      ', lewat username=' + idStats.nimDariUsername +
+      ', tanpa NIM=' + idStats.tanpaNim,
+    'Jurusan: kosong di kolom major=' + idStats.majorDariDivision +
+      ' (dipakai kolom division) | tanpa jurusan=' + idStats.tanpaMajor,
     'Siswa terpetakan: ' + Object.keys(marks).length + ' | baris diproses: ' + totalRowsTouched,
     'Checkbox TRUE total: ' + totalTrueCells,
     'Sumber kolom: pilihan Pertemuan=' + sourceCount.meeting +
@@ -705,6 +782,19 @@ function syncAbsensi(dryRun) {
   if (orphan.length) foot.push('Kelas tanpa sheet (dilewati): ' + orphan.join(', '));
 
   var text = head + '\n' + report.join('\n') + foot.join('\n');
+
+  // Daftar lengkap NIM tak dikenal — terlalu panjang untuk dialog, jadi hanya
+  // masuk Execution log (View → Logs) supaya bisa dipakai mengecek data DB.
+  var detail = ['', '--- DAFTAR LENGKAP NIM TIDAK DITEMUKAN DI DB ---'];
+  Object.keys(missingBySheet).forEach(function (name) {
+    detail.push(name + ' (' + missingBySheet[name].length + '): ' + missingBySheet[name].join(', '));
+  });
+  var totalMissing = Object.keys(missingBySheet).reduce(function (a, k) {
+    return a + missingBySheet[k].length;
+  }, 0);
+  if (!totalMissing) detail.push('(tidak ada — semua NIM di sheet ketemu di DB)');
+
   Logger.log(text);
+  Logger.log(detail.join('\n'));
   return text;
 }

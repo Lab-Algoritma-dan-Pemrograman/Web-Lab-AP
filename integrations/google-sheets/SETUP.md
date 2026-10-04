@@ -149,6 +149,15 @@ Penyebab yang paling sering:
 - Baris `Hadir` yang tidak punya pertemuan **dan** tidak punya sesi QR sejenis
   dilaporkan sebagai *"Absen Hadir tanpa pertemuan & tanpa sesi QR sejenis"* dan
   tidak dicentang. Solusinya: asisten pilih dropdown Pertemuan saat input.
+- **Identitas praktikan dibaca dari dua kolom**: `users.nim` **dan**
+  `users.username` (aplikasinya sendiri mencocokkan keduanya). Jurusan dibaca
+  dari `major`, dan kalau kosong memakai `division`. Ini penting: kalau hanya
+  satu kolom dipakai, separuh mahasiswa akan dilaporkan "tidak ada di DB"
+  padahal barisnya ada.
+- Daftar **lengkap** NIM yang tidak ketemu (per sheet) hanya ditulis ke
+  **Execution log** — dialog/alert cuma menampilkan 5 pertama.
+- Baris ringkasan memuat `Project:` (host Supabase yang dibaca), jumlah user,
+  asal NIM (`nim` vs `username`), dan berapa user yang `major`-nya kosong.
 - **Izin/Sakit tidak dicentang** (hanya status `Hadir`).
 - Hapus log absen di aplikasi tidak otomatis menghapus centang kecuali
   `OVERWRITE_FALSE = true`.
@@ -163,7 +172,8 @@ node integrations/google-sheets/test-harness.mjs
 ```
 
 Harness men-stub `SpreadsheetApp`/`UrlFetchApp`, membaca layout asli dari file
-`Penilaian Praktikum.xlsx`, lalu memverifikasi 25 kasus: pemetaan NIM→baris,
+`Penilaian Praktikum.xlsx`, lalu memverifikasi 33 kasus: pemetaan NIM→baris
+(dari kolom `nim` maupun `username`), jurusan dari `major`/`division`,
 judul sesi→kolom, alias `Praktikum Modul 1`, prioritas kolom `meeting` di atas
 tanggal, absen manual tanpa sesi, izin tidak dicentang, kolom Pengarahan tidak
 tersentuh, dan judul sesi tak dikenal.

@@ -100,9 +100,17 @@ for (let r = 3; r <= teA.getLastRow(); r++) {
 }
 const users = teANims.map((nim, i) => ({
   id: 1000 + i, username: nim, full_name: 'SISWA ' + nim,
-  major: 'Teknik Elektro', class_code: 'A',
+  major: 'Teknik Elektro', class_code: 'A', role: 'praktikan',
 }));
 const idByNim = Object.fromEntries(users.map((u) => [u.username, u.id]));
+
+// Case identitas: sebagian DB menyimpan NIM di kolom `nim` (username-nya nama
+// akun), dan jurusan di kolom `division` — bukan `major`.
+users[6].nim = teANims[6];
+users[6].username = 'siswa.tujuh';
+idByNim[teANims[6]] = users[6].id;
+users[7].major = null;
+users[7].division = 'Teknik Elektro';
 
 const S = (id, title) => ({ id, title });
 const sessions = [
@@ -145,6 +153,10 @@ add(teANims[7], null, '2026-10-17', 'Hadir', 'staff_manual', 'Modul 5');
 // siswa 7: `meeting` harus menang atas kecocokan tanggal/sesi QR
 add(teANims[7], sessions[3].id, dayOf.m3, 'Hadir', 'scan', 'Ujian Praktik');
 
+// siswa 6 (NIM tersimpan di kolom `nim`, username = nama akun): absen Modul 2
+// harus tetap masuk baris NIM-nya
+add(teANims[6], sessions[2].id, dayOf.m2);
+
 /* ------------------------------- GAS stubs ------------------------------- */
 const props = {
   SUPABASE_URL: 'https://stub.supabase.co',
@@ -175,6 +187,19 @@ const context = {
       calls.push(url);
       const table = url.match(/\/rest\/v1\/([a-z_]+)/)[1];
       const data = table === 'users' ? users : table === 'attendance_logs' ? logs : sessions;
+      // PostgREST menolak kolom yang tidak ada → dipakai untuk menguji
+      // fetchUsers_ yang menurunkan daftar kolom secara bertahap.
+      const select = decodeURIComponent((url.match(/[?&]select=([^&]*)/) || [null, ''])[1]);
+      const wanted = select ? select.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      const known = new Set();
+      data.forEach((row) => Object.keys(row).forEach((k) => known.add(k)));
+      const bad = wanted.filter((c) => !known.has(c));
+      if (bad.length) {
+        return {
+          getResponseCode: () => 400,
+          getContentText: () => JSON.stringify({ message: `column ${table}.${bad[0]} does not exist` }),
+        };
+      }
       return { getResponseCode: () => 200, getContentText: () => JSON.stringify(data) };
     },
   },
@@ -206,7 +231,7 @@ const check = (label, got, want) => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}: got=${JSON.stringify(got)} want=${JSON.stringify(want)}`);
 };
 
-const rowOf = (nim) => users.find((u) => u.username === nim) && (teANims.indexOf(nim) + 3);
+const rowOf = (nim) => teANims.indexOf(nim) + 3;
 
 check('siswa1 modul1', at(teA, rowOf(teANims[0]), C.m1), true);
 check('siswa1 modul2', at(teA, rowOf(teANims[0]), C.m2), true);
@@ -228,6 +253,14 @@ check('siswa7 manual "Modul 5" tanpa sesi QR → kolom 5.0', at(teA, rowOf(teANi
 check('siswa7 "Ujian Praktik" menang atas kecocokan tanggal → kolom Ujian', at(teA, rowOf(teANims[7]), C.ujian), true);
 check('siswa7 tidak nyasar ke kolom 3&4', at(teA, rowOf(teANims[7]), C.m34) !== true, true);
 check('laporan menyebut asal kolom', /Sumber kolom:/.test(report), true);
+
+// identitas: NIM di kolom `nim` dan jurusan di kolom `division`
+check('NIM tersimpan di kolom nim tetap dicentang', at(teA, rowOf(teANims[6]), C.m2), true);
+check('nimCandidates_ abaikan username non-NIM', context.nimCandidates_({ username: 'siswa.tujuh' }).length, 0);
+check('nimCandidates_ pakai nim lebih dulu', context.nimCandidates_({ username: '202611001', nim: '202611002' }).join(','), '202611002,202611001');
+check('laporan memuat host project', /Project: stub \|/.test(report), true);
+check('laporan menghitung asal NIM', /lewat username=(\d+)/.test(report), true);
+check('laporan menghitung jurusan dari division', /kosong di kolom major=1/.test(report), true);
 
 // dry-run harus nol perubahan
 const before = JSON.stringify(teA._grid);
@@ -263,6 +296,20 @@ logged.length = 0;
 context.diagnosaKredensial();
 dl = logged.join('\n');
 check('diagnosa: beda project ditandai', /BEDA PROJECT/.test(dl), true);
+
+// fetchUsers_(): kalau DB belum punya kolom nim/division, daftar kolom diturunkan
+const snapNim = users.map((u) => u.nim);
+const snapDiv = users.map((u) => u.division);
+users.forEach((u) => { delete u.nim; delete u.division; });
+calls.length = 0;
+const fallbackRows = context.fetchUsers_({ url: 'https://stub.supabase.co', key: 'k' });
+check('fetchUsers_ tetap dapat data tanpa kolom nim/division', fallbackRows.length, users.length);
+const lastUsersUrl = calls.filter((c) => c.includes('/rest/v1/users')).pop() || '';
+check('fetchUsers_ memakai kolom minimal saat fallback', /select=[^&]*class_code/.test(lastUsersUrl) && !/nim/.test(lastUsersUrl), true);
+users.forEach((u, i) => {
+  if (snapNim[i] !== undefined) u.nim = snapNim[i];
+  if (snapDiv[i] !== undefined) u.division = snapDiv[i];
+});
 
 console.log(`\n=== ${fails === 0 ? 'SEMUA PASS' : fails + ' GAGAL'} ===`);
 process.exit(fails === 0 ? 0 : 1);
