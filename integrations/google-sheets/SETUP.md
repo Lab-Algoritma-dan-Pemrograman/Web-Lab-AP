@@ -97,9 +97,15 @@ Sheet kelas dipilih dari `users.major` + `users.class_code`:
    | `WEBHOOK_SECRET` | *(kosong)* | Hanya untuk mode webhook (langkah 6) |
 
 4. **Tes kering**
-   - Menu **🧪 Simulasi (tidak menulis)** → muncul laporan: berapa baris, berapa
-     checkbox bakal terisi, NIM mana yang tidak ketemu di DB.
-   - Baru kalau angkanya masuk akal: **🔄 Sync absensi sekarang**.
+   - Dari menu sheet: **🧪 Simulasi (tidak menulis)**. Dari editor Apps Script:
+     pilih fungsi **`testSimulasi`** → Run (laporan masuk **Execution log**).
+   - Muncul laporan: berapa baris, berapa checkbox bakal terisi, NIM mana yang
+     tidak ketemu di DB.
+   - Baru kalau angkanya masuk akal: menu **🔄 Sync absensi sekarang** (dari editor:
+     fungsi **`syncSekarang`**). Menjalankan `syncAbsensi` **tanpa argumen** dari
+     editor = simulasi juga — aman dari tulisan tak sengaja.
+   - Pertama kali Run, Google minta izin: **Review permissions → pilih akun →
+     Advanced → Go to "…" (unsafe) → Allow**. Itu wajar untuk skrip sendiri.
 
 5. **Otomatis tiap 10 menit**
    - Menu **⏱️ Pasang / perbarui trigger otomatis** → izinkan akses saat diminta.

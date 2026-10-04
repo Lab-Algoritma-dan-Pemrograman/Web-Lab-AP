@@ -108,6 +108,23 @@ function menuDryRun() {
   alert_('Simulasi (tidak ada perubahan ditulis).\n\n' + syncAbsensi(true));
 }
 
+/**
+ * Dipanggil dari editor Apps Script (dropdown fungsi → Run).
+ * Simulasi: aman, tidak menulis apa pun. Laporan masuk Execution log.
+ */
+function testSimulasi() {
+  var report = syncAbsensi(true);
+  Logger.log(report);
+  alert_(report);
+}
+
+/** Sinkronisasi sungguhan, dipanggil dari editor. Laporan masuk Execution log. */
+function syncSekarang() {
+  var report = syncAbsensi(false);
+  Logger.log(report);
+  alert_(report);
+}
+
 function menuSetCredentials() {
   var ui;
   try {
@@ -407,9 +424,13 @@ function findLayout_(sheet) {
 /**
  * Sinkronisasi utama.
  * @param {boolean} dryRun true = hitung saja, tidak menulis apa pun.
+ *                 Dipanggil tanpa argumen (Run dari editor) = SIMULASI, biar
+ *                 tidak ada tulisan tak sengaja saat tes pertama.
  * @return {string} laporan ringkas.
  */
 function syncAbsensi(dryRun) {
+  if (arguments.length === 0) dryRun = true;
+
   var cfg = cfg_();
   if (!cfg.url || !cfg.key) {
     return 'Kredensial Supabase belum diisi. Jalankan menu "Set kredensial Supabase".';
