@@ -61,9 +61,28 @@ Sheet kelas dipilih dari `users.major` + `users.class_code`:
 2. **Tempel script**
    - Di sheet: menu **Extensions → Apps Script**.
    - Hapus isi `Code.gs` bawaan, tempel seluruh isi `integrations/google-sheets/Code.gs`, Save.
+   - **Kalau menu Extensions tidak ada** — itu bukan bug sheet. Menu itu hanya ada
+     di Google Sheets versi **browser desktop**:
+     - jangan dibuka dari app HP (Android/iOS): di sana menunya memang tidak ada;
+     - pastikan filenya sudah jadi Google Sheets, bukan `.xlsx` yang dibuka di Excel.
+       Upload ke Drive → klik kanan → *Open with → Google Sheets* → kalau muncul
+       banner "Excel format", klik **Save as Google Sheets**.
+       URL yang benar: `docs.google.com/spreadsheets/d/<ID>/edit`.
+   - **Jalan alternatif tanpa Extensions** (skrip mandiri):
+     1. buka <https://script.google.com> → **New project** → tempel `Code.gs`;
+     2. **Project Settings → Script properties** → tambah tiga properti:
+        `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, dan `SHEET_ID`
+        (ID = bagian di antara `/d/` dan `/edit` pada URL spreadsheet);
+     3. jalankan fungsi **`syncAbsensi`** dari editor (bukan dari menu — menu
+        `⚙️ Web Lab AP` tidak ada di mode ini), izinkan akses saat diminta;
+     4. laporan muncul di **Execution log** (View → Logs).
+     Trigger 10 menit tetap bisa: fungsi `installTrigger` dipanggil manual dari editor.
 
 3. **Isi kredensial**
    - Supabase → Project Settings → API → copy **Project URL** dan **service_role** key.
+   - Ambil dari **project yang dipakai asisten sehari-hari**. Kalau salah project,
+     laporan akan `0 checkbox` dan `NIM tidak ada di DB` hampir semua — itu tandanya
+     salah database, bukan salah script.
    - Di sheet, reload halaman → menu **⚙️ Web Lab AP → 🔑 Set kredensial Supabase**.
    - Key tersimpan di Script Properties (tidak ikut terunduh kalau sheet di-share).
 
@@ -122,6 +141,7 @@ node integrations/google-sheets/test-harness.mjs
 ```
 
 Harness men-stub `SpreadsheetApp`/`UrlFetchApp`, membaca layout asli dari file
-`Penilaian Praktikum.xlsx`, lalu memverifikasi 14 kasus: pemetaan NIM→baris,
-judul sesi→kolom, alias `Praktikum Modul 1`, absen manual tanpa sesi, izin tidak
-dicentang, kolom Pengarahan tidak tersentuh, dan judul sesi tak dikenal.
+`Penilaian Praktikum.xlsx`, lalu memverifikasi 19 kasus: pemetaan NIM→baris,
+judul sesi→kolom, alias `Praktikum Modul 1`, prioritas kolom `meeting` di atas
+tanggal, absen manual tanpa sesi, izin tidak dicentang, kolom Pengarahan tidak
+tersentuh, dan judul sesi tak dikenal.

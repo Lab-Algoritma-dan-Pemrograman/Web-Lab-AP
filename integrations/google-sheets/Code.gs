@@ -101,17 +101,21 @@ function onOpen() {
 }
 
 function menuSyncNow() {
-  var report = syncAbsensi(false);
-  SpreadsheetApp.getUi().alert('Selesai.\n\n' + report);
+  alert_('Selesai.\n\n' + syncAbsensi(false));
 }
 
 function menuDryRun() {
-  var report = syncAbsensi(true);
-  SpreadsheetApp.getUi().alert('Simulasi (tidak ada perubahan ditulis).\n\n' + report);
+  alert_('Simulasi (tidak ada perubahan ditulis).\n\n' + syncAbsensi(true));
 }
 
 function menuSetCredentials() {
-  var ui = SpreadsheetApp.getUi();
+  var ui;
+  try {
+    ui = SpreadsheetApp.getUi();
+  } catch (err) {
+    throw new Error('Skrip mandiri tidak punya menu. Isi manual di Project Settings → ' +
+      'Script properties: SUPABASE_URL, SUPABASE_SERVICE_KEY, SHEET_ID.');
+  }
   var p = props_();
 
   var urlRes = ui.prompt('Supabase URL', 'Contoh: https://xxxxxxxxxxxx.supabase.co',
@@ -134,9 +138,7 @@ function menuSetCredentials() {
 }
 
 function menuInstallTrigger() {
-  var ui = SpreadsheetApp.getUi();
-  var installed = installTrigger(10);
-  ui.alert(installed);
+  alert_(installTrigger(10));
 }
 
 function menuStatus() {
@@ -149,10 +151,10 @@ function menuStatus() {
     'OVERWRITE_FALSE   : ' + c.overwriteFalse,
     'TIMEZONE          : ' + c.timezone,
     '',
-    'Sheet terdeteksi  : ' + SpreadsheetApp.getActiveSpreadsheet().getSheets()
+    'Sheet terdeteksi  : ' + getSpreadsheet_().getSheets()
       .map(function (s) { return s.getName(); }).join(', ')
   ].join('\n');
-  SpreadsheetApp.getUi().alert(status);
+  alert_(status);
 }
 
 function installTrigger(minutes) {
@@ -214,6 +216,34 @@ function doPost(e) {
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/* --------------------------- SPREADSHEET TARGET --------------------------- */
+
+/**
+ * Ambil spreadsheet target. Skrip yang di-ikat (Extensions → Apps Script)
+ * langsung dapat; skrip mandiri (script.google.com) butuh Script Property
+ * SHEET_ID supaya tetap bisa jalan.
+ */
+function getSpreadsheet_() {
+  var active = SpreadsheetApp.getActiveSpreadsheet();
+  if (active) return active;
+  var id = (props_().getProperty('SHEET_ID') || '').trim();
+  if (!id) {
+    throw new Error('Skrip ini tidak terikat ke spreadsheet mana pun. ' +
+      'Isi Script Property SHEET_ID dengan ID spreadsheet (bagian di antara /d/ dan /edit pada URL).');
+  }
+  return SpreadsheetApp.openById(id);
+}
+
+/** Tampilkan hasil. Skrip mandiri (script.google.com) tidak punya UI → masuk log saja. */
+function alert_(text) {
+  Logger.log(text);
+  try {
+    SpreadsheetApp.getUi().alert(text);
+  } catch (err) {
+    // dijalankan dari script.google.com / trigger: laporan cukup di Logger
   }
 }
 
@@ -385,7 +415,7 @@ function syncAbsensi(dryRun) {
     return 'Kredensial Supabase belum diisi. Jalankan menu "Set kredensial Supabase".';
   }
 
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet_();
   var startedAt = new Date();
 
   /* ---- 1. Tarik data dari Supabase ---- */
