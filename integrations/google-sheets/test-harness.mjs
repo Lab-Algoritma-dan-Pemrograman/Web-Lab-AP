@@ -262,6 +262,18 @@ check('laporan memuat host project', /Project: stub \|/.test(report), true);
 check('laporan menghitung asal NIM', /lewat username=(\d+)/.test(report), true);
 check('laporan menghitung jurusan dari division', /kosong di kolom major=1/.test(report), true);
 
+// resolusi nama sheet: format class_code di DB campur
+check('kandidat sheet dari class_code "TE A"', context.sheetNameCandidates_('Teknik Elektro', 'TE A').indexOf('TE A') !== -1, true);
+check('kandidat sheet dari class_code "A"', context.sheetNameCandidates_('Teknik Elektro', 'A').indexOf('TE A') !== -1, true);
+check('kandidat sheet "S1 Teknologi Listrik A" → TL A', context.sheetNameCandidates_('Teknologi Listrik', 'S1 Teknologi Listrik A').indexOf('TL A') !== -1, true);
+check('kandidat sheet tanpa jurusan → pakai class_code utuh', context.sheetNameCandidates_('', 'TSE C').indexOf('TSE C') !== -1, true);
+check('semua user dapat sheet', /tanpa sheet cocok: 0\b/.test(report), true);
+
+// baris TE A: pemilik absen vs yang belum absen dibedakan
+const teALine = report.split('\n').find((l) => l.startsWith('• TE A:')) || '';
+check('baris TE A melaporkan "belum ada absen"', /belum ada absen/.test(teALine), true);
+check('baris TE A tidak salah lapor NIM hilang', /NIM tidak ada di DB/.test(teALine), false);
+
 // dry-run harus nol perubahan
 const before = JSON.stringify(teA._grid);
 context.syncAbsensi(true);

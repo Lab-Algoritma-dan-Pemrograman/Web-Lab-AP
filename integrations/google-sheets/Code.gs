@@ -412,16 +412,54 @@ function classFromTitle_(title) {
 
 /** (major, classCode) → nama sheet, contoh ('Teknik Elektro','A') → 'TE A' */
 function sheetNameFor_(major, classCode) {
-  var prefix = null;
-  for (var i = 0; i < MAJOR_PREFIX.length; i++) {
-    if (MAJOR_PREFIX[i][0].test(String(major || ''))) { prefix = MAJOR_PREFIX[i][1]; break; }
-  }
+  var prefix = majorPrefixFor_(major);
   if (!prefix) return null;
   var code = String(classCode || '').trim().toUpperCase().replace(/^KELAS\s+/, '');
   if (!code) return null;
   var letter = code.match(/[A-Z]$/);
   if (!letter) return null;
   return prefix + ' ' + letter[0];
+}
+
+/** 'TL' | 'TE' | 'TSE' dari nama jurusan; '' kalau tidak dikenali. */
+function majorPrefixFor_(major) {
+  for (var i = 0; i < MAJOR_PREFIX.length; i++) {
+    if (MAJOR_PREFIX[i][0].test(String(major || ''))) return MAJOR_PREFIX[i][1];
+  }
+  return '';
+}
+
+/**
+ * Semua kemungkinan nama sheet untuk satu user. Format `class_code` di DB
+ * campur: ada yang cuma huruf kelas ("A"), ada yang sudah lengkap ("TL A"),
+ * ada yang membawa nama jurusan ("S1 Teknologi Listrik A").
+ */
+function sheetNameCandidates_(major, classCode) {
+  var out = [];
+  var code = String(classCode === null || classCode === undefined ? '' : classCode).trim().replace(/\s+/g, ' ');
+  var prefix = majorPrefixFor_(major);
+
+  function add(name) {
+    name = String(name || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    if (name && out.indexOf(name) === -1) out.push(name);
+  }
+
+  // "TL A" / "TE E" / "TSE C" — sudah nama sheet
+  var full = code.match(/^(TL|TE|TSE)\s*[- ]?\s*([A-Z])$/i);
+  if (full) add(full[1] + ' ' + full[2]);
+
+  // huruf kelas saja + jurusan dari `major`/`division`
+  if (prefix && /^[A-Z]$/i.test(code)) add(prefix + ' ' + code);
+
+  // class_code membawa nama jurusan di belakang huruf kelas
+  if (prefix) {
+    var tail = code.match(/([A-Z])\s*$/);
+    if (tail && code.length > 1) add(prefix + ' ' + tail[1]);
+    add(prefix + ' ' + code);
+  }
+
+  add(code);
+  return out;
 }
 
 function wibDate_(isoString, tz) {
@@ -560,6 +598,32 @@ function syncAbsensi(dryRun) {
   var userById = {};
   users.forEach(function (u) { userById[String(u.id)] = u; });
 
+  // Nama sheet yang benar-benar ada + resolver yang tahan terhadap format
+  // `class_code` yang campur ("A", "TL A", "S1 Teknologi Listrik A").
+  var existingSheets = ss.getSheets().map(function (s) { return s.getName(); });
+  function resolveSheetFor_(user) {
+    var cands = sheetNameCandidates_(majorOf_(user), user.class_code);
+    for (var i = 0; i < cands.length; i++) {
+      if (existingSheets.indexOf(cands[i]) !== -1) return cands[i];
+    }
+    return null;
+  }
+
+  // Index SEMUA user yang dikenal — termasuk yang belum punya absen. Dipakai
+  // untuk membedakan "NIM tidak ada di DB" dari "ada di DB tapi belum absen"
+  // (beda masalah, beda solusi).
+  var userIndex = {};
+  var usersWithSheet = 0;
+  var usersNoSheet = 0;
+  users.forEach(function (u) {
+    var sheetName = resolveSheetFor_(u);
+    if (!sheetName) { usersNoSheet++; return; }
+    var nims = nimCandidates_(u);
+    if (!nims.length) return;
+    usersWithSheet++;
+    nims.forEach(function (nim) { userIndex[sheetName + '|' + nim] = true; });
+  });
+
   // (sheetName|nim) → array boolean panjang MEETING_COLUMNS.length
   var marks = {};
   // sheetName → { tanggal → { indeksKolom: true } } — dipakai untuk absen lama tanpa penanda pertemuan
@@ -609,7 +673,7 @@ function syncAbsensi(dryRun) {
   logs.forEach(function (log) {
     var user = userById[String(log.custom_user_id)];
     if (!user) return;
-    var sheetName = sheetNameFor_(majorOf_(user), user.class_code);
+    var sheetName = resolveSheetFor_(user);
     if (!sheetName) return;
 
     var session = log.session_id ? sessionById[String(log.session_id)] : null;
@@ -636,7 +700,7 @@ function syncAbsensi(dryRun) {
 
     var user = userById[String(log.custom_user_id)];
     if (!user) return;
-    var sheetName = sheetNameFor_(majorOf_(user), user.class_code);
+    var sheetName = resolveSheetFor_(user);
     if (!sheetName) return;
 
     var idx = meetingIndexFromLabel_(log.meeting);
@@ -701,14 +765,23 @@ function syncAbsensi(dryRun) {
     var sheetTrue = 0;
     var changed = 0;
     var missing = [];
+    var noAttendance = 0;
+    var nonNimRows = 0;
 
     for (var r = 0; r < numRows; r++) {
       var nim = normalizeNim_(nimRange[r][0]);
       if (!nim) continue;
+      // Baris catatan di bawah daftar (mis. "KAMIS", "16:00-18:40") bukan NIM.
+      if (!/^\d{6,}$/.test(nim)) { nonNimRows++; continue; }
 
       // NB: jangan pakai nama `marks` di sini — akan menutupi indeks global (hoisting var).
       var rowMarks = marks[sheet.getName() + '|' + nim];
-      if (!rowMarks) { missing.push(nim); continue; }
+      if (!rowMarks) {
+        // Ada di DB tapi belum punya absen = normal (bukan masalah data).
+        if (userIndex[sheet.getName() + '|' + nim]) noAttendance++;
+        else missing.push(nim);
+        continue;
+      }
 
       for (var i = 0; i < managedLabels.length; i++) {
         var label = managedLabels[i];
@@ -742,7 +815,9 @@ function syncAbsensi(dryRun) {
     if (missing.length) missingBySheet[sheet.getName()] = missing;
     var line = '• ' + sheet.getName() + ': ' + numRows + ' baris, ' +
       sheetTrue + ' checkbox terisi' + (dryRun ? '' : ', ' + changed + ' sel diubah');
+    if (noAttendance) line += ' (' + noAttendance + ' belum ada absen)';
     if (missing.length) line += ' (' + missing.length + ' NIM tidak ada di DB: ' + missing.slice(0, 5).join(', ') + ')';
+    if (nonNimRows) line += ' (' + nonNimRows + ' baris non-NIM dilewati)';
     report.push(line);
   });
 
@@ -757,6 +832,7 @@ function syncAbsensi(dryRun) {
       ', tanpa NIM=' + idStats.tanpaNim,
     'Jurusan: kosong di kolom major=' + idStats.majorDariDivision +
       ' (dipakai kolom division) | tanpa jurusan=' + idStats.tanpaMajor,
+    'Siswa dikenali dari DB: ' + usersWithSheet + ' (tanpa sheet cocok: ' + usersNoSheet + ') | punya absen: ' + Object.keys(marks).length,
     'Siswa terpetakan: ' + Object.keys(marks).length + ' | baris diproses: ' + totalRowsTouched,
     'Checkbox TRUE total: ' + totalTrueCells,
     'Sumber kolom: pilihan Pertemuan=' + sourceCount.meeting +
