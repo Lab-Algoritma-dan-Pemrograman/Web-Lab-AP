@@ -158,6 +158,69 @@ function menuInstallTrigger() {
   alert_(installTrigger(10));
 }
 
+/**
+ * Diagnosa kredensial: memastikan URL & key masuk ke properti yang benar.
+ * Hanya melaporkan bentuk key (panjang, prefix, role & project di dalam JWT) —
+ * TIDAK pernah menampilkan key utuh.
+ */
+function diagnosaKredensial() {
+  var p = props_();
+  var url = p.getProperty('SUPABASE_URL') || '';
+  var key = p.getProperty('SUPABASE_SERVICE_KEY') || '';
+  var out = [];
+
+  out.push('URL        : ' + JSON.stringify(url));
+  if (!key) {
+    out.push('KEY        : (kosong) — properti SUPABASE_SERVICE_KEY belum diisi.');
+  } else {
+    out.push('KEY        : panjang=' + key.length + ', awal="' + key.slice(0, 3) + '…"');
+    if (/\s/.test(key)) {
+      out.push('           ⚠ ada spasi/enter di dalam key — hapus, tempel ulang tanpa baris baru.');
+    }
+    if (/^Bearer\s/i.test(key)) {
+      out.push('           ⚠ masih ada awalan "Bearer " — buang, cukup key-nya saja.');
+    }
+  }
+
+  var seg = key.indexOf('eyJ') === 0 ? key.split('.')[1] : null;
+  if (seg) {
+    try {
+      var b64 = seg.replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      var payload = JSON.parse(Utilities.newBlob(Utilities.base64Decode(b64)).getDataAsString());
+      out.push('JWT role   : ' + payload.role + (payload.role === 'service_role'
+        ? '  ✓ boleh baca semua data'
+        : '  ✗ BUKAN service_role — RLS akan menolak'));
+      out.push('JWT ref    : ' + payload.ref);
+      var urlRef = (url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
+      if (urlRef) {
+        out.push('Ref di URL : ' + urlRef + (urlRef === payload.ref
+          ? '  ✓ cocok'
+          : '  ✗ BEDA PROJECT — key dan URL dari project berbeda'));
+      }
+      if (payload.exp) {
+        out.push('JWT exp    : ' + new Date(payload.exp * 1000).toISOString());
+      }
+    } catch (err) {
+      out.push('JWT payload tidak terbaca: ' + err.message);
+    }
+  } else if (key.indexOf('sb_secret_') === 0) {
+    out.push('Format key : sb_secret_ (service role format baru) ✓');
+  } else if (key.indexOf('sb_publishable_') === 0) {
+    out.push('Format key : sb_publishable_ → ini kunci PUBLIK, bukan service_role ✗');
+  } else if (key) {
+    out.push('Format key : tidak dikenal (bukan JWT, bukan sb_secret_, bukan sb_publishable_)');
+  }
+
+  out.push('', 'Sheet      : ' + (function () {
+    try { return getSpreadsheet_().getName(); } catch (e) { return '(' + e.message + ')'; }
+  })());
+
+  var text = out.join('\n');
+  Logger.log(text);
+  alert_(text);
+}
+
 function menuStatus() {
   var c = cfg_();
   var status = [

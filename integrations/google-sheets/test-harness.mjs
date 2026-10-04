@@ -152,9 +152,10 @@ const props = {
   SYNC_FROM: '2026-09-01',
 };
 const calls = [];
+const logged = [];
 const context = {
   console,
-  Logger: { log: () => {} },
+  Logger: { log: (t) => logged.push(String(t)) },
   PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k in props ? props[k] : null), setProperty: () => {} }) },
   ScriptApp: { getProjectTriggers: () => [], newTrigger: () => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => {} }) }) }) },
   ContentService: { createTextOutput: () => ({ setMimeType: () => ({}) }), MimeType: { JSON: 'json' } },
@@ -165,6 +166,9 @@ const context = {
       if (fmt === 'yyyy-MM-dd') return `${z.getUTCFullYear()}-${p(z.getUTCMonth() + 1)}-${p(z.getUTCDate())}`;
       return `${z.getUTCFullYear()}-${p(z.getUTCMonth() + 1)}-${p(z.getUTCDate())} ${p(z.getUTCHours())}:${p(z.getUTCMinutes())}`;
     },
+    // diagnosaKredensial(): base64Decode mengembalikan input, newBlob yang mendekode
+    base64Decode: (s) => s,
+    newBlob: (s) => ({ getDataAsString: () => Buffer.from(s, 'base64').toString('utf8') }),
   },
   UrlFetchApp: {
     fetch(url) {
@@ -175,7 +179,7 @@ const context = {
     },
   },
   SpreadsheetApp: {
-    getActiveSpreadsheet: () => ({ getSheets: () => sheets }),
+    getActiveSpreadsheet: () => ({ getSheets: () => sheets, getName: () => 'Penilaian Praktikum' }),
     getUi: () => ({ alert: () => {} }),
   },
 };
@@ -229,6 +233,36 @@ check('laporan menyebut asal kolom', /Sumber kolom:/.test(report), true);
 const before = JSON.stringify(teA._grid);
 context.syncAbsensi(true);
 check('dry-run tidak menulis apa pun', JSON.stringify(teA._grid) === before, true);
+
+// syncAbsensi() tanpa argumen (Run dari editor) juga harus simulasi
+const beforeNoArg = JSON.stringify(teA._grid);
+context.syncAbsensi();
+check('tanpa argumen = simulasi, nol tulisan', JSON.stringify(teA._grid) === beforeNoArg, true);
+
+// diagnosaKredensial(): JWT service_role yang cocok project
+const jwt = (payload) => 'eyJhbGciOiJIUzI1NiJ9.' +
+  Buffer.from(JSON.stringify(payload)).toString('base64url') + '.sig';
+props.SUPABASE_SERVICE_KEY = jwt({ role: 'service_role', ref: 'stub', exp: 1900000000 });
+logged.length = 0;
+context.diagnosaKredensial();
+let dl = logged.join('\n');
+check('diagnosa: role terbaca', /JWT role {3}: service_role/.test(dl), true);
+check('diagnosa: ref cocok', /Ref di URL : stub {2}✓ cocok/.test(dl), true);
+check('diagnosa: key utuh tidak dibocorkan', dl.indexOf(props.SUPABASE_SERVICE_KEY) === -1, true);
+
+// diagnosaKredensial(): kunci publik ditandai salah
+props.SUPABASE_SERVICE_KEY = 'sb_publishable_abcDEF123';
+logged.length = 0;
+context.diagnosaKredensial();
+dl = logged.join('\n');
+check('diagnosa: publishable ditandai', /sb_publishable_ → ini kunci PUBLIK/.test(dl), true);
+
+// diagnosaKredensial(): key beda project dari URL
+props.SUPABASE_SERVICE_KEY = jwt({ role: 'service_role', ref: 'proyeklain', exp: 1900000000 });
+logged.length = 0;
+context.diagnosaKredensial();
+dl = logged.join('\n');
+check('diagnosa: beda project ditandai', /BEDA PROJECT/.test(dl), true);
 
 console.log(`\n=== ${fails === 0 ? 'SEMUA PASS' : fails + ' GAGAL'} ===`);
 process.exit(fails === 0 ? 0 : 1);

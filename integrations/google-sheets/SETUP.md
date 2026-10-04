@@ -120,6 +120,22 @@ Sheet kelas dipilih dari `users.major` + `users.class_code`:
      URL `https://script.google.com/macros/s/XXXX/exec?secret=<WEBHOOK_SECRET>`.
    - Satu sesi QR memicu puluhan insert — endpoint sudah throttle 20 detik.
 
+## Kalau kredensial ditolak (HTTP 401 / "Invalid API key")
+
+Jalankan fungsi **`diagnosaKredensial`** dari editor Apps Script → laporan di
+**Execution log**. Fungsi itu tidak pernah menampilkan key utuh, hanya:
+panjang + 3 huruf awal, `role` dan `ref` di dalam JWT, serta cocok/tidaknya
+`ref` dengan project pada `SUPABASE_URL`.
+
+Penyebab yang paling sering:
+
+- key diambil dari **project lain** (mis. URL project A, key project B) →
+  laporan menandai `✗ BEDA PROJECT`;
+- yang ter-copy adalah kunci **`anon`/`sb_publishable_`**, bukan `service_role`
+  → laporan menandai `✗ BUKAN service_role`;
+- key terpotong / masih ada spasi-enter / awalan `Bearer ` dari copy-paste;
+- bukan key sama sekali (mis. yang ter-paste adalah URL project).
+
 ## Catatan / batasan
 
 - **Urutan penentuan kolom** (paling dipercaya dulu):
@@ -147,7 +163,7 @@ node integrations/google-sheets/test-harness.mjs
 ```
 
 Harness men-stub `SpreadsheetApp`/`UrlFetchApp`, membaca layout asli dari file
-`Penilaian Praktikum.xlsx`, lalu memverifikasi 19 kasus: pemetaan NIM→baris,
+`Penilaian Praktikum.xlsx`, lalu memverifikasi 25 kasus: pemetaan NIM→baris,
 judul sesi→kolom, alias `Praktikum Modul 1`, prioritas kolom `meeting` di atas
 tanggal, absen manual tanpa sesi, izin tidak dicentang, kolom Pengarahan tidak
 tersentuh, dan judul sesi tak dikenal.
