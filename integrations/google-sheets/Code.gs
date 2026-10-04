@@ -407,7 +407,6 @@ function syncAbsensi(dryRun) {
   // sheetName → { tanggal → { indeksKolom: true } } — dipakai untuk absen lama tanpa penanda pertemuan
   var dateToColumn = {};
   var unmatchedTitles = {};
-  var noSheetStudents = {};
   var manualWithoutDate = 0;
   // Asal-usul kolom: berguna untuk tahu seberapa banyak data yang masih "nebak".
   var sourceCount = { meeting: 0, sesiQr: 0, tanggal: 0 };

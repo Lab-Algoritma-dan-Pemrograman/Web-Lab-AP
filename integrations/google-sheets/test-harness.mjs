@@ -90,7 +90,6 @@ const sheets = useReal
 console.log(useReal ? `layout dari: ${XLSX_PATH}` : `layout asli tidak ditemukan — pakai grid sintetis`);
 
 const sheetByName = Object.fromEntries(sheets.map((s) => [s.getName(), s]));
-const nimOf = (sheet, row) => String(sheet._grid[row - 1][1]);
 
 // user DB: semua NIM di sheet TE A → jurusan 'Teknik Elektro' kelas A
 const teA = sheetByName['TE A'];
