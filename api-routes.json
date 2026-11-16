@@ -1,0 +1,54 @@
+{
+  "/api/analyze-schedule": {
+    "type": "dynamic",
+    "file": "analyze-schedule.ts"
+  },
+  "/api/cron-check-shifts": {
+    "type": "dynamic",
+    "file": "cron-check-shifts.ts"
+  },
+  "/api/generate-jwt": {
+    "type": "dynamic",
+    "file": "generate-jwt.ts"
+  },
+  "/api/keep-alive": {
+    "type": "dynamic",
+    "file": "keep-alive.ts"
+  },
+  "/api/rpc": {
+    "type": "dynamic",
+    "file": "rpc.ts"
+  },
+  "/api/send-push": {
+    "type": "dynamic",
+    "file": "send-push.ts"
+  },
+  "/api/send-wa": {
+    "type": "dynamic",
+    "file": "send-wa.ts"
+  },
+  "/api/sync-elearning": {
+    "type": "dynamic",
+    "file": "sync-elearning.ts"
+  },
+  "/api/auth/login": {
+    "type": "dynamic",
+    "file": "auth/login.ts"
+  },
+  "/api/auth/logout": {
+    "type": "dynamic",
+    "file": "auth/logout.ts"
+  },
+  "/api/auth/verify": {
+    "type": "dynamic",
+    "file": "auth/verify.ts"
+  },
+  "/": {
+    "type": "dynamic",
+    "file": "index.ts",
+    "methods": [
+      "POST",
+      "OPTIONS"
+    ]
+  }
+}
