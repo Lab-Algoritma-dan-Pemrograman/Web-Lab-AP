@@ -31,10 +31,6 @@
   ],
   "crons": [
     {
-      "path": "/api/cron-check-shifts",
-      "schedule": "0 7 * * *"
-    },
-    {
       "path": "/api/keep-alive",
       "schedule": "0 0 * * *"
     }
